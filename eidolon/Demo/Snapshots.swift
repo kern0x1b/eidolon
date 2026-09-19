@@ -306,6 +306,36 @@ struct NavigationCase: View {
     }
 }
 
+final class ToolbarLog { var taps: [String] = [] }
+let toolbarLog = ToolbarLog()
+
+struct ToolbarCase: View {
+    var body: some View {
+        NavigationView {
+            Color.gray.frame(height: 40)
+                .navigationTitle("Bars")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { toolbarLog.taps.append("cancel") } }
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        Button("Add") { toolbarLog.taps.append("add") }
+                        Button { toolbarLog.taps.append("icon") } label: { Color.red.frame(width: 20, height: 20) }
+                    }
+                    ToolbarItem(placement: .principal) { Color.green.frame(width: 60, height: 20) }
+                    ToolbarItem(placement: .bottomBar) { Button("Left") { toolbarLog.taps.append("left") } }
+                    ToolbarItem(placement: .bottomBar) { Spacer() }
+                    ToolbarItem(placement: .bottomBar) { Button("Right") { toolbarLog.taps.append("right") } }
+                    ToolbarItem(id: "hidden", placement: .navigationBarLeading, showsByDefault: false) { Button("Hidden") {} }
+                    ToolbarItem(placement: .keyboard) { Button("Done") {} }
+                }
+        }
+    }
+}
+
+func pressBarItems(_ probe: _Probe) {
+    for button in allViews(probe.hostView, of: UIButton.self) { button.sendActions(for: .touchUpInside) }
+    probe.flush()
+}
+
 func activateSearch(_ probe: _Probe) {
     allViews(probe.hostView, of: UISearchBar.self).first?.becomeFirstResponder()
     probe.flush()
@@ -371,6 +401,8 @@ func snapshotCases() -> [SnapshotCase] {
         SnapshotCase(name: "list", width: 320, height: 260, view: ListCase(model: model)),
         SnapshotCase(name: "features", width: 320, height: 300, view: FeaturesCase()),
         SnapshotCase(name: "navigation", width: 320, height: 300, view: NavigationCase(), inWindow: true),
+        SnapshotCase(name: "toolbar", width: 320, height: 300, view: ToolbarCase(), inWindow: true,
+                     action: pressBarItems, note: { "taps \(toolbarLog.taps.sorted())" }),
         SnapshotCase(name: "search", width: 320, height: 200, view: SearchCase()),
         SnapshotCase(name: "split", width: 320, height: 300, view: SplitCase(), inWindow: true, action: { $0.selectRow(1) }),
         SnapshotCase(name: "pickers", width: 320, height: 300, view: PickersCase(), inWindow: true),

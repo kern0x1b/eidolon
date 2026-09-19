@@ -18,11 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Every overload of `alert` and `confirmationDialog`, and presentation by item (`alert(item:)`, `actionSheet(item:)`,
   `fullScreenCover(item:)`, `popover(item:)`).
 - `bridge/api-surface.sh` and `bridge/api-diff.py`: a declaration-level diff against Apple's SwiftUI interface.
-- The engine tests, sixteen rendered scenarios with tree references, an in-app timing scenario and an arm64
+- Real toolbars: every placement (`principal` becomes the title, `bottomBar` and `status` the toolbar, several items per
+  side in declared order), custom-view bar items for anything that is not a plain text button, `ToolbarItem(id:)`, and
+  `showsByDefault`.
+- `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
+- The engine tests, nineteen rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed
 
+- A `Button` whose label is not a single `Text` (an icon, a `Label`, a stack) drew an empty rounded rectangle and dropped
+  its label; it now draws the label, dimmed while pressed.
 - A view with a transform is placed by size and centre, not by `frame`.
 - An animated update lays out only the screens that re-rendered.
 - A change beneath `.padding()` or `.frame()` resets the wrapper's own cached size.

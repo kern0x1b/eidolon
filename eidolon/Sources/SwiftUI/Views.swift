@@ -216,7 +216,7 @@ public struct Button<Label: View>: View, PrimitiveView {
     public init(role: ButtonRole?, action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
         self.action = action; self.label = label(); self.role = role
     }
-    func makeNode(_ env: EnvironmentValues) -> Node { let n = ButtonNode(); n.update(self, env); return n }
+    func makeNode(_ env: EnvironmentValues) -> Node { let n = ButtonNode(plainText: Label.self == Text.self); n.update(self, env); return n }
 }
 
 extension Button: RoleButtonLike { var buttonRole: ButtonRole? { role } }
@@ -274,8 +274,12 @@ final class ButtonNode: LayoutNode {
 
     override var disposableChildren: [Node] { styled.map { [$0] } ?? [] }
 
-    init() {
-        let b = UIButton(type: .roundedRect)
+    let plainText: Bool
+
+    // A label that is not one Text is drawn as it is, without the chrome iOS 6 puts on a titled button.
+    init(plainText: Bool) {
+        self.plainText = plainText
+        let b = UIButton(type: plainText ? .roundedRect : .custom)
         super.init(view: b)
         b.addTarget(target, action: #selector(ControlTarget.fire), for: .touchUpInside)
         b.addTarget(pressTarget, action: #selector(ControlTarget.changed(_:)), for: .touchDown)
@@ -309,6 +313,9 @@ final class ButtonNode: LayoutNode {
         primitive = false
         target.action = b.buttonAction
         styleBody = env.buttonStyle
+        if styleBody == nil && !plainText {
+            styleBody = { AnyView($0.label.opacity($0.isPressed ? 0.4 : 1)) }
+        }
         if styleBody == nil {
             styled?.dispose()
             styled = nil

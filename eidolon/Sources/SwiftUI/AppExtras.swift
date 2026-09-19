@@ -169,19 +169,3 @@ public struct AccessibilitySystemRotor {
     public static func links() -> AccessibilitySystemRotor { AccessibilitySystemRotor() }
     public static func headings() -> AccessibilitySystemRotor { AccessibilitySystemRotor() }
 }
-
-public struct ToolbarItemGroup<Content: View>: View, PrimitiveView, GroupView {
-    public typealias Body = Never
-    public var body: Never { neverBody(Self.self) }
-    let placement: ToolbarItemPlacement
-    let content: Content
-    public init(placement: ToolbarItemPlacement = .automatic, @ViewBuilder content: () -> Content) {
-        self.placement = placement; self.content = content()
-    }
-    var childViews: [any View] { [content] }
-}
-
-extension ToolbarItemGroup: ToolbarItemLike {
-    var itemPlacement: ToolbarItemPlacement { placement }
-    var itemContent: any View { content }
-}

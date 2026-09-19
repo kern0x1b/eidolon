@@ -7,7 +7,7 @@ import UIKit
 @_exported import OpenCombine
 #endif
 
-public protocol View {
+@MainActor @preconcurrency public protocol View {
     associatedtype Body: View
     static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs
     static func _makeViewList(view: _GraphValue<Self>, inputs: _ViewListInputs) -> _ViewListOutputs

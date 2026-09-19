@@ -12,7 +12,7 @@ _HostRootView (0,0,320,300)
                 UIView (1,0,300,1)
               UITableViewCellContentView (10,0,300,43)
                 UIView (10,0,282,45)
-                  UIRoundedRectButton (0,12,282,21) button ""
+                  UIButton (0,12,282,21) button ""
                     UIView (0,0,282,21)
                       UIView (0,0,282,21)
                         UILabel (0,0,44,21) "Large"
@@ -24,7 +24,7 @@ _HostRootView (0,0,320,300)
                 UIView (1,44,300,1)
               UITableViewCellContentView (10,1,300,43)
                 UIView (10,0,282,45)
-                  UIRoundedRectButton (0,12,282,21) button ""
+                  UIButton (0,12,282,21) button ""
                     UIView (0,0,282,21)
                       UIView (0,0,282,21)
                         UILabel (0,0,43,21) "Small"
