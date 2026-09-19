@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   side in declared order), custom-view bar items for anything that is not a plain text button, `ToolbarItem(id:)`, and
   `showsByDefault`.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, nineteen rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, eighteen rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed
