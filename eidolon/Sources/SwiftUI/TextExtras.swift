@@ -57,7 +57,32 @@ extension Font {
 }
 
 extension Text {
-    public func italic() -> Text { var copy = self; copy.isItalic = true; return copy }
+    public func italic(_ isActive: Bool = true) -> Text { var copy = self; copy.isItalic = isActive; return copy }
+    public func monospaced(_ isActive: Bool = true) -> Text {
+        guard isActive else { return self }
+        var copy = self
+        copy.font = Font(uiFont: UIFont(name: "Courier", size: (font?.uiFont.pointSize ?? 17)) ?? .systemFont(ofSize: 17))
+        return copy
+    }
+    public func baselineOffset(_ baselineOffset: CGFloat) -> Text {
+        _Unsupported.note("Text.baselineOffset", "attributed text of iOS 6 has no baseline offset; the text stays on its baseline")
+        return self
+    }
+    public func accessibilityLabel(_ label: Text) -> Text { var copy = self; copy.accessibilityLabelText = label.content; return copy }
+    public func accessibilityLabel(_ labelKey: LocalizedStringKey) -> Text { accessibilityLabel(Text(labelKey)) }
+    public func accessibilityLabel<S: StringProtocol>(_ label: S) -> Text { accessibilityLabel(Text(label)) }
+    public func accessibilityHeading(_ level: AccessibilityHeadingLevel) -> Text {
+        var copy = self
+        copy.accessibilityHeader = level != .unspecified
+        return copy
+    }
+    public init<Subject: ReferenceConvertible>(_ subject: Subject, formatter: Formatter) {
+        let bridged: Any = subject._bridgeToObjectiveC()
+        self.init(verbatim: formatter.string(for: bridged) ?? "")
+    }
+    public init<Subject: NSObject>(_ subject: Subject, formatter: Formatter) {
+        self.init(verbatim: formatter.string(for: subject) ?? "")
+    }
     public func kerning(_ kerning: CGFloat) -> Text { var copy = self; copy.kern = kerning; return copy }
     public func tracking(_ tracking: CGFloat) -> Text { var copy = self; copy.kern = tracking; return copy }
     public func monospacedDigit() -> Text { self }

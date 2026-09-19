@@ -42,10 +42,12 @@ extension Path {
     }
 
     public mutating func addRects(_ rects: [CGRect], transform: CGAffineTransform = .identity) {
+        unique()
         for rect in rects { storage.addRect(rect, transform: transform) }
     }
 
     public mutating func addRelativeArc(center: CGPoint, radius: CGFloat, startAngle: Angle, delta: Angle, transform: CGAffineTransform = .identity) {
+        unique()
         storage.addRelativeArc(center: center, radius: radius, startAngle: CGFloat(startAngle.radians), delta: CGFloat(delta.radians), transform: transform)
     }
 

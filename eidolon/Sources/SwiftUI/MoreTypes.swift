@@ -301,5 +301,6 @@ extension Image {
         case .rightMirrored: mapped = .rightMirrored
         }
         self.init(uiImage: UIImage(cgImage: cgImage, scale: scale, orientation: mapped))
+        accessibilityLabelText = label.content.isEmpty ? nil : label.content
     }
 }

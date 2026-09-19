@@ -52,8 +52,13 @@ public struct Path: Equatable {
     public init() {}
     public init(_ rect: CGRect) { storage.addRect(rect) }
     public init(_ path: CGPath) { storage = path.mutableCopy() ?? CGMutablePath() }
-    public init(roundedRect rect: CGRect, cornerRadius: CGFloat) {
+    public init(roundedRect rect: CGRect, cornerRadius: CGFloat, style: RoundedCornerStyle = .circular) {
+        RoundedRectangle.noteContinuous(style)
         roundedRectangle(storage, rect, CGSize(width: cornerRadius, height: cornerRadius))
+    }
+    public init(roundedRect rect: CGRect, cornerSize: CGSize, style: RoundedCornerStyle = .circular) {
+        RoundedRectangle.noteContinuous(style)
+        roundedRectangle(storage, rect, cornerSize)
     }
     public init(ellipseIn rect: CGRect) { storage.addEllipse(in: rect) }
     public init(_ callback: (inout Path) -> Void) {
@@ -66,28 +71,50 @@ public struct Path: Equatable {
     public var isEmpty: Bool { storage.isEmpty }
     public var boundingRect: CGRect { storage.boundingBoxOfPath }
 
-    public mutating func move(to point: CGPoint) { storage.move(to: point) }
-    public mutating func addLine(to point: CGPoint) { storage.addLine(to: point) }
-    public mutating func addRect(_ rect: CGRect) { storage.addRect(rect) }
-    public mutating func addEllipse(in rect: CGRect) { storage.addEllipse(in: rect) }
-    public mutating func addRoundedRect(in rect: CGRect, cornerSize: CGSize) {
-        roundedRectangle(storage, rect, cornerSize)
+    // A path is a value: a copy that is changed must not change the original, though both hold the same CGPath until then.
+    mutating func unique() {
+        if !isKnownUniquelyReferenced(&storage) { storage = storage.mutableCopy() ?? CGMutablePath() }
     }
-    public mutating func addQuadCurve(to point: CGPoint, control: CGPoint) { storage.addQuadCurve(to: point, control: control) }
+
+    public var currentPoint: CGPoint? { storage.isEmpty ? nil : storage.currentPoint }
+    public func contains(_ p: CGPoint, eoFill: Bool = false) -> Bool { storage.contains(p, using: eoFill ? .evenOdd : .winding) }
+
+    public mutating func move(to point: CGPoint) { unique(); storage.move(to: point) }
+    public mutating func addLine(to point: CGPoint) { unique(); storage.addLine(to: point) }
+    public mutating func addRect(_ rect: CGRect, transform: CGAffineTransform = .identity) { unique(); storage.addRect(rect, transform: transform) }
+    public mutating func addEllipse(in rect: CGRect, transform: CGAffineTransform = .identity) { unique(); storage.addEllipse(in: rect, transform: transform) }
+    public mutating func addRoundedRect(in rect: CGRect, cornerSize: CGSize, style: RoundedCornerStyle = .circular, transform: CGAffineTransform = .identity) {
+        RoundedRectangle.noteContinuous(style)
+        var rounded = Path()
+        roundedRectangle(rounded.storage, rect, cornerSize)
+        addPath(rounded, transform: transform)
+    }
+    public mutating func addQuadCurve(to point: CGPoint, control: CGPoint) { unique(); storage.addQuadCurve(to: point, control: control) }
     public mutating func addCurve(to point: CGPoint, control1: CGPoint, control2: CGPoint) {
+        unique()
         storage.addCurve(to: point, control1: control1, control2: control2)
     }
-    public mutating func addArc(center: CGPoint, radius: CGFloat, startAngle: Angle, endAngle: Angle, clockwise: Bool) {
-        storage.addArc(center: center, radius: radius, startAngle: CGFloat(startAngle.radians), endAngle: CGFloat(endAngle.radians), clockwise: clockwise)
+    public mutating func addArc(center: CGPoint, radius: CGFloat, startAngle: Angle, endAngle: Angle, clockwise: Bool, transform: CGAffineTransform = .identity) {
+        unique()
+        storage.addArc(center: center, radius: radius, startAngle: CGFloat(startAngle.radians), endAngle: CGFloat(endAngle.radians), clockwise: clockwise, transform: transform)
     }
-    public mutating func addPath(_ other: Path) { storage.addPath(other.storage) }
-    public mutating func closeSubpath() { storage.closeSubpath() }
+    public mutating func addArc(tangent1End: CGPoint, tangent2End: CGPoint, radius: CGFloat, transform: CGAffineTransform = .identity) {
+        unique()
+        storage.addArc(tangent1End: tangent1End, tangent2End: tangent2End, radius: radius, transform: transform)
+    }
+    public mutating func addPath(_ other: Path, transform: CGAffineTransform = .identity) { unique(); storage.addPath(other.storage, transform: transform) }
+    public mutating func closeSubpath() { unique(); storage.closeSubpath() }
     public func applying(_ transform: CGAffineTransform) -> Path {
         var copy = transform
         return Path(storage.copy(using: &copy) ?? storage)
     }
     public func offsetBy(dx: CGFloat, dy: CGFloat) -> Path { applying(CGAffineTransformMakeTranslation(dx, dy)) }
     public static func == (a: Path, b: Path) -> Bool { a.storage == b.storage }
+}
+
+extension Path: Shape, PrimitiveView {
+    public func path(in rect: CGRect) -> Path { self }
+    func makeNode(_ env: EnvironmentValues) -> Node { let n = ShapeNode(); n.update(self, env); return n }
 }
 
 public protocol Shape: View, Animatable {
@@ -330,14 +357,14 @@ public struct RoundedRectangle: Shape, PrimitiveView, InsettableShape {
     public init(cornerRadius: CGFloat, style: RoundedCornerStyle = .circular) {
         cornerSize = CGSize(width: cornerRadius, height: cornerRadius)
         self.style = style
-        noteStyle()
+        Self.noteContinuous(style)
     }
     public init(cornerSize: CGSize, style: RoundedCornerStyle = .circular) {
         self.cornerSize = cornerSize
         self.style = style
-        noteStyle()
+        Self.noteContinuous(style)
     }
-    private func noteStyle() {
+    static func noteContinuous(_ style: RoundedCornerStyle) {
         if style == .continuous { _Unsupported.note("RoundedCornerStyle.continuous", "continuous corners are a curve iOS 6 has no path for; circular corners are drawn") }
     }
     public var animatableData: AnimatablePair<CGFloat, CGFloat> {

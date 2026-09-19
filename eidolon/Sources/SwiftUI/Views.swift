@@ -13,6 +13,8 @@ public struct Text: View, PrimitiveView {
     var isStruck = false
     var textCase: Text.Case?
     var kern: CGFloat?
+    var accessibilityLabelText: String?
+    var accessibilityHeader = false
     public init(_ key: LocalizedStringKey, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) {
         content = key.localized(table: tableName, bundle: bundle)
     }
@@ -20,7 +22,7 @@ public struct Text: View, PrimitiveView {
     public init(verbatim content: String) { self.content = content }
     public func font(_ font: Font?) -> Text { var t = self; t.font = font; return t }
     public func foregroundColor(_ color: Color?) -> Text { var t = self; t.color = color; return t }
-    public func bold() -> Text { var t = self; t.isBold = true; return t }
+    public func bold(_ isActive: Bool = true) -> Text { var t = self; t.isBold = isActive; return t }
     func makeNode(_ env: EnvironmentValues) -> Node { let n = TextNode(); n.update(self, env); return n }
 }
 
@@ -43,6 +45,8 @@ final class TextNode: LayoutNode {
         let italic = t.isItalic || env.textItalic
         let kern = t.kern ?? env.kerning
         label.textAlignment = env.textAlignment
+        label.accessibilityLabel = t.accessibilityLabelText
+        if t.accessibilityHeader { label.accessibilityTraits.insert(.header) }
         label.numberOfLines = env.lineLimit ?? 0
         if underlined || struck || italic || kern != nil || env.lineSpacingOverride != nil {
             var attributes: [NSAttributedString.Key: Any] = [.font: italic ? (UIFont.italicSystemFont(ofSize: font.pointSize)) : font, .foregroundColor: color]
@@ -119,7 +123,7 @@ public struct Color: View, PrimitiveView {
     public init(red: Double, green: Double, blue: Double, opacity: Double = 1) {
         uiColor = UIColor(red: CGFloat(red), green: CGFloat(green), blue: CGFloat(blue), alpha: CGFloat(opacity))
     }
-    init(_ c: UIColor) { uiColor = c }
+    public init(_ uiColor: UIColor) { self.uiColor = uiColor }
     public static let red = Color(.red), green = Color(.green), blue = Color(.blue), black = Color(.black)
     public static let white = Color(.white), gray = Color(.gray), orange = Color(.orange), yellow = Color(.yellow)
     public static let clear = Color(.clear), secondary = Color(.darkGray), primary = Color(.black)
@@ -162,6 +166,8 @@ public struct Image: View, PrimitiveView {
     var nearest = false
     var capInsets = EdgeInsets()
     var tiles = false
+    var accessibilityLabelText: String?
+    var decorative = false
     public init(_ name: String) { self.name = name; system = false }
     public init(systemName: String) {
         name = systemName
@@ -195,6 +201,8 @@ final class ImageNode: LayoutNode {
         placeholderSize = env.redactedDrawing ? picture?.size : nil
         imageView.contentMode = resizable ? (mode == .fill ? .scaleAspectFill : .scaleAspectFit) : .center
         imageView.clipsToBounds = true
+        imageView.isAccessibilityElement = !image.decorative && image.accessibilityLabelText != nil
+        imageView.accessibilityLabel = image.accessibilityLabelText
     }
     override func computeSize(_ p: ProposedSize) -> CGSize {
         let natural = placeholderSize ?? (uiView as! UIImageView).image?.size ?? .zero

@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `isScrollEnabled`, `defaultMinListRowHeight` (the list honours it), `headerProminence`, `dynamicTypeSize`, and the
   accessibility settings iOS 6 has (VoiceOver, invert colours) or cannot have (read as off).
 - `STYX=<install>` builds against the `Combine` module of the Styx fork instead of OpenCombine (`pkg-env.sh`, `REV_STYX`).
+- `Path` is a `Shape`, so `Path { … }.stroke(…)` works; it is a real value type now (a changed copy no longer changes
+  the original), takes Apple's `transform:` parameters and has `currentPoint` and `contains`.
+- `Color` is `Hashable` and can be made from a `UIColor` or `CGColor`; `import SwiftUI` brings UIKit, as on iOS.
+- `Text`: `bold(_:)`, `italic(_:)`, `monospaced(_:)`, `baselineOffset`, `accessibilityLabel`, `accessibilityHeading`,
+  `init(_:formatter:)`; `Image` from a bundle, with a label or decorative.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
 - The engine tests, twenty rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
@@ -37,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - A `Button` whose label is not a single `Text` (an icon, a `Label`, a stack) drew an empty rounded rectangle and dropped
   its label; it now draws the label, dimmed while pressed.
+- `Image(_:scale:orientation:label:)` dropped its label.
 - A view with a transform is placed by size and centre, not by `frame`.
 - An animated update lays out only the screens that re-rendered.
 - A change beneath `.padding()` or `.frame()` resets the wrapper's own cached size.

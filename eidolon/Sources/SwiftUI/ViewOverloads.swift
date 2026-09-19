@@ -172,3 +172,43 @@ final class MaskNode: ContainerNode {
         }
     }
 }
+
+// A UIImage from a bundle other than the main one: UIImage(named:) only reads the main bundle on iOS 6.
+func bundleImage(_ name: String, _ bundle: Bundle?) -> UIImage? {
+    guard let bundle, bundle != Bundle.main else { return UIImage(named: name) }
+    let scale = Int(UIScreen.main.scale)
+    let stem = (name as NSString).deletingPathExtension
+    let ext = (name as NSString).pathExtension.isEmpty ? "png" : (name as NSString).pathExtension
+    var candidates: [(String, CGFloat)] = []
+    if scale >= 2 { candidates.append((stem + "@\(scale)x", CGFloat(scale))) }
+    candidates.append((stem, 1))
+    for (file, fileScale) in candidates {
+        if let path = bundle.path(forResource: file, ofType: ext), let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+           let image = UIImage(data: data, scale: fileScale) { return image }
+    }
+    return nil
+}
+
+extension Image {
+    public init(_ name: String, bundle: Bundle?) {
+        self.init(name)
+        stored = bundleImage(name, bundle)
+    }
+    public init(_ name: String, bundle: Bundle? = nil, label: Text) {
+        self.init(name, bundle: bundle)
+        accessibilityLabelText = label.content
+    }
+    public init(decorative name: String, bundle: Bundle? = nil) {
+        self.init(name, bundle: bundle)
+        decorative = true
+    }
+    public init(decorative cgImage: CGImage, scale: CGFloat, orientation: Image.Orientation = .up) {
+        self.init(cgImage, scale: scale, orientation: orientation, label: Text(verbatim: ""))
+        accessibilityLabelText = nil
+        decorative = true
+    }
+    public init(systemName: String, variableValue: Double?) {
+        self.init(systemName: systemName)
+        if variableValue != nil { _Unsupported.note("Image(variableValue:)", "variable symbols are SF Symbols, which iOS 6 does not have; the image is drawn whole") }
+    }
+}

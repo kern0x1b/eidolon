@@ -2098,6 +2098,25 @@ _ = _Probe(EnvironmentReader().environment(\.lineSpacing, 4).environment(\.minim
     width: 50, height: 50)
 equal(seenEnvironment, ["4.0", "0.5", "middle", "Optional(2)", "true", "60.0", "false", "false"], "environment values read back what was set")
 
+// Path is a value and a Shape; Color is Hashable
+func pathElements(_ path: Path) -> Int { var n = 0; path.forEach { _ in n += 1 }; return n }
+var pathA = Path()
+pathA.move(to: .zero)
+pathA.addLine(to: CGPoint(x: 10, y: 0))
+var pathB = pathA
+pathB.addLine(to: CGPoint(x: 10, y: 10))
+equal(pathElements(pathA), 2, "a copy of a path that is changed leaves the original alone")
+equal(pathElements(pathB), 3, "and the copy has the change")
+equal(pathA.currentPoint ?? .zero, CGPoint(x: 10, y: 0), "the current point is the last point")
+check(Path(CGRect(x: 0, y: 0, width: 10, height: 10)).contains(CGPoint(x: 5, y: 5)), "a path knows what it contains")
+var moved = Path()
+moved.addRect(CGRect(x: 0, y: 0, width: 10, height: 10), transform: CGAffineTransform(translationX: 100, y: 0))
+equal(moved.boundingRect.origin.x, 100, "a path is added with a transform")
+let pathProbe = _Probe(Path(CGRect(x: 0, y: 0, width: 10, height: 10)).fill(Color.red).frame(width: 20, height: 20), width: 50, height: 50)
+check(!frames(pathProbe).isEmpty, "a path is a view")
+equal(Set([Color.red, Color.red, Color.blue]).count, 2, "colors that look the same are one in a set")
+check(Color(UIColor.red) == Color.red, "a color made from a UIColor is that color")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
