@@ -44,12 +44,12 @@ final class TextNode: LayoutNode {
         let kern = t.kern ?? env.kerning
         label.textAlignment = env.textAlignment
         label.numberOfLines = env.lineLimit ?? 0
-        if underlined || struck || italic || kern != nil || env.lineSpacing != nil {
+        if underlined || struck || italic || kern != nil || env.lineSpacingOverride != nil {
             var attributes: [NSAttributedString.Key: Any] = [.font: italic ? (UIFont.italicSystemFont(ofSize: font.pointSize)) : font, .foregroundColor: color]
             if underlined { attributes[.underlineStyle] = NSNumber(value: 1) }
             if struck { attributes[.strikethroughStyle] = NSNumber(value: 1) }
             if let kern { attributes[.kern] = NSNumber(value: Double(kern)) }
-            if let spacing = env.lineSpacing {
+            if let spacing = env.lineSpacingOverride {
                 let paragraph = NSMutableParagraphStyle()
                 paragraph.lineSpacing = spacing
                 paragraph.alignment = env.textAlignment
@@ -85,7 +85,7 @@ final class TextNode: LayoutNode {
             label.setValue(env.allowsTightening, forKey: "adjustsLetterSpacingToFitWidth")
         }
         if let truncation = env.truncation { label.lineBreakMode = truncation }
-        if let factor = env.minimumScaleFactor {
+        if let factor = env.scaleFactorOverride {
             label.adjustsFontSizeToFitWidth = true
             label.minimumScaleFactor = factor
         }
@@ -94,7 +94,7 @@ final class TextNode: LayoutNode {
         let s = label.sizeThatFits(CGSize(width: p.width ?? infinity, height: infinity))
         var height = ceil(s.height)
         if env.reservesLines, let lines = env.lineLimit, lines > 0 {
-            height = max(height, ceil(label.font.lineHeight * CGFloat(lines) + (env.lineSpacing ?? 0) * CGFloat(lines - 1)))
+            height = max(height, ceil(label.font.lineHeight * CGFloat(lines) + (env.lineSpacingOverride ?? 0) * CGFloat(lines - 1)))
         }
         return CGSize(width: ceil(min(s.width, p.width ?? s.width)), height: height)
     }

@@ -230,9 +230,10 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
         return cell
     }
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        guard let node, let row = node.row(at: indexPath) else { return 44 }
+        let minimum = node?.env.defaultMinListRowHeight ?? 44
+        guard let node, let row = node.row(at: indexPath) else { return minimum }
         let width = tableView.bounds.size.width - node.insetWidth
-        return max(44, row.sizeThatFits(ProposedSize(width: width, height: nil)).height + 22)
+        return max(minimum, row.sizeThatFits(ProposedSize(width: width, height: nil)).height + 22)
     }
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         guard let node, let row = node.row(at: indexPath) else { return }

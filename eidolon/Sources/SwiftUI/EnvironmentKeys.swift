@@ -165,3 +165,80 @@ public struct Namespace: DynamicProperty, DynamicPropertyInstaller {
         }
     }
 }
+
+struct IsScrollEnabledKey: EnvironmentKey { static var defaultValue: Bool { true } }
+struct DefaultMinListRowHeightKey: EnvironmentKey { static var defaultValue: CGFloat { 44 } }
+struct DefaultMinListHeaderHeightKey: EnvironmentKey { static var defaultValue: CGFloat? { nil } }
+
+// Settings that iOS 6 does not have are reported as off: the person cannot have turned them on.
+extension EnvironmentValues {
+    public var lineSpacing: CGFloat {
+        get { lineSpacingOverride ?? 0 }
+        set { lineSpacingOverride = newValue }
+    }
+    public var minimumScaleFactor: CGFloat {
+        get { scaleFactorOverride ?? 1 }
+        set { scaleFactorOverride = newValue == 1 ? nil : newValue }
+    }
+    public var truncationMode: Text.TruncationMode {
+        get {
+            switch truncation {
+            case .byTruncatingHead?: return .head
+            case .byTruncatingMiddle?: return .middle
+            default: return .tail
+            }
+        }
+        set {
+            switch newValue {
+            case .head: truncation = .byTruncatingHead
+            case .middle: truncation = .byTruncatingMiddle
+            case .tail: truncation = .byTruncatingTail
+            }
+        }
+    }
+    public var autocorrectionDisabled: Bool {
+        get { input.autocorrection == .no }
+        set { input.autocorrection = newValue ? UITextAutocorrectionType.no : UITextAutocorrectionType.yes }
+    }
+    public var disableAutocorrection: Bool? {
+        get { input.autocorrection.map { $0 == .no } }
+        set { input.autocorrection = newValue.map { $0 ? UITextAutocorrectionType.no : UITextAutocorrectionType.yes } }
+    }
+    public var pixelLength: CGFloat { 1 / UIScreen.main.scale }
+    public var isPresented: Bool { presentationMode.wrappedValue.isPresented }
+    public var undoManager: UndoManager? { host?.undoManager }
+    public var isScrollEnabled: Bool {
+        get { self[IsScrollEnabledKey.self] }
+        set { self[IsScrollEnabledKey.self] = newValue }
+    }
+    public var defaultMinListRowHeight: CGFloat {
+        get { self[DefaultMinListRowHeightKey.self] }
+        set { self[DefaultMinListRowHeightKey.self] = newValue }
+    }
+    public var defaultMinListHeaderHeight: CGFloat? {
+        get { self[DefaultMinListHeaderHeightKey.self] }
+        set { self[DefaultMinListHeaderHeightKey.self] = newValue }
+    }
+    public var headerProminence: Prominence {
+        get { headerProminent ? .increased : .standard }
+        set { headerProminent = newValue == .increased }
+    }
+    public var dynamicTypeSize: DynamicTypeSize {
+        get { self[DynamicTypeSizeKey.self] }
+        set { self[DynamicTypeSizeKey.self] = newValue }
+    }
+    public var accessibilityVoiceOverEnabled: Bool { UIAccessibility.isVoiceOverRunning }
+    public var accessibilityEnabled: Bool { UIAccessibility.isVoiceOverRunning }
+    public var accessibilityInvertColors: Bool { UIAccessibility.isInvertColorsEnabled }
+    public var accessibilityReduceMotion: Bool { false }
+    public var accessibilityReduceTransparency: Bool { false }
+    public var accessibilityDifferentiateWithoutColor: Bool { false }
+    public var accessibilityShowButtonShapes: Bool { false }
+    public var accessibilitySwitchControlEnabled: Bool { false }
+    public var accessibilityQuickActionsEnabled: Bool { false }
+    public var accessibilityLargeContentViewerEnabled: Bool { false }
+    public var isLuminanceReduced: Bool { false }
+    public var supportsMultipleWindows: Bool { false }
+}
+
+struct DynamicTypeSizeKey: EnvironmentKey { static var defaultValue: DynamicTypeSize { .large } }

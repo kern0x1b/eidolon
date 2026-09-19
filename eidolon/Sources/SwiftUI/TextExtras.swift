@@ -105,7 +105,7 @@ extension View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.lineLimit = number }, onUpdate: nil))
     }
     public func minimumScaleFactor(_ factor: CGFloat) -> some View {
-        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.minimumScaleFactor = factor }, onUpdate: nil))
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.scaleFactorOverride = factor }, onUpdate: nil))
     }
     public func textCase(_ textCase: Text.Case?) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.textCase = textCase }, onUpdate: nil))

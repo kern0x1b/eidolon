@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `View` overloads: `navigationBarTitle(_:displayMode:)`, `lineLimit(_:reservesSpace:)`, `listRowSeparator(_:edges:)`,
   `mask` by any view with an alignment, `task(id:priority:)` that is cancelled when the view goes and restarted when the
   id changes, `navigationDestination(isPresented:)`, `toolbar(_:for:)`, Apple's `onLongPressGesture(pressing:perform:)`.
+- `EnvironmentValues` keys: `lineLimit`, `lineSpacing`, `minimumScaleFactor`, `textCase`, `truncationMode`,
+  `allowsTightening`, `autocorrectionDisabled`, `imageScale`, `pixelLength`, `isPresented`, `undoManager`,
+  `isScrollEnabled`, `defaultMinListRowHeight` (the list honours it), `headerProminence`, `dynamicTypeSize`, and the
+  accessibility settings iOS 6 has (VoiceOver, invert colours) or cannot have (read as off).
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
 - The engine tests, twenty rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.

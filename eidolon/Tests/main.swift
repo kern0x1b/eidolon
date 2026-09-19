@@ -2075,6 +2075,29 @@ let reserve = _Probe(Color.red.frame(width: 30, height: 20).mask(alignment: .lea
 check(!frames(reserve).isEmpty, "a view masked by a view is still laid out")
 equal(frames(reserve).first?.size ?? .zero, CGSize(width: 30, height: 20), "and keeps its size")
 
+// text and list environment keys read back what was set, and the defaults match Apple's
+var seenEnvironment: [String] = []
+struct EnvironmentReader: View {
+    @Environment(\.lineSpacing) var spacing
+    @Environment(\.minimumScaleFactor) var scale
+    @Environment(\.truncationMode) var truncation
+    @Environment(\.lineLimit) var limit
+    @Environment(\.autocorrectionDisabled) var noCorrect
+    @Environment(\.defaultMinListRowHeight) var rowHeight
+    @Environment(\.isScrollEnabled) var scrolls
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    var body: some View {
+        seenEnvironment = ["\(spacing)", "\(scale)", "\(truncation)", "\(String(describing: limit))", "\(noCorrect)", "\(rowHeight)", "\(scrolls)", "\(reduceMotion)"]
+        return Color.red.frame(width: 10, height: 10)
+    }
+}
+_ = _Probe(EnvironmentReader(), width: 50, height: 50)
+equal(seenEnvironment, ["0.0", "1.0", "tail", "nil", "false", "44.0", "true", "false"], "environment defaults")
+_ = _Probe(EnvironmentReader().environment(\.lineSpacing, 4).environment(\.minimumScaleFactor, 0.5).environment(\.truncationMode, .middle)
+    .environment(\.lineLimit, 2).environment(\.autocorrectionDisabled, true).environment(\.defaultMinListRowHeight, 60).environment(\.isScrollEnabled, false),
+    width: 50, height: 50)
+equal(seenEnvironment, ["4.0", "0.5", "middle", "Optional(2)", "true", "60.0", "false", "false"], "environment values read back what was set")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

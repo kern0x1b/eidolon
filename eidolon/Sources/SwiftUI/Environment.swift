@@ -68,10 +68,6 @@ extension EnvironmentValues {
             }
         }
     }
-    public var lineLimitValue: Int? {
-        get { lineLimit }
-        set { lineLimit = newValue }
-    }
     public var redactionReasons: RedactionReasons {
         get { self[RedactionKey.self] }
         set { self[RedactionKey.self] = newValue }

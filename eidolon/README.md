@@ -106,6 +106,8 @@ ease-out той же длительности, затухание не моде�
 сам стек. Анимация `Animatable`-данных идёт по времени, кривой и повторам `Animation`; пружина заменена кривой
 ease-out (см. выше). `coverage.py --check` требует, чтобы каждая такая запись в коде была названа здесь.
 
+Значения окружения, которых у iOS 6 нет как настройки (`accessibilityReduceMotion`, `accessibilityReduceTransparency`, `accessibilityDifferentiateWithoutColor`, `accessibilityShowButtonShapes`, `accessibilitySwitchControlEnabled`, `accessibilityQuickActionsEnabled`, `accessibilityLargeContentViewerEnabled`, `isLuminanceReduced`, `supportsMultipleWindows`), читаются как «выключено»: человек не мог их включить. `dynamicTypeSize` всегда `.large`.
+
 **Заглушек нет.** Последние четыре — доступность — сделаны на средствах iOS 6: `accessibilityRepresentation`
 (метка, значение и черты элемента берутся из представления — кнопки, переключателя, ползунка, степпера, текста),
 `accessibilityChildren` (вид становится `UIAccessibilityContainer`, дети раскладываются в его рамке и отдаются как

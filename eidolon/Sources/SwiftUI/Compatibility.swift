@@ -189,9 +189,10 @@ extension View {
     }
 
     public func scrollDisabled(_ disabled: Bool) -> some View {
-        applyingToViews { view in
-            if let scroller = view as? UIScrollView { scroller.isScrollEnabled = !disabled }
-        }
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.isScrollEnabled = !disabled }, onUpdate: nil))
+            .applyingToViews { view in
+                if let scroller = view as? UIScrollView { scroller.isScrollEnabled = !disabled }
+            }
     }
 
     public func scrollIndicators(_ visibility: ScrollIndicatorVisibility, axes: Axis.Set = [.vertical, .horizontal]) -> some View {

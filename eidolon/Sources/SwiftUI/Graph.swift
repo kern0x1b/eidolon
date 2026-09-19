@@ -14,14 +14,14 @@ public struct EnvironmentValues {
     var objects: [ObjectIdentifier: AnyObject] = [:]
     var values: [ObjectIdentifier: Any] = [:]
     var animation: Animation?
-    var lineLimit: Int?
+    public var lineLimit: Int?
     var reservesLines = false
-    var minimumScaleFactor: CGFloat?
+    var scaleFactorOverride: CGFloat?
     var tint: UIColor?
     var input = InputSettings()
     var truncation: NSLineBreakMode?
     var labelsHidden = false
-    var textCase: Text.Case?
+    public var textCase: Text.Case?
     var buttonStyle: ((ButtonStyleConfiguration) -> any View)?
     var primitiveButtonStyle: ((PrimitiveButtonStyleConfiguration) -> any View)?
     var searchSuggestions: (() -> any View)?
@@ -32,7 +32,7 @@ public struct EnvironmentValues {
     var menuStyle: ((MenuStyleConfiguration) -> any View)?
     var styles: [ObjectIdentifier: Any] = [:]
     var kerning: CGFloat?
-    var allowsTightening = false
+    public var allowsTightening = false
     var scrollBackgroundHidden = false
     var redactedDrawing = false
     var paging: PagingSettings?
@@ -50,12 +50,12 @@ public struct EnvironmentValues {
     var disclosureGroupStyle: ((DisclosureGroupStyleConfiguration) -> any View)?
     var pickerPresentation = PickerPresentation.segmented
     var destinations: [ObjectIdentifier: (AnyHashable) -> any View] = [:]
-    var lineSpacing: CGFloat?
+    var lineSpacingOverride: CGFloat?
     var textBold = false
     var textItalic = false
     var textUnderline = false
     var textStrikethrough = false
-    var imageScale = Image.Scale.medium
+    public var imageScale = Image.Scale.medium
     var defaults = UserDefaults.standard
     init() {}
 
@@ -66,7 +66,7 @@ public struct EnvironmentValues {
             && objects.count == other.objects.count
             && objects.allSatisfy { key, value in other.objects[key] === value }
             && sameValues(values, other.values) && animation == other.animation
-            && lineLimit == other.lineLimit && reservesLines == other.reservesLines && minimumScaleFactor == other.minimumScaleFactor && tint === other.tint
+            && lineLimit == other.lineLimit && reservesLines == other.reservesLines && scaleFactorOverride == other.scaleFactorOverride && tint === other.tint
             && (buttonStyle == nil) == (other.buttonStyle == nil) && (primitiveButtonStyle == nil) == (other.primitiveButtonStyle == nil) && (toggleStyle == nil) == (other.toggleStyle == nil)
             && (labelStyle == nil) == (other.labelStyle == nil) && (progressViewStyle == nil) == (other.progressViewStyle == nil)
             && styles.count == other.styles.count && kerning == other.kerning && allowsTightening == other.allowsTightening && scrollBackgroundHidden == other.scrollBackgroundHidden && redactedDrawing == other.redactedDrawing && (paging == nil) == (other.paging == nil) && buttonBorderShape == other.buttonBorderShape && (menuStyle == nil) == (other.menuStyle == nil) && (disclosureGroupStyle == nil) == (other.disclosureGroupStyle == nil)

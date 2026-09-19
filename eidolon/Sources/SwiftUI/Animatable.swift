@@ -113,6 +113,6 @@ extension Font {
 
 extension View {
     public func lineSpacing(_ spacing: CGFloat) -> some View {
-        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.lineSpacing = spacing }, onUpdate: nil))
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.lineSpacingOverride = spacing }, onUpdate: nil))
     }
 }
