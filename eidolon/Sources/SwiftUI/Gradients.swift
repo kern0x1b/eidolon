@@ -81,7 +81,7 @@ public struct _GradientPaint {
 }
 
 extension ShapeStyle {
-    public var _gradientPaint: _GradientPaint? { (self as? _GradientStyle)?.paint }
+    public var _gradientPaint: _GradientPaint? { (self as? _GradientStyle)?.paint ?? (self as? OptionalPaintStyle)?.optionalPaint }
 }
 
 protocol _GradientStyle { var paint: _GradientPaint { get } }

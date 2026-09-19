@@ -3,7 +3,10 @@ import CoreGraphics
 
 public enum TextInputAutocapitalization { case never, words, sentences, characters }
 public enum DynamicTypeSize: Comparable, CaseIterable { case xSmall, small, medium, large, xLarge, xxLarge, xxxLarge }
-public enum BlendMode { case normal, multiply, screen, overlay, darken, lighten, difference }
+public enum BlendMode: Int32, Hashable {
+    case normal, multiply, screen, overlay, darken, lighten, colorDodge, colorBurn, softLight, hardLight, difference, exclusion
+    case hue, saturation, color, luminosity, sourceAtop, destinationOver, destinationOut, plusDarker, plusLighter
+}
 public struct ButtonBorderShape: Equatable {
     enum Kind: Equatable { case automatic, capsule, roundedRectangle(CGFloat?) }
     let kind: Kind

@@ -14,7 +14,7 @@ func deriveAccessibility(_ view: any View) -> DerivedAccessibility {
     if let slider = view as? SliderLike {
         let bounds = slider.sliderBounds
         let span = bounds.upperBound - bounds.lowerBound
-        let fraction = span > 0 ? (slider.sliderValue.wrappedValue - bounds.lowerBound) / span : 0
+        let fraction = span > 0 ? (slider.sliderValue - bounds.lowerBound) / span : 0
         return DerivedAccessibility(label: nil, value: "\(Int((fraction * 100).rounded()))%", traits: .adjustable)
     }
     if let stepper = view as? StepperLike {

@@ -325,9 +325,21 @@ public struct Rectangle: Shape, PrimitiveView, InsettableShape {
 
 public struct RoundedRectangle: Shape, PrimitiveView, InsettableShape {
     public var cornerSize: CGSize
+    public var style: RoundedCornerStyle
     var insetAmount: CGFloat = 0
-    public init(cornerRadius: CGFloat) { cornerSize = CGSize(width: cornerRadius, height: cornerRadius) }
-    public init(cornerSize: CGSize) { self.cornerSize = cornerSize }
+    public init(cornerRadius: CGFloat, style: RoundedCornerStyle = .circular) {
+        cornerSize = CGSize(width: cornerRadius, height: cornerRadius)
+        self.style = style
+        noteStyle()
+    }
+    public init(cornerSize: CGSize, style: RoundedCornerStyle = .circular) {
+        self.cornerSize = cornerSize
+        self.style = style
+        noteStyle()
+    }
+    private func noteStyle() {
+        if style == .continuous { _Unsupported.note("RoundedCornerStyle.continuous", "continuous corners are a curve iOS 6 has no path for; circular corners are drawn") }
+    }
     public var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(cornerSize.width, cornerSize.height) }
         set { cornerSize = CGSize(width: newValue.first, height: newValue.second) }
@@ -377,7 +389,8 @@ public struct Ellipse: Shape, PrimitiveView, InsettableShape {
 
 public struct Capsule: Shape, PrimitiveView, InsettableShape {
     var insetAmount: CGFloat = 0
-    public init(style: RoundedCornerStyle = .circular) {}
+    public var style: RoundedCornerStyle
+    public init(style: RoundedCornerStyle = .circular) { self.style = style }
     public func path(in whole: CGRect) -> Path {
         let rect = insetRect(whole, insetAmount)
         return Path(roundedRect: rect, cornerRadius: min(rect.size.width, rect.size.height) / 2)
@@ -386,7 +399,7 @@ public struct Capsule: Shape, PrimitiveView, InsettableShape {
     func makeNode(_ env: EnvironmentValues) -> Node { let n = ShapeNode(); n.update(self, env); return n }
 }
 
-public enum RoundedCornerStyle { case circular, continuous }
+public enum RoundedCornerStyle: Equatable { case circular, continuous }
 
 public struct Gradient {
     public struct Stop {

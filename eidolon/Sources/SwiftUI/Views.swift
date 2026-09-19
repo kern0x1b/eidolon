@@ -421,56 +421,6 @@ final class ToggleNode: ContainerNode {
     }
 }
 
-public struct TextField: View, PrimitiveView {
-    public typealias Body = Never
-    public var body: Never { neverBody(Self.self) }
-    let placeholder: String
-    let text: Binding<String>
-    public init(_ titleKey: LocalizedStringKey, text: Binding<String>) { placeholder = titleKey.text; self.text = text }
-    public init<S: StringProtocol>(_ title: S, text: Binding<String>) { placeholder = String(title); self.text = text }
-    func makeNode(_ env: EnvironmentValues) -> Node { let n = TextFieldNode(); n.update(self, env); return n }
-}
-
-protocol TextFieldLike {
-    var fieldPlaceholder: String { get }
-    var fieldText: Binding<String> { get }
-}
-
-extension TextField: TextFieldLike {
-    var fieldPlaceholder: String { placeholder }
-    var fieldText: Binding<String> { text }
-}
-
-final class TextFieldNode: LayoutNode {
-    let target = ControlTarget()
-    let submitTarget = ControlTarget()
-    var field: UITextField { uiView as! UITextField }
-    init(secure: Bool = false) {
-        let f = UITextField()
-        f.borderStyle = .roundedRect
-        f.isSecureTextEntry = secure
-        super.init(view: f)
-        f.addTarget(target, action: #selector(ControlTarget.changed(_:)), for: .editingChanged)
-    }
-    override func update(_ view: any View, _ env: EnvironmentValues) {
-        super.update(view, env)
-        guard let t = view as? TextFieldLike else { return }
-        field.placeholder = t.fieldPlaceholder
-        let binding = t.fieldText
-        target.valueChanged = { binding.wrappedValue = ($0 as! UITextField).text ?? "" }
-        if field.text != binding.wrappedValue { field.text = binding.wrappedValue }
-        if let value = env.input.autocapitalization { field.autocapitalizationType = value }
-        if let value = env.input.autocorrection { field.autocorrectionType = value }
-        if let value = env.input.keyboard { field.keyboardType = value }
-        if let value = env.input.returnKey { field.returnKeyType = value }
-        if let submit = env.input.onSubmit {
-            submitTarget.action = submit
-            field.addTarget(submitTarget, action: #selector(ControlTarget.fire), for: .editingDidEndOnExit)
-        }
-    }
-    override func computeSize(_ p: ProposedSize) -> CGSize { CGSize(width: p.width ?? 200, height: 31) }
-}
-
 public struct ForEach<Data, ID, Content> where Data: RandomAccessCollection, ID: Hashable {
     let data: Data
     let id: KeyPath<Data.Element, ID>

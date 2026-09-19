@@ -168,15 +168,19 @@ public struct DefaultProgressViewStyle: ProgressViewStyle {
 }
 
 public struct LinearProgressViewStyle: ProgressViewStyle {
+    var tint: Color?
     public init() {}
+    public init(tint: Color) { self.tint = tint }
     public func makeBody(configuration: Configuration) -> some View {
-        ProgressView(configuration)
+        ProgressView(configuration).tint(tint)
     }
 }
 
 public struct CircularProgressViewStyle: ProgressViewStyle {
+    var tint: Color?
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View { ProgressView() }
+    public init(tint: Color) { self.tint = tint }
+    public func makeBody(configuration: Configuration) -> some View { ProgressView().tint(tint) }
 }
 
 public struct DefaultMenuStyle: MenuStyle {

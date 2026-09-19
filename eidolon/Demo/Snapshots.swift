@@ -312,7 +312,54 @@ func activateSearch(_ probe: _Probe) {
     probe.flush()
 }
 
+final class InputModel: ObservableObject {
+    @Published var amount = 5.0
+    @Published var level = 0.25
+    @Published var text = ""
+    var editing: [Bool] = []
+    var committed = 0
+}
+
+struct InputCase: View {
+    @ObservedObject var model: InputModel
+    var body: some View {
+        VStack {
+            Stepper(value: $model.amount, in: 0...8, step: 2) { Color.red.frame(width: 10, height: 10) }
+            Slider(value: $model.level, in: 0...1, step: 0.25) { model.editing.append($0) }
+            TextField("Name", text: $model.text, onCommit: { model.committed += 1 })
+        }
+    }
+}
+
+func probeNote(_ m: InputModel) -> String {
+    "amount \(m.amount), level \(m.level), text \(m.text), editing \(m.editing), committed \(m.committed)"
+}
+
+func driveInput(_ probe: _Probe, _ model: InputModel) {
+    if let stepper = allViews(probe.hostView, of: UIStepper.self).first {
+        stepper.value = 1
+        stepper.sendActions(for: .valueChanged)
+        probe.flush()
+    }
+    if let slider = allViews(probe.hostView, of: UISlider.self).first {
+        slider.value = 0.6
+        slider.sendActions(for: .valueChanged)
+        slider.sendActions(for: .touchDown)
+        slider.sendActions(for: .touchUpInside)
+        probe.flush()
+    }
+    if let field = allViews(probe.hostView, of: UITextField.self).first {
+        field.text = "hello"
+        field.sendActions(for: .editingChanged)
+        probe.flush()
+        field.sendActions(for: .editingDidEndOnExit)
+        model.text += "!"
+        probe.flush()
+    }
+}
+
 func snapshotCases() -> [SnapshotCase] {
+    let inputs = InputModel()
     let model = SnapshotModel()
     let suggesting = SuggestionModel()
     let completing = SuggestionModel()
@@ -344,6 +391,9 @@ func snapshotCases() -> [SnapshotCase] {
         SnapshotCase(name: "primitive", width: 320, height: 60, view: PrimitiveCase(),
                      action: { probe in primitiveTrigger?(); probe.flush() },
                      note: { "fired \(primitiveFired)" }),
+        SnapshotCase(name: "controlinput", width: 320, height: 200, view: InputCase(model: inputs),
+                     action: { probe in driveInput(probe, inputs) },
+                     note: { probeNote(inputs) }),
         SnapshotCase(name: "timeline", width: 100, height: 100, view: TickCase(), note: { snapshotTicks >= 4 ? "timeline ticked" : "timeline stalled at \(snapshotTicks)" }),
     ]
 }
