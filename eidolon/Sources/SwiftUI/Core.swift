@@ -1,7 +1,7 @@
 import UIKit
 @_exported import CoreGraphics
 @_exported import Foundation
-#if REV_SYSTEM_COMBINE
+#if REV_SYSTEM_COMBINE || REV_STYX
 @_exported import Combine
 #else
 @_exported import OpenCombine

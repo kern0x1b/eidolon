@@ -33,3 +33,8 @@ relink_runtime() {
     [ -n "$changes" ] && install_name_tool $changes "$1" 2>/dev/null
     true
 }
+# STYX=<install> builds against the Combine module of the Styx fork instead of OpenCombine
+if [ -n "${STYX:-}" ]; then
+  OCFLAGS="-D REV_STYX -I $STYX/lib/swift/iphoneos -I $STYX/include/CombineHelpers"
+  OCLINK="-L$STYX/lib -lCombine -lCombineHelpers"
+fi

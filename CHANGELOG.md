@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `allowsTightening`, `autocorrectionDisabled`, `imageScale`, `pixelLength`, `isPresented`, `undoManager`,
   `isScrollEnabled`, `defaultMinListRowHeight` (the list honours it), `headerProminence`, `dynamicTypeSize`, and the
   accessibility settings iOS 6 has (VoiceOver, invert colours) or cannot have (read as off).
+- `STYX=<install>` builds against the `Combine` module of the Styx fork instead of OpenCombine (`pkg-env.sh`, `REV_STYX`).
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
 - The engine tests, twenty rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
