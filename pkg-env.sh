@@ -1,13 +1,15 @@
 # pkg-env.sh: sourced by the build scripts (Styx, the Combine module, from charon@styx built against the same runtime) (toolchain pinned to what xmake resolved for ../rtpkg; runtime deps read from its manifest) — the charon@swift-runtime installation in ./xmake-global (one installation: runtime, libc++, compat, compiler)
 STUDY=${STUDY:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}
 X=$STUDY/xmake-global/.xmake/packages
-RT=$(ls -d $X/s/swift-runtime/6.4.0/*/ | head -1); RT=${RT%/}
+# the runtime is the one Styx was built against, so the module and the app cannot disagree; the newest Styx install decides
+ST=$(ls -td $X/s/styx/*/*/ 2>/dev/null | head -1); ST=${ST%/}
+RT=$X/s/swift-runtime/6.4.0/$(awk '/\["swift-runtime"\] = \{/ {f=1} f && /buildhash/ {gsub(/[ ",]/, ""); split($0, a, "="); print a[2]; exit}' $ST/manifest.txt)
+[ -d "$RT" ] || { echo "pkg-env: no swift-runtime install matches the one Styx names" >&2; return 1 2>/dev/null || exit 1; }
 SWIFTC=$(grep -A1 'SWIFT_EXEC' $RT/manifest.txt | tail -1 | tr -d ' "')
 SWIFTHOME=$(dirname $(dirname $SWIFTC))
 dep_hash() { awk -v name="$1" '$0 ~ "^        (\\[\")?"name"(\"\\])? = \\{" {found=1} found && /buildhash/ {gsub(/[ ",]/, ""); split($0, a, "="); print a[2]; exit}' $RT/manifest.txt; }
 LIBCXX=$X/l/libcxx/23.1.1/$(dep_hash libcxx)
 COMPAT=$X/a/apple-compat/latest/$(dep_hash apple-compat)
-ST=$(grep -l "$(basename $RT)" $X/s/styx/*/*/manifest.txt 2>/dev/null | head -1); ST=${ST%/manifest.txt}
 OCFLAGS="-I $ST/lib/swift/iphoneos -I $ST/include/CombineHelpers"
 OCLINK="-L$ST/lib -lCombine -lCombineHelpers"
 SDK=$X/i/iphoneos-sdk/16.4/2b9d2eb960474b48acc5cdb2e27db307/Developer.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS16.4.sdk
