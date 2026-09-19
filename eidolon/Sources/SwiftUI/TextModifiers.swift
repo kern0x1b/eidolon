@@ -9,10 +9,12 @@ extension View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.textItalic = isActive }, onUpdate: nil))
     }
     public func underline(_ isActive: Bool = true, color: Color? = nil) -> some View {
-        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.textUnderline = isActive }, onUpdate: nil))
+        if color != nil { _Unsupported.note("underline(color:)", "a line under text of iOS 6 has the colour of the text") }
+        return _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.textUnderline = isActive }, onUpdate: nil))
     }
     public func strikethrough(_ isActive: Bool = true, color: Color? = nil) -> some View {
-        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.textStrikethrough = isActive }, onUpdate: nil))
+        if color != nil { _Unsupported.note("strikethrough(color:)", "a line through text of iOS 6 has the colour of the text") }
+        return _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.textStrikethrough = isActive }, onUpdate: nil))
     }
     public func fontWeight(_ weight: Font.Weight?) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in

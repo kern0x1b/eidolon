@@ -1654,7 +1654,7 @@ equal(simultaneous, ["- m", "r m"], "each gesture's value showed up as it began"
 // the finger going down and up is pressing, whatever comes of the long press
 var pressing: [Bool] = []
 var performed = 0
-let pressingProbe = _Probe(Color.red.frame(width: 20, height: 28).onLongPressGesture(minimumDuration: 1, perform: { performed += 1 }, onPressingChanged: { pressing.append($0) }), width: 100, height: 50)
+let pressingProbe = _Probe(Color.red.frame(width: 20, height: 28).onLongPressGesture(minimumDuration: 1, pressing: { pressing.append($0) }, perform: { performed += 1 }), width: 100, height: 50)
 pressingProbe.send(.pressDown)
 pressingProbe.send(.pressUp)
 equal(pressing, [true, false], "a press that ended early reported pressing and then not pressing")
@@ -2069,6 +2069,11 @@ equal(shareSheet?.message ?? "", "Pick one", "the message is kept")
 _Probe.pressDialogButton(1)
 dialogProbe.flush()
 _Probe.captureDialogs(false)
+
+// lineLimit(_:reservesSpace:) needs fonts, so it is pinned by a rendered scenario; the rest is checked here
+let reserve = _Probe(Color.red.frame(width: 30, height: 20).mask(alignment: .leading) { Color.black.frame(width: 10, height: 20) }, width: 100, height: 50)
+check(!frames(reserve).isEmpty, "a view masked by a view is still laid out")
+equal(frames(reserve).first?.size ?? .zero, CGSize(width: 30, height: 20), "and keeps its size")
 
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {

@@ -146,9 +146,6 @@ extension View {
             environment.primitiveButtonStyle = { configuration in style.makeBody(configuration: configuration) }
         }, onUpdate: nil))
     }
-    public func task(priority: TaskPriority = .userInitiated, _ action: @escaping () async -> Void) -> some View {
-        onAppear { Task(priority: priority) { await action() } }
-    }
 }
 
 

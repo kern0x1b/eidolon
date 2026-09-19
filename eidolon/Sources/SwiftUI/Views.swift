@@ -92,7 +92,11 @@ final class TextNode: LayoutNode {
     }
     override func computeSize(_ p: ProposedSize) -> CGSize {
         let s = label.sizeThatFits(CGSize(width: p.width ?? infinity, height: infinity))
-        return CGSize(width: ceil(min(s.width, p.width ?? s.width)), height: ceil(s.height))
+        var height = ceil(s.height)
+        if env.reservesLines, let lines = env.lineLimit, lines > 0 {
+            height = max(height, ceil(label.font.lineHeight * CGFloat(lines) + (env.lineSpacing ?? 0) * CGFloat(lines - 1)))
+        }
+        return CGSize(width: ceil(min(s.width, p.width ?? s.width)), height: height)
     }
 }
 

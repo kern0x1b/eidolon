@@ -921,11 +921,7 @@ extension View {
         gesture(TapGesture(count: count).onEnded { action() })
     }
 
-    public func onLongPressGesture(minimumDuration: Double = 0.5, maximumDistance: CGFloat = 10, perform action: @escaping () -> Void, onPressingChanged: ((Bool) -> Void)? = nil) -> some View {
-        gesture(PressingLongPress(minimumDuration: minimumDuration, maximumDistance: maximumDistance, pressing: onPressingChanged ?? { _ in }).onEnded { _ in action() })
-    }
-
-    public func onLongPressGesture(minimumDuration: Double = 0.5, perform action: @escaping () -> Void) -> some View {
-        gesture(LongPressGesture(minimumDuration: minimumDuration).onEnded { _ in action() })
+    public func onLongPressGesture(minimumDuration: Double = 0.5, maximumDistance: CGFloat = 10, pressing: ((Bool) -> Void)? = nil, perform action: @escaping () -> Void) -> some View {
+        gesture(PressingLongPress(minimumDuration: minimumDuration, maximumDistance: maximumDistance, pressing: pressing ?? { _ in }).onEnded { _ in action() })
     }
 }

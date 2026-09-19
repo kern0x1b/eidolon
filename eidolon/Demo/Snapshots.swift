@@ -336,6 +336,17 @@ func pressBarItems(_ probe: _Probe) {
     probe.flush()
 }
 
+struct DestinationCase: View {
+    @State var pushed = true
+    var body: some View {
+        NavigationView {
+            Color.gray.frame(height: 20)
+                .navigationTitle("Root")
+                .navigationDestination(isPresented: $pushed) { Color.green.frame(width: 50, height: 50) }
+        }
+    }
+}
+
 func activateSearch(_ probe: _Probe) {
     allViews(probe.hostView, of: UISearchBar.self).first?.becomeFirstResponder()
     probe.flush()
@@ -403,6 +414,8 @@ func snapshotCases() -> [SnapshotCase] {
         SnapshotCase(name: "navigation", width: 320, height: 300, view: NavigationCase(), inWindow: true),
         SnapshotCase(name: "toolbar", width: 320, height: 300, view: ToolbarCase(), inWindow: true,
                      action: pressBarItems, note: { "taps \(toolbarLog.taps.sorted())" }),
+        SnapshotCase(name: "destination", width: 320, height: 200, view: DestinationCase(), inWindow: true),
+        SnapshotCase(name: "reserve", width: 200, height: 120, view: VStack { Text("One line").lineLimit(3, reservesSpace: true) }),
         SnapshotCase(name: "search", width: 320, height: 200, view: SearchCase()),
         SnapshotCase(name: "split", width: 320, height: 300, view: SplitCase(), inWindow: true, action: { $0.selectRow(1) }),
         SnapshotCase(name: "pickers", width: 320, height: 300, view: PickersCase(), inWindow: true),

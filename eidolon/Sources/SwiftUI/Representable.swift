@@ -218,6 +218,3 @@ extension Color {
     public init(uiColor: UIColor) { self.init(uiColor) }
 }
 
-extension View {
-    public func mask<Mask: Shape>(_ mask: Mask) -> some View { clipShape(mask) }
-}

@@ -270,7 +270,7 @@ extension View {
         padding(insets ?? EdgeInsets())
     }
 
-    public func listRowSeparator(_ visibility: Visibility) -> some View {
+    public func listRowSeparator(_ visibility: Visibility, edges: VerticalEdge.Set = .all) -> some View {
         ignored(self, "listRowSeparator", "the table of iOS 6 has one separator style for every row")
     }
 }

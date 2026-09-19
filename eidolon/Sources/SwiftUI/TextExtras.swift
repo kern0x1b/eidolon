@@ -62,9 +62,11 @@ extension Text {
     public func tracking(_ tracking: CGFloat) -> Text { var copy = self; copy.kern = tracking; return copy }
     public func monospacedDigit() -> Text { self }
     public func underline(_ active: Bool = true, color: Color? = nil) -> Text {
+        if color != nil { _Unsupported.note("underline(color:)", "a line under text of iOS 6 has the colour of the text") }
         var copy = self; copy.isUnderlined = active; return copy
     }
     public func strikethrough(_ active: Bool = true, color: Color? = nil) -> Text {
+        if color != nil { _Unsupported.note("strikethrough(color:)", "a line through text of iOS 6 has the colour of the text") }
         var copy = self; copy.isStruck = active; return copy
     }
     public func fontWeight(_ weight: Font.Weight?) -> Text {

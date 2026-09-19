@@ -15,6 +15,7 @@ public struct EnvironmentValues {
     var values: [ObjectIdentifier: Any] = [:]
     var animation: Animation?
     var lineLimit: Int?
+    var reservesLines = false
     var minimumScaleFactor: CGFloat?
     var tint: UIColor?
     var input = InputSettings()
@@ -65,7 +66,7 @@ public struct EnvironmentValues {
             && objects.count == other.objects.count
             && objects.allSatisfy { key, value in other.objects[key] === value }
             && sameValues(values, other.values) && animation == other.animation
-            && lineLimit == other.lineLimit && minimumScaleFactor == other.minimumScaleFactor && tint === other.tint
+            && lineLimit == other.lineLimit && reservesLines == other.reservesLines && minimumScaleFactor == other.minimumScaleFactor && tint === other.tint
             && (buttonStyle == nil) == (other.buttonStyle == nil) && (primitiveButtonStyle == nil) == (other.primitiveButtonStyle == nil) && (toggleStyle == nil) == (other.toggleStyle == nil)
             && (labelStyle == nil) == (other.labelStyle == nil) && (progressViewStyle == nil) == (other.progressViewStyle == nil)
             && styles.count == other.styles.count && kerning == other.kerning && allowsTightening == other.allowsTightening && scrollBackgroundHidden == other.scrollBackgroundHidden && redactedDrawing == other.redactedDrawing && (paging == nil) == (other.paging == nil) && buttonBorderShape == other.buttonBorderShape && (menuStyle == nil) == (other.menuStyle == nil) && (disclosureGroupStyle == nil) == (other.disclosureGroupStyle == nil)

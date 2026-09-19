@@ -21,8 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Real toolbars: every placement (`principal` becomes the title, `bottomBar` and `status` the toolbar, several items per
   side in declared order), custom-view bar items for anything that is not a plain text button, `ToolbarItem(id:)`, and
   `showsByDefault`.
+- `View` overloads: `navigationBarTitle(_:displayMode:)`, `lineLimit(_:reservesSpace:)`, `listRowSeparator(_:edges:)`,
+  `mask` by any view with an alignment, `task(id:priority:)` that is cancelled when the view goes and restarted when the
+  id changes, `navigationDestination(isPresented:)`, `toolbar(_:for:)`, Apple's `onLongPressGesture(pressing:perform:)`.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, eighteen rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, twenty rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed

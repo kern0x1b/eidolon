@@ -49,7 +49,7 @@ extension View {
     public func baselineOffset(_ offset: CGFloat) -> some View {
         self.offset(y: -offset)
     }
-    public func listSectionSeparator(_ visibility: Visibility) -> some View {
+    public func listSectionSeparator(_ visibility: Visibility, edges: VerticalEdge.Set = .all) -> some View {
         ignored(self, "listSectionSeparator", "the table of iOS 6 draws the same separators in every section")
     }
     public func navigationViewStyle<S: NavigationViewStyle>(_ style: S) -> some View {
