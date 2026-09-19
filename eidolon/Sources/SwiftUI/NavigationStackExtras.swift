@@ -1,0 +1,128 @@
+import UIKit
+import CoreGraphics
+
+public struct NavigationPath {
+    var items: [AnyHashable] = []
+    public init() {}
+    public init<S: Sequence>(_ elements: S) where S.Element: Hashable {
+        items = elements.map { AnyHashable($0) }
+    }
+    public var count: Int { items.count }
+    public var isEmpty: Bool { items.isEmpty }
+    public mutating func append<V: Hashable>(_ value: V) { items.append(AnyHashable(value)) }
+    public mutating func removeLast(_ k: Int = 1) { items.removeLast(min(k, items.count)) }
+}
+
+struct NavigationDestinationModifier: NodeModifier {
+    let type: ObjectIdentifier
+    let build: (AnyHashable) -> any View
+    func makeModifierNode(_ content: any View, _ env: EnvironmentValues) -> Node { NavigationDestinationNode() }
+}
+
+final class NavigationDestinationNode: Node {
+    var child: Node?
+    override var disposableChildren: [Node] { child.map { [$0] } ?? [] }
+    override var flattened: [LayoutNode] { child?.flattened ?? [] }
+
+    override func update(_ view: any View, _ env: EnvironmentValues) {
+        super.update(view, env)
+        let m = view as! ModifiedViewLike
+        let modifier = m.modifierValue as! NavigationDestinationModifier
+        var inner = env
+        inner.destinations[modifier.type] = modifier.build
+        child = adopt(reconcile(child, m.modifiedContent, inner))
+    }
+
+    override func mountContents() { child?.mount() }
+}
+
+extension View {
+    public func navigationDestination<D: Hashable, C: View>(for type: D.Type, @ViewBuilder destination: @escaping (D) -> C) -> some View {
+        _ModifiedView(content: self, modifier: NavigationDestinationModifier(
+            type: ObjectIdentifier(type),
+            build: { value in
+                guard let typed = value.base as? D else { return AnyView(EmptyView()) }
+                return destination(typed)
+            }))
+    }
+}
+
+extension NavigationLink where Label: View {
+    public init<D: Hashable>(value: D?, @ViewBuilder label: () -> Label) where Destination == _ValueDestination {
+        self.init(destination: _ValueDestination(value: value.map { AnyHashable($0) }), label: label)
+    }
+}
+
+extension NavigationLink where Label == Text, Destination == _ValueDestination {
+    public init<D: Hashable>(_ titleKey: LocalizedStringKey, value: D?) {
+        self.init(destination: _ValueDestination(value: value.map { AnyHashable($0) })) { Text(titleKey) }
+    }
+}
+
+public struct _ValueDestination: View, PrimitiveView, GroupView {
+    public typealias Body = Never
+    public var body: Never { neverBody(Self.self) }
+    let value: AnyHashable?
+    var childViews: [any View] { [] }
+}
+
+public struct ColorPicker<Label: View>: View {
+    let selection: Binding<Color>
+    let label: Label
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                label
+                Spacer()
+                Rectangle().fill(selection.wrappedValue).frame(width: 40, height: 22)
+            }
+            channel("R", index: 0)
+            channel("G", index: 1)
+            channel("B", index: 2)
+        }
+    }
+
+    func channel(_ name: String, index: Int) -> some View {
+        HStack(spacing: 6) {
+            Text(name)
+            Slider(value: Binding(
+                get: { Double(components(selection.wrappedValue)[index]) },
+                set: { newValue in
+                    var parts = components(selection.wrappedValue)
+                    parts[index] = CGFloat(newValue)
+                    selection.wrappedValue = Color(UIColor(red: parts[0], green: parts[1], blue: parts[2], alpha: 1))
+                }))
+        }
+    }
+
+    func components(_ color: Color) -> [CGFloat] {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        color.uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        return [red, green, blue]
+    }
+}
+
+extension ColorPicker where Label == Text {
+    public init(_ titleKey: LocalizedStringKey, selection: Binding<Color>, supportsOpacity: Bool = true) {
+        self.init(selection: selection, label: Text(titleKey))
+    }
+}
+
+extension Image {
+    public init(uiImage: UIImage) {
+        self.init("")
+        stored = uiImage
+    }
+}
+
+extension View {
+    @available(iOS 8.0, *)
+    public func onDrag(_ data: @escaping () -> NSItemProvider) -> some View {
+        ignored(self, "onDrag", "iOS 6 has no drag and drop")
+    }
+    @available(iOS 8.0, *)
+    public func onDrop(of types: [String], isTargeted: Binding<Bool>?, perform: @escaping ([NSItemProvider]) -> Bool) -> some View {
+        ignored(self, "onDrop", "iOS 6 has no drag and drop")
+    }
+}

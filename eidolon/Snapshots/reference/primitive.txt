@@ -1,0 +1,11 @@
+_HostRootView (0,0,320,60)
+  UIRoundedRectButton (58,8,204,44) button ""
+    UIView (0,0,204,44)
+      UIView (0,12,33,20)
+        UIView (0,0,33,20)
+      UILabel (39,12,57,21) "Swatch"
+      UIRoundedRectButton (102,0,102,44) button "Swatch"
+        UIGroupTableViewCellBackground (0,0,102,44)
+        UIImageView (1,1,100,43)
+        UIButtonLabel (24,12,54,19) "Swatch"
+fired 1
