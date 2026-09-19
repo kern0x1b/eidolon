@@ -5,7 +5,7 @@ Nothing third-party is vendored in this repository. The following are used at bu
 
 | Component | Version | Licence | Where it comes from |
 | --- | --- | --- | --- |
-| [OpenCombine](https://github.com/OpenCombine/OpenCombine) | 2023.10.11 (`1c6f02c`) | MIT | the `charon@opencombine` package; the Combine implementation the module re-exports. `combine/` runs its own tests, cloned into `src/`, to verify it on iOS 6 |
+| [Styx](https://github.com/kern0x1b/styx) | 2026.09.20 (`f5fe651`) | MIT | the `charon@styx` package, a fork of [OpenCombine](https://github.com/OpenCombine/OpenCombine) (MIT, Copyright its authors; the licence text is kept in the fork); the Combine implementation the module re-exports as module `Combine`. `combine/` runs the upstream OpenCombine tests, cloned into `src/`, and is kept as the record of that ancestor |
 | Swift runtime and standard library | 6.4 | Apache-2.0 with Runtime Library Exception | the `charon@swift-runtime` package; the runtime an app built with Eidolon carries |
 | libc++ / libc++abi | 23.1.1 | Apache-2.0 with LLVM exceptions | the `charon@libcxx` package |
 

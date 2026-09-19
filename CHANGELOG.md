@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `allowsTightening`, `autocorrectionDisabled`, `imageScale`, `pixelLength`, `isPresented`, `undoManager`,
   `isScrollEnabled`, `defaultMinListRowHeight` (the list honours it), `headerProminence`, `dynamicTypeSize`, and the
   accessibility settings iOS 6 has (VoiceOver, invert colours) or cannot have (read as off).
-- `STYX=<install>` builds against the `Combine` module of the Styx fork instead of OpenCombine (`pkg-env.sh`, `REV_STYX`).
+- Combine is now Styx, the fork of OpenCombine that Charon packages as `charon@styx`; the module is named `Combine`.
 - `Path` is a `Shape`, so `Path { … }.stroke(…)` works; it is a real value type now (a changed copy no longer changes
   the original), takes Apple's `transform:` parameters and has `currentPoint` and `contains`.
 - `Color` is `Hashable` and can be made from a `UIColor` or `CGColor`; `import SwiftUI` brings UIKit, as on iOS.

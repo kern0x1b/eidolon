@@ -4,7 +4,7 @@
 
 Apple's SwiftUI cannot run on iOS 6: it has never had an armv7 build, it needs Metal, and it drags in over four hundred
 system images the phone does not have. So Eidolon re-implements the *API* instead. It is a Swift module named
-`SwiftUI`, built on the UIKit of iOS 6, with [OpenCombine](https://github.com/OpenCombine/OpenCombine) standing in for
+`SwiftUI`, built on the UIKit of iOS 6, with [Styx](https://github.com/kern0x1b/styx), a Combine for iOS 6, standing in for
 Combine. An app written in ordinary SwiftUI syntax compiles against it and comes out as a native-looking iOS 6 app on a
 phone from 2011.
 
@@ -57,12 +57,12 @@ exists.
   Only the nodes marked dirty are laid out again.
 - **Animation.** Ordinary properties are handed to `UIView.animate`; data that UIKit cannot interpolate is driven frame
   by frame by a display-link animator.
-- **Combine** is OpenCombine, built with the same Swift runtime.
+- **Combine** is Styx, built with the same Swift runtime; it is a module named `Combine`, so apps write `import Combine`.
 
 ## Requirements
 
 - macOS with the [Charon](https://github.com/kern0x1b/charon) toolchain, and its packages installed into a private
-  xmake global directory (`xmake-global/` in this checkout): `swift-runtime`, `libcxx`, `apple-compat`, `opencombine`,
+  xmake global directory (`xmake-global/` in this checkout): `swift-runtime`, `libcxx`, `apple-compat`, `styx`,
   the iOS SDK, `llvm`, `ld64` and `ldid`. `pkg-env.sh` finds them there.
 - To run the tests and rendered scenarios: an iOS 6 firmware root file system from Charon, and an emulator lab that
   provides `scripts/ilemu.sh` and the helper scripts `run-emu.sh` and `run-app.sh` call. Point `EMULATOR_LAB` at it.
@@ -100,7 +100,7 @@ Apple's interface with it, to prove that the symbols such an app needs are all t
 | --- | --- |
 | `eidolon/` | the module (`Sources/SwiftUI`), the demo app, the engine tests, the probe, the snapshot references and the coverage ledger |
 | `bridge/` | the guest-ABI check, the typed API diff against Apple's interface, and the name lists both use |
-| `combine/` | build and run scripts for OpenCombine's own test suite on iOS 6, with its results |
+| `combine/` | build and run scripts for the upstream OpenCombine test suite on iOS 6, with its results (Styx's ancestor; Styx carries its own now) |
 | `rtpkg/` | the small xmake project that installs the runtime packages |
 | `docs/` | the research (in Russian) |
 | `*.sh`, `device.lua` | run the emulator, take snapshots and timings, reach a device |
@@ -112,7 +112,7 @@ Apple's interface with it, to prove that the symbols such an app needs are all t
 | [`eidolon/README.md`](eidolon/README.md) | the ledger: what is implemented, ignored, simplified or missing; measurements |
 | [`docs/research.md`](docs/research.md) | why Apple's SwiftUI cannot be ported, and the design of this implementation (Russian) |
 | [`bridge/README.md`](bridge/README.md) | the guest-ABI check |
-| [`combine/RESULTS.md`](combine/RESULTS.md) | OpenCombine on iOS 6: 1448 of 1453 of its tests |
+| [`combine/RESULTS.md`](combine/RESULTS.md) | OpenCombine on iOS 6 before the Styx fork: 1448 of 1453 of its tests |
 | [`CLAUDE.md`](CLAUDE.md) | the contributor guide |
 
 ## Trademarks

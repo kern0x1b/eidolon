@@ -1,5 +1,5 @@
 #!/bin/bash
-# build.sh: Eidolon (module SwiftUI) + EidolonDemo, EidolonTests, EidolonProbe for armv7 iOS 6 against the charon@swift-runtime and charon@opencombine installation in ../xmake-global, staged as out/EidolonDemo.app
+# build.sh: Eidolon (module SwiftUI) + EidolonDemo, EidolonTests, EidolonProbe for armv7 iOS 6 against the charon@swift-runtime and charon@styx installation in ../xmake-global, staged as out/EidolonDemo.app
 set -e
 cd "$(dirname "$0")"
 ROOT=$PWD/..; O=$PWD/out

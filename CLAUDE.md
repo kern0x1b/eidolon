@@ -7,7 +7,7 @@ is the map.
 
 Eidolon is an implementation of the SwiftUI API on the UIKit of iOS 6 (armv7), written from scratch. Apple's SwiftUI
 cannot be ported (no armv7 build, Metal, 400+ missing system images), so the API is re-implemented; the Swift module is
-named `SwiftUI` because every symbol an app takes from SwiftUI is mangled with that name. Combine is OpenCombine.
+named `SwiftUI` because every symbol an app takes from SwiftUI is mangled with that name. Combine is Styx (a fork of OpenCombine).
 
 ## Layout
 
