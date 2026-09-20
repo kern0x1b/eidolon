@@ -65,34 +65,64 @@ public struct PlainButtonStyle: ButtonStyle {
 public struct BorderedButtonStyle: ButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: configuration.label, fill: configuration.isPressed ? Color(white: 0.82) : Color(white: 0.93), text: nil)
+        _BorderedChrome(label: configuration.label, prominent: false, pressed: configuration.isPressed)
     }
 }
 
 public struct BorderedProminentButtonStyle: ButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: configuration.label,
-                        fill: configuration.isPressed ? Color(red: 0.1, green: 0.3, blue: 0.7) : Color(red: 0.15, green: 0.4, blue: 0.9),
-                        text: .white)
+        _BorderedChrome(label: configuration.label, prominent: true, pressed: configuration.isPressed)
     }
 }
 
+// A button as iOS 6 draws one: a vertical gradient, a lighter gloss over its upper half, a dark edge and lettering with a
+// small shadow. The bordered style is the grey rounded-rect button of the system, the prominent one the blue of a Done button.
 struct _BorderedChrome: View {
     let label: ButtonStyleConfiguration.Label
-    let fill: Color
-    let text: Color?
+    let prominent: Bool
+    let pressed: Bool
     @Environment(\.self) var environment
+
     var body: some View {
-        let padded = label.foregroundColor(text).padding(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+        let colors = prominent
+            ? (pressed ? [Color(red: 0.30, green: 0.45, blue: 0.80), Color(red: 0.08, green: 0.22, blue: 0.62)]
+                       : [Color(red: 0.47, green: 0.63, blue: 0.95), Color(red: 0.12, green: 0.32, blue: 0.82)])
+            : (pressed ? [Color(white: 0.86), Color(white: 0.66)] : [Color(white: 0.99), Color(white: 0.80)])
+        let edge = prominent ? Color(red: 0.08, green: 0.20, blue: 0.50) : Color(white: 0.52)
+        let lettering: Color? = prominent ? .white : nil
+        let shadow = prominent ? Color(red: 0, green: 0, blue: 0).opacity(0.45) : Color.white
+        let padded = label.foregroundColor(lettering)
+            .shadow(color: shadow, radius: 0, x: 0, y: prominent ? -1 : 1)
+            .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
         switch environment.buttonBorderShape.kind {
         case .capsule:
-            return AnyView(padded.background(Capsule().fill(fill)))
+            return AnyView(padded.background(_ButtonBody(shape: Capsule(), colors: colors, edge: edge, gloss: !pressed)))
         case .roundedRectangle(let radius):
-            return AnyView(padded.background(RoundedRectangle(cornerRadius: radius ?? 6).fill(fill)))
+            return AnyView(padded.background(_ButtonBody(shape: RoundedRectangle(cornerRadius: radius ?? 7), colors: colors, edge: edge, gloss: !pressed)))
         case .automatic:
-            return AnyView(padded.background(fill, cornerRadius: 6))
+            return AnyView(padded.background(_ButtonBody(shape: RoundedRectangle(cornerRadius: 7), colors: colors, edge: edge, gloss: !pressed)))
         }
+    }
+}
+
+struct _ButtonBody<S: Shape>: View {
+    let shape: S
+    let colors: [Color]
+    let edge: Color
+    let gloss: Bool
+    var body: some View {
+        ZStack {
+            shape.fill(LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom))
+            if gloss { _Gloss().fill(LinearGradient(colors: [Color.white.opacity(0.42), Color.white.opacity(0.06)], startPoint: .top, endPoint: .bottom)) }
+            shape.stroke(edge, lineWidth: 1)
+        }
+    }
+}
+
+struct _Gloss: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path(roundedRect: CGRect(x: 1, y: 1, width: max(0, rect.width - 2), height: max(0, rect.height / 2 - 1)), cornerRadius: 6)
     }
 }
 
