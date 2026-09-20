@@ -280,16 +280,11 @@ extension View {
         _ModifiedView(content: self, modifier: ListDecorationModifier(refresh: nil, searchText: text, searchPrompt: String(prompt)))
     }
     public func listRowBackground<V: View>(_ view: V?) -> some View {
-        let color = (view as? Color)?.uiColor
-        return applyingToViews { subview in
-            guard let color else { return }
-            var ancestor: UIView? = subview
-            while let current = ancestor {
-                if let cell = current as? UITableViewCell { cell.backgroundColor = color; return }
-                ancestor = current.superview
-            }
-            subview.backgroundColor = color
+        if let view, !(view is Color) {
+            _Unsupported.note("listRowBackground(view)", "a row of a UITableView takes a colour behind it; a view that is not a colour is not drawn")
         }
+        let color = (view as? Color)?.uiColor
+        return _ModifiedView(content: self, modifier: RowTraitModifier(apply: { $0.background = color }))
     }
 
     public func listRowInsets(_ insets: EdgeInsets?) -> some View {

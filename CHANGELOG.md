@@ -78,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - A toolbar on a `ScrollView` (or any view that does not mount itself) left the content unmounted.
 - A `Text` beside a `Spacer` was offered half the room and wrapped; a search field had no default prompt.
 - Noting an ignored API raised an exception when the app had no stderr, which is how an app started by SpringBoard runs: found on a phone, the journal now cannot fail.
+- `listRowBackground(Color.clear)` left the white card of a grouped row; a colour behind a row is now a row trait.
 - A disabled view was not dimmed.
 - `matchedGeometryEffect` sometimes did not animate: it told nodes apart by address, which a new node can reuse.
 - `.tabItem { Label(…) }` lost its title; an adaptive `LazyVGrid` column was one track; `aspectRatio` with one side

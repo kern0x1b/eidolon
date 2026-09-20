@@ -13,6 +13,7 @@ struct RowTraits {
     var moveDisabled: Bool?
     var trailingSwipe: [SwipeButton]?
     var leadingSwipe: [SwipeButton]?
+    var background: UIColor?
     var trailingFullSwipe = true
     var leadingFullSwipe = true
 }

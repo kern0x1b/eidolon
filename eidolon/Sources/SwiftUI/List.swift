@@ -163,6 +163,7 @@ final class ListRow: ContainerNode {
     var tag: AnyHashable?
     var traits = RowTraits()
     var cell: UITableViewCell?
+    var backgroundApplied = false
     override func computeSize(_ p: ProposedSize) -> CGSize {
         let s = children.first?.sizeThatFits(ProposedSize(width: p.width, height: nil)) ?? .zero
         return CGSize(width: p.width ?? s.width, height: s.height)
@@ -225,6 +226,18 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
         return cell
     }
     func configure(_ cell: UITableViewCell, _ row: ListRow, _ node: ListNode) {
+        // a colour behind the row; a clear one takes away the white card a row of a grouped table is drawn on
+        if let color = row.traits.background {
+            cell.backgroundColor = color
+            var alpha: CGFloat = 1
+            color.getWhite(nil, alpha: &alpha)
+            if alpha == 0 { cell.backgroundView = UIView(); cell.backgroundView?.backgroundColor = .clear }
+            row.backgroundApplied = true
+        } else if row.backgroundApplied {
+            cell.backgroundColor = nil
+            cell.backgroundView = nil
+            row.backgroundApplied = false
+        }
         cell.accessoryType = row.destination != nil ? .disclosureIndicator : .none
         cell.accessoryView = row.traits.badge.map(badgeView)
         cell.selectionStyle = row.destination != nil || node.selection != nil ? .blue : .none
