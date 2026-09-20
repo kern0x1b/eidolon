@@ -79,16 +79,28 @@ final class ValueAnimator {
     nonisolated(unsafe) static var manual = false
     nonisolated(unsafe) static var active: [ValueAnimator] = []
 
+    // One display link serves every running animation; it exists only while there is one, so an idle app has none.
     private final class Proxy: NSObject {
-        weak var owner: ValueAnimator?
-        @objc func fire() { owner?.tick() }
+        @objc func fire() { ValueAnimator.tickAll() }
+    }
+    nonisolated(unsafe) private static var sharedLink: CADisplayLink?
+
+    private static func updateLink() {
+        if manual { return }
+        if active.isEmpty {
+            sharedLink?.invalidate()
+            sharedLink = nil
+        } else if sharedLink == nil {
+            let link = CADisplayLink(target: Proxy(), selector: #selector(Proxy.fire))
+            link.add(to: .main, forMode: .common)
+            sharedLink = link
+        }
     }
 
     let animation: Animation
     private let apply: (Double) -> Void
     var finished: (() -> Void)?
     private var started: CFTimeInterval = 0
-    private var link: CADisplayLink?
 
     init(animation: Animation, apply: @escaping (Double) -> Void) {
         self.animation = animation
@@ -99,18 +111,12 @@ final class ValueAnimator {
         started = ValueAnimator.clock()
         ValueAnimator.active.append(self)
         apply(0)
-        guard !ValueAnimator.manual else { return }
-        let proxy = Proxy()
-        proxy.owner = self
-        let link = CADisplayLink(target: proxy, selector: #selector(Proxy.fire))
-        link.add(to: .main, forMode: .common)
-        self.link = link
+        ValueAnimator.updateLink()
     }
 
     func stop() {
-        link?.invalidate()
-        link = nil
         ValueAnimator.active.removeAll { $0 === self }
+        ValueAnimator.updateLink()
     }
 
     static func tickAll() {
