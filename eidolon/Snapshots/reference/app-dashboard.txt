@@ -4,8 +4,8 @@ _HostRootView (0,0,320,640)
       UIViewControllerWrapperView (0,0,320,591)
         _HostRootView (0,0,320,591)
           UIScrollView (0,0,320,591)
-            UIView (0,0,320,941)
-              UIView (16,16,288,909)
+            UIView (0,0,320,943)
+              UIView (16,16,288,911)
                 UIView (0,0,288,161)
                   UIView (0,0,288,161)
                     ShapeBackedView (0,0,288,161)
@@ -65,15 +65,20 @@ _HostRootView (0,0,320,640)
                       UILabel (0,0,40,21) "More"
                       UIView (48,11,223,0)
                       UILabel (279,0,9,21) "▸"
-                UIRoundedRectButton (99,815,91,33) button ""
-                  UIView (0,0,91,33)
-                    UIView (0,0,91,33)
-                      UILabel (12,6,67,21) "Advance"
-                UIView (0,864,288,8)
+                UIRoundedRectButton (99,815,91,35) button ""
+                  UIView (0,0,91,35)
+                    UIView (0,0,91,35)
+                      ShapeBackedView (0,0,91,35)
+                      ShapeBackedView (0,0,91,35)
+                      ShapeBackedView (0,0,91,35)
+                    UIView (0,0,91,35)
+                      UIView (12,7,67,21)
+                        UILabel (0,0,67,21) "Advance"
+                UIView (0,866,288,8)
                   UIView (0,0,288,8)
                     UIView (0,0,86,8)
                       ShapeBackedView (0,0,86,8)
-                UIView (126,888,36,21)
+                UIView (126,890,36,21)
                   UIView (0,0,36,21)
                     UILabel (0,0,36,21) "Hold"
     UITabBar (0,591,320,49)

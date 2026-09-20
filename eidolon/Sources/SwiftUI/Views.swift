@@ -124,8 +124,11 @@ public struct Color: View, PrimitiveView {
         uiColor = UIColor(red: CGFloat(red), green: CGFloat(green), blue: CGFloat(blue), alpha: CGFloat(opacity))
     }
     public init(_ uiColor: UIColor) { self.uiColor = uiColor }
-    public static let red = Color(.red), green = Color(.green), blue = Color(.blue), black = Color(.black)
-    public static let white = Color(.white), gray = Color(.gray), orange = Color(.orange), yellow = Color(.yellow)
+    // the system colours of SwiftUI in a light appearance, not the pure primaries of UIColor
+    public static let red = Color(red: 1.0, green: 0.231, blue: 0.188), green = Color(red: 0.204, green: 0.780, blue: 0.349)
+    public static let blue = Color(red: 0.0, green: 0.478, blue: 1.0), black = Color(.black)
+    public static let white = Color(.white), gray = Color(red: 0.557, green: 0.557, blue: 0.576)
+    public static let orange = Color(red: 1.0, green: 0.584, blue: 0.0), yellow = Color(red: 1.0, green: 0.8, blue: 0.0)
     public static let clear = Color(.clear), secondary = Color(.darkGray), primary = Color(.black)
     public static let purple = Color(red: 0.686, green: 0.322, blue: 0.871), pink = Color(red: 1, green: 0.176, blue: 0.333)
     public static let brown = Color(red: 0.635, green: 0.518, blue: 0.369), cyan = Color(red: 0.196, green: 0.678, blue: 0.902)

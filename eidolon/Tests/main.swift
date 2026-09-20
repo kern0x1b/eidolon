@@ -1396,7 +1396,7 @@ check(shapeLayers(inShape).contains { ($0.path?.boundingBoxOfPath.size ?? .zero)
 let styled = _Probe(Color.clear.frame(width: 30, height: 30).background(in: Circle()).backgroundStyle(Color.red), width: 60, height: 60)
 _ = frames(styled)
 let styledLayer = shapeLayers(styled).first
-check(styledLayer?.fillColor.map { UIColor(cgColor: $0) } == UIColor.red, "background(in:) filled with the backgroundStyle", "\(String(describing: styledLayer?.fillColor))")
+check(styledLayer?.fillColor.map { UIColor(cgColor: $0) } == UIColor(red: 1.0, green: 0.231, blue: 0.188, alpha: 1), "background(in:) filled with the backgroundStyle", "\(String(describing: styledLayer?.fillColor))")
 let relative = _Probe(ContainerRelativeShape().fill(Color.green).frame(width: 50, height: 50).containerShape(Circle()), width: 60, height: 60)
 _ = frames(relative)
 let relativePath = shapeLayers(relative).first?.path
@@ -2118,7 +2118,7 @@ equal(moved.boundingRect.origin.x, 100, "a path is added with a transform")
 let pathProbe = _Probe(Path(CGRect(x: 0, y: 0, width: 10, height: 10)).fill(Color.red).frame(width: 20, height: 20), width: 50, height: 50)
 check(!frames(pathProbe).isEmpty, "a path is a view")
 equal(Set([Color.red, Color.red, Color.blue]).count, 2, "colors that look the same are one in a set")
-check(Color(UIColor.red) == Color.red, "a color made from a UIColor is that color")
+check(Color(UIColor(red: 1.0, green: 0.231, blue: 0.188, alpha: 1)) == Color.red, "a color made from a UIColor is that color")
 
 // an aspect ratio with only the width proposed, and an adaptive grid column that becomes as many tracks as fit
 let ratioProbe = _Probe(VStack { Color.red.aspectRatio(2, contentMode: .fit) }, width: 100, height: 200)

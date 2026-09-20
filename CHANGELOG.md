@@ -63,6 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `device-shots.sh`, `device-crash.py`: install the demo on a phone, render scenarios there, fetch pictures (also of the live screen) and read crash reports; `docs/device/` holds pictures from an iPhone 4S.
 - The demo can be given real touches on a phone (`--gesture`, the helper of the backports' device tests), links the phone's
   backports library when `BACKPORTS_LIBS` names it, and `List` asks the backports' swipe facade to attach to its table.
+- `.bordered` and `.borderedProminent` buttons are drawn as iOS 6 draws a button (gradient, gloss over the upper half, dark
+  edge, lettering with a shadow) instead of flat rectangles; `Color.red`, `.blue`, `.green`, `.orange`, `.yellow` and `.gray`
+  are the system colours of SwiftUI, not the pure primaries of UIColor.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
 - The engine tests, thirty-four rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
