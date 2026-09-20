@@ -21,7 +21,7 @@ public enum _Unsupported {
         reported.insert(api)
         reasons[api] = reason
         let line = "[SwiftUI] \(api) ignored on iOS 6: \(reason)\n"
-        FileHandle.standardError.write(line.data(using: .utf8)!)
+        fputs(line, stderr)   // not FileHandle: that raises when an app has no stderr, as one started by SpringBoard has not
         NSLog("%@", "[SwiftUI] \(api) ignored on iOS 6: \(reason)")
         writeReport()
     }
@@ -30,7 +30,7 @@ public enum _Unsupported {
         guard !pending.contains(api) else { return }
         pending.insert(api)
         let line = "[SwiftUI] \(api) is declared but not implemented yet\n"
-        FileHandle.standardError.write(line.data(using: .utf8)!)
+        fputs(line, stderr)
         NSLog("%@", line)
         writeReport()
     }

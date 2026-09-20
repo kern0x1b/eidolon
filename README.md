@@ -30,6 +30,13 @@ implemented, what is deliberately ignored and why, what is simplified — is in 
 | Bridges | `UIViewRepresentable`, `UIViewControllerRepresentable`, `UIHostingController` |
 | Accessibility | labels, values, traits, containers built from `accessibilityChildren`, sort priority, VoiceOver focus |
 
+### On a phone
+
+The screens of the demo app, drawn by the engine on an iPhone 4S running iOS 6.1.3 (armv7) — nothing here is an emulator.
+[`docs/device/`](docs/device/) holds them: the symbol set, a social feed, settings, a dashboard, a store, contacts, token
+search and an onboarding pager. `device-shots.sh` installs the demo, has the app render a scenario in its own process and
+fetches the picture; `device-shots.sh --live` takes a picture of the real screen.
+
 ### How complete is it
 
 Two numbers, and they measure different things.

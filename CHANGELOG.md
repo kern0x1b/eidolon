@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `Picker(selection:label:content:)`, the closure forms of `NavigationLink`, `Section` and `GestureState` forms,
   `Menu(primaryAction:)`.
 - `searchable(text:tokens:suggestedTokens:)`: tokens are a row of chips with a cross above the search field, suggested ones show while searching and a tap moves one into the tokens.
+- `device-shots.sh`, `device-crash.py`: install the demo on a phone, render scenarios there, fetch pictures (also of the live screen) and read crash reports; `docs/device/` holds pictures from an iPhone 4S.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
 - The engine tests, thirty-four rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
@@ -71,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `Image(_:scale:orientation:label:)` dropped its label.
 - A toolbar on a `ScrollView` (or any view that does not mount itself) left the content unmounted.
 - A `Text` beside a `Spacer` was offered half the room and wrapped; a search field had no default prompt.
+- Noting an ignored API raised an exception when the app had no stderr, which is how an app started by SpringBoard runs: found on a phone, the journal now cannot fail.
 - A disabled view was not dimmed.
 - `matchedGeometryEffect` sometimes did not animate: it told nodes apart by address, which a new node can reuse.
 - `.tabItem { Label(…) }` lost its title; an adaptive `LazyVGrid` column was one track; `aspectRatio` with one side

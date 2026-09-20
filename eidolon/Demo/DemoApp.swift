@@ -143,7 +143,13 @@ struct ContentView: View {
 struct DemoApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // /var/charon/show names a scenario to keep on screen, so that a picture of the real screen can be taken
+            if let name = try? String(contentsOfFile: "/var/charon/show", encoding: .utf8),
+               let scenario = snapshotCases().first(where: { $0.name == name.trimmingCharacters(in: .whitespacesAndNewlines) }) {
+                AnyView(scenario.view)
+            } else {
+                ContentView()
+            }
         }
     }
 }

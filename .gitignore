@@ -50,3 +50,4 @@ local.env
 /bridge/undef.txt
 /bridge/swiftui-demangled.txt
 /bridge/missing-demangled.txt
+/device-shots/
