@@ -114,7 +114,8 @@ def main():
         if kind in ('Func', 'Constructor') and covered_by_defaults(ours_shapes, owner, printed):
             continue
         state = 'variant' if ours_names.get((owner, printed)) else 'absent'
-        if state == 'absent' and owner in not_applicable:
+        member = f'{owner}#{printed.split("(")[0]}'
+        if state == 'absent' and (owner in not_applicable or member in not_applicable):
             state = 'not-applicable'
         missing[owner].append((state, kind, printed, signature(node)))
 
@@ -125,7 +126,12 @@ def main():
             if '--variants' in flags or state == 'absent' or (state == 'not-applicable' and '--not-applicable' in flags):
                 print(f'{owner}\t{state}\t{kind}\t{printed}\t{sig}')
     print(f'# absent {total["absent"]}, variant {total["variant"]}, not applicable {total["not-applicable"]} (bridge/not-applicable.txt, with reasons)', file=sys.stderr)
-    unused = sorted(set(not_applicable) - {owner for owner, items in missing.items() if any(i[0] == 'not-applicable' for i in items)})
+    used = set()
+    for owner, items in missing.items():
+        for state, kind, printed, sig in items:
+            if state == 'not-applicable':
+                used.add(owner if owner in not_applicable else f'{owner}#{printed.split("(")[0]}')
+    unused = sorted(set(not_applicable) - used)
     if unused:
         print('# not-applicable.txt names types with nothing absent (remove them): ' + ', '.join(unused), file=sys.stderr)
 

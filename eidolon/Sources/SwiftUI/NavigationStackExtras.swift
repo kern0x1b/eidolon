@@ -1,7 +1,7 @@
 import UIKit
 import CoreGraphics
 
-public struct NavigationPath {
+public struct NavigationPath: Equatable {
     var items: [AnyHashable] = []
     public init() {}
     public init<S: Sequence>(_ elements: S) where S.Element: Hashable {
@@ -30,6 +30,7 @@ final class NavigationDestinationNode: Node {
         let modifier = m.modifierValue as! NavigationDestinationModifier
         var inner = env
         inner.destinations[modifier.type] = modifier.build
+        env.stackState?.builders[modifier.type] = modifier.build
         child = adopt(reconcile(child, m.modifiedContent, inner))
     }
 

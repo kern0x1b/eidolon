@@ -53,8 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   contextual actions when the backports provide them (looked up at run time; stock iOS 6 keeps its Delete button). Checked
   against stand-in classes; not yet on a phone with the backports.
 - `bridge/not-applicable.txt`: the closed list of Apple's types that iOS 6 cannot have, each with its reason; the declaration diff counts them apart from the work still to do.
+- `NavigationStack` is a stack of its own: `NavigationStack(path:)` with a `NavigationPath` or a typed array,
+  `NavigationLink(value:)` adds to the path, `navigationDestination(for:)` shows the screen for a value, and the back
+  button removes it (before, it was `NavigationView` under another name).
+- `Alignment.topTrailing`/`.bottomLeading` and the baseline alignments, `Axis` as `CaseIterable`, `Font.monospaced()`,
+  `Picker(selection:label:content:)`, the closure forms of `NavigationLink`, `Section` and `GestureState` forms,
+  `Menu(primaryAction:)`.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, thirty-two rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, thirty-three rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed

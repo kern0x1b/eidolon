@@ -51,6 +51,7 @@ public struct EnvironmentValues {
     var disclosureGroupStyle: ((DisclosureGroupStyleConfiguration) -> any View)?
     var pickerPresentation = PickerPresentation.segmented
     var destinations: [ObjectIdentifier: (AnyHashable) -> any View] = [:]
+    var stackState: NavigationStackState?
     var lineSpacingOverride: CGFloat?
     var textBold = false
     var textItalic = false
@@ -63,7 +64,7 @@ public struct EnvironmentValues {
     func isSame(_ other: EnvironmentValues) -> Bool {
         fontValue === other.fontValue && foregroundColor === other.foregroundColor
             && textAlignment == other.textAlignment
-            && host === other.host && listStyleGrouped == other.listStyleGrouped
+            && host === other.host && listStyleGrouped == other.listStyleGrouped && stackState === other.stackState
             && objects.count == other.objects.count
             && objects.allSatisfy { key, value in other.objects[key] === value }
             && sameValues(values, other.values) && animation == other.animation

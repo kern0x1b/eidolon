@@ -924,4 +924,10 @@ extension View {
     public func onLongPressGesture(minimumDuration: Double = 0.5, maximumDistance: CGFloat = 10, pressing: ((Bool) -> Void)? = nil, perform action: @escaping () -> Void) -> some View {
         gesture(PressingLongPress(minimumDuration: minimumDuration, maximumDistance: maximumDistance, pressing: pressing ?? { _ in }).onEnded { _ in action() })
     }
+    @_disfavoredOverload
+    @available(*, deprecated, message: "use onLongPressGesture(minimumDuration:maximumDistance:pressing:perform:)")
+    public func onLongPressGesture(minimumDuration: Double = 0.5, maximumDistance: CGFloat = 10, perform action: @escaping () -> Void, onPressingChanged: ((Bool) -> Void)? = nil) -> some View {
+        onLongPressGesture(minimumDuration: minimumDuration, maximumDistance: maximumDistance, pressing: onPressingChanged, perform: action)
+    }
+
 }

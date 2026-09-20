@@ -74,3 +74,25 @@ struct ContactsView: View {
         }
     }
 }
+
+final class StackModel: ObservableObject { @Published var path: [Int] = [] }
+
+struct PathStackCase: View {
+    @ObservedObject var model: StackModel
+    var body: some View {
+        NavigationStack(path: $model.path) {
+            VStack {
+                NavigationLink("One", value: 1)
+                NavigationLink("Two", value: 2)
+            }
+            .navigationTitle("Root")
+            .navigationDestination(for: Int.self) { number in
+                VStack {
+                    Text("Detail \(number)")
+                    NavigationLink("Deeper", value: number + 10)
+                }
+                .navigationTitle("Detail \(number)")
+            }
+        }
+    }
+}

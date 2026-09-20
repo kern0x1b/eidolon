@@ -53,3 +53,21 @@ StrikethroughStyleAttribute	AttributedString is not in the Foundation of iOS 6
 UIHostingConfiguration	UIContentConfiguration came with iOS 14
 SymbolVariants	there are no SF Symbols on iOS 6; a built-in set of glyphs is drawn instead
 SharePreview	Transferable previews came with iOS 16
+# Members of View, told apart from the types above by Type#name
+View#accessibilityCustomContent	custom accessibility content came with iOS 14
+View#accessibilityRotor	VoiceOver rotors came with iOS 10
+View#accessibilityShowsLargeContentViewer	the large content viewer came with iOS 13
+View#draggable	drag and drop came with iOS 11
+View#onDrag	drag and drop came with iOS 11
+View#dropDestination	drag and drop came with iOS 11
+View#fileExporter	file pickers need UTType and the document picker of iOS 8
+View#fileImporter	file pickers need UTType and the document picker of iOS 8
+View#fileMover	file pickers need UTType and the document picker of iOS 8
+View#navigationDocument	document apps need scenes and UTType, which iOS 6 does not have
+View#presentationDetents	sheet detents came with iOS 15
+View#presentationBackground	sheet detents and their backgrounds came with iOS 16.4
+View#presentationCompactAdaptation	popover adaptation came with iOS 16.4
+View#scenePadding	scene padding is for watchOS
+View#userActivity	NSUserActivity came with iOS 8
+View#contextMenu	context menu previews and selection menus came with iOS 13 and 16
+View#keyboardShortcut	shortcuts of a hardware keyboard came with iOS 13.4

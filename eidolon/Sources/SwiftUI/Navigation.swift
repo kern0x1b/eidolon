@@ -9,8 +9,6 @@ public struct NavigationView<Content: View>: View, PrimitiveView {
     func makeNode(_ env: EnvironmentValues) -> Node { let n = NavigationNode(); n.update(self, env); return n }
 }
 
-public typealias NavigationStack = NavigationView
-
 protocol NavigationViewLike { var navigationContent: any View { get } }
 extension NavigationView: NavigationViewLike { var navigationContent: any View { content } }
 
@@ -77,7 +75,9 @@ final class NavigationLinkNode: ContainerNode {
         let l = view as! NavigationLinkLike
         destination = l.linkDestination
         active = l.linkActive
-        content = adopt(reconcile(content, l.linkLabel, env))
+        // outside a list a link is tinted like a button
+        let accent = Color(env.foregroundColor ?? env.tint ?? UIColor(red: 0.2, green: 0.45, blue: 0.85, alpha: 1))
+        content = adopt(reconcile(content, env.list == nil ? AnyView(l.linkLabel).foregroundColor(accent) : l.linkLabel, env))
         if env.list == nil && !tapInstalled {
             tapInstalled = true
             tapTarget.action = { [weak self] in self?.activate() }
@@ -103,6 +103,10 @@ final class NavigationLinkNode: ContainerNode {
     }
 
     func activate() {
+        if let valued = destination as? _ValueDestination, let value = valued.value, let state = env.stackState {
+            state.append(value)
+            return
+        }
         guard pushed == nil, let destination, let controller = pushDestination(destination, from: env) else { return }
         pushed = controller
         active?.wrappedValue = true
@@ -113,7 +117,10 @@ final class NavigationLinkNode: ContainerNode {
         }
     }
     override func computeSize(_ p: ProposedSize) -> CGSize {
-        StackMeasure.vertical(children, p)
+        let size = StackMeasure.vertical(children, p)
+        guard env.list == nil else { return size }
+        let width = children.map { $0.sizeThatFits(ProposedSize(width: p.width, height: nil)).width }.max() ?? size.width
+        return CGSize(width: min(width, p.width ?? width), height: size.height)
     }
     override func layoutContents(_ size: CGSize) {
         var y: CGFloat = 0

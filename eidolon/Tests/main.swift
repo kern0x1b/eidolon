@@ -2292,6 +2292,14 @@ check(alphas(_Probe(Color.red.frame(width: 20, height: 20).disabled(true), width
 check(!alphas(_Probe(Color.red.frame(width: 20, height: 20).allowsHitTesting(false), width: 50, height: 50)).contains { abs($0 - 0.4) < 0.01 }, "a view that ignores touches is not")
 check(!alphas(_Probe(Color.red.frame(width: 20, height: 20).disabled(false), width: 50, height: 50)).contains { abs($0 - 0.4) < 0.01 }, "and one that is enabled is not")
 
+// alignments and enums that apps name
+let cornerProbe = _Probe(ZStack(alignment: .topTrailing) { Color.red.frame(width: 50, height: 50); Color.blue.frame(width: 10, height: 10) }, width: 50, height: 50)
+check(frames(cornerProbe).contains { $0.origin == CGPoint(x: 40, y: 0) && $0.size == CGSize(width: 10, height: 10) }, "topTrailing puts a view in the top right corner")
+let cornerProbe2 = _Probe(ZStack(alignment: .bottomLeading) { Color.red.frame(width: 50, height: 50); Color.blue.frame(width: 10, height: 10) }, width: 50, height: 50)
+check(frames(cornerProbe2).contains { $0.origin == CGPoint(x: 0, y: 40) && $0.size == CGSize(width: 10, height: 10) }, "bottomLeading puts one in the bottom left")
+equal(Axis.allCases.count, 2, "Axis lists its cases")
+equal(Axis(rawValue: 1) ?? .horizontal, .vertical, "and is made from its raw value")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

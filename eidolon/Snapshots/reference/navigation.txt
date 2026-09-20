@@ -3,9 +3,9 @@ _HostRootView (0,0,320,300)
     UINavigationTransitionView (0,0,320,300)
       UIViewControllerWrapperView (-320,44,320,256)
         _HostRootView (0,0,320,256)
-          UIView (0,118,320,21)
-            UIView (0,0,320,21)
-              UILabel (0,0,320,21) "Go"
+          UIView (149,118,23,21)
+            UIView (0,0,23,21)
+              UILabel (0,0,23,21) "Go"
       UIViewControllerWrapperView (0,44,320,256)
         _HostRootView (0,0,320,256)
           UILabel (110,118,101,21) "Pushed page"
