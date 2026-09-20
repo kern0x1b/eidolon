@@ -2,6 +2,7 @@ import UIKit
 import CoreGraphics
 #if !REV_NO_FIELD_REFLECTION
 @_spi(Reflection) import Swift
+import Observation
 #endif
 
 public struct EnvironmentValues {
@@ -200,12 +201,27 @@ final class CompositeNode: Node {
         let installed = installProperties(view, self)
         bodyCount += 1
         renderedInFlush = Updates.flushCount
-        let body = (installed as? EnvironmentalBody)?.environmentalBody(env) ?? evaluateBody(installed)
+        let body = (installed as? EnvironmentalBody)?.environmentalBody(env) ?? trackedBody(installed)
         child = adopt(reconcile(child, body, env))
 
     }
     override func mountContents() { child?.mount() }
     func invalidate() { Updates.schedule(self) }
+
+    // What body reads from an @Observable object is what this node depends on: the first change to any of it re-renders the node.
+    nonisolated(unsafe) static var tracksObservation = true
+
+    func trackedBody<V: View>(_ view: V) -> any View {
+#if REV_NO_FIELD_REFLECTION
+        return evaluateBody(view)
+#else
+        guard Self.tracksObservation else { return evaluateBody(view) }
+        return withObservationTracking({ evaluateBody(view) }, onChange: { [weak self] in
+            guard let self, !self.disposed else { return }
+            if Thread.isMainThread { self.invalidate() } else { DispatchQueue.main.async { self.invalidate() } }
+        })
+#endif
+    }
 
 }
 
@@ -230,8 +246,9 @@ func installProperties<V: View>(_ view: V, _ node: CompositeNode) -> any View {
     return view
 #else
     var copy = view
+    let sample: Any? = FieldReflection.trusted ? nil : view
     withUnsafeMutableBytes(of: &copy) { raw in
-        installFields(V.self, raw.baseAddress!, node, 0)
+        installFields(V.self, raw.baseAddress!, node, 0, sample)
     }
     return copy
 #endif
@@ -248,35 +265,108 @@ struct PropertyField {
 
 nonisolated(unsafe) var propertyFieldCache: [ObjectIdentifier: [PropertyField]] = [:]
 
-func propertyFields(_ type: Any.Type) -> [PropertyField] {
+func classifyField(_ fieldType: Any.Type, _ offset: Int) -> PropertyField? {
+    if let installer = fieldType as? DynamicPropertyInstaller.Type {
+        return PropertyField(offset: offset, type: fieldType, kind: .installer(installer))
+    } else if let dynamic = fieldType as? DynamicProperty.Type {
+        return PropertyField(offset: offset, type: fieldType, kind: .dynamic(dynamic))
+    } else if fieldType is any ViewModifier.Type {
+        return PropertyField(offset: offset, type: fieldType, kind: .modifier)
+    }
+    return nil
+}
+
+func propertyFields(_ type: Any.Type, sample: Any? = nil) -> [PropertyField] {
     if let cached = propertyFieldCache[ObjectIdentifier(type)] { return cached }
-    var fields: [PropertyField] = []
-    _ = _forEachField(of: type) { _, offset, fieldType, _ in
-        if let installer = fieldType as? DynamicPropertyInstaller.Type {
-            fields.append(PropertyField(offset: offset, type: fieldType, kind: .installer(installer)))
-        } else if let dynamic = fieldType as? DynamicProperty.Type {
-            fields.append(PropertyField(offset: offset, type: fieldType, kind: .dynamic(dynamic)))
-        } else if fieldType is any ViewModifier.Type {
-            fields.append(PropertyField(offset: offset, type: fieldType, kind: .modifier))
-        }
-        return true
+    let fields: [PropertyField]
+    if FieldReflection.trusted {
+        fields = runtimeFields(type)
+    } else if let sample {
+        fields = FieldReflection.mirrorFields(sample, of: type)
+    } else {
+        fatalError("Eidolon: the runtime's field reflection failed its self-check and there is no value to read the fields of \(type) from")
     }
     propertyFieldCache[ObjectIdentifier(type)] = fields
     return fields
 }
 
-func installFields(_ type: Any.Type, _ base: UnsafeMutableRawPointer, _ node: CompositeNode, _ keyBase: Int) {
-    for field in propertyFields(type) {
+func runtimeFields(_ type: Any.Type) -> [PropertyField] {
+    var fields: [PropertyField] = []
+    _ = _forEachField(of: type) { _, offset, fieldType, _ in
+        if let field = classifyField(fieldType, offset) { fields.append(field) }
+        return true
+    }
+    return fields
+}
+
+// The fields of a view are found by the runtime's own reflection entry points, which carry no promise of stability.
+// They are checked once against Swift's layout rules; if they disagree, the offsets are read from the struct's type
+// metadata (whose field offset vector is part of Swift's ABI) and the types from a Mirror of the value. A type that
+// cannot be read that way stops the app with a message, rather than being written to at a wrong offset.
+enum FieldReflection {
+    private struct Sample { var flag: UInt8; var number: Int; var real: Double; var pair: (UInt8, Int16); var text: String }
+
+    nonisolated(unsafe) static var forceMirror = false {
+        didSet { trusted = !forceMirror && selfCheck(); propertyFieldCache = [:] }
+    }
+    nonisolated(unsafe) static var trusted: Bool = selfCheck()
+
+    static func selfCheck() -> Bool {
+        var seen: [(Int, Any.Type)] = []
+        _ = _forEachField(of: Sample.self) { _, offset, type, _ in seen.append((offset, type)); return true }
+        let expected: [(Int?, Any.Type)] = [
+            (MemoryLayout<Sample>.offset(of: \Sample.flag), UInt8.self), (MemoryLayout<Sample>.offset(of: \Sample.number), Int.self),
+            (MemoryLayout<Sample>.offset(of: \Sample.real), Double.self), (MemoryLayout<Sample>.offset(of: \Sample.pair), (UInt8, Int16).self),
+            (MemoryLayout<Sample>.offset(of: \Sample.text), String.self),
+        ]
+        guard seen.count == expected.count, zip(seen, expected).allSatisfy({ $0.0 == $1.0 && $0.1 == $1.1 }) else { return false }
+        return metadataOffsets(Sample.self) == expected.compactMap { $0.0 }
+    }
+
+    // A struct's metadata is its kind, its descriptor, then (at a word offset the descriptor names) a vector of 32-bit offsets.
+    static func metadataOffsets(_ type: Any.Type) -> [Int]? {
+        let word = MemoryLayout<Int>.size
+        let metadata = unsafeBitCast(type, to: UnsafeRawPointer.self)
+        guard metadata.load(as: Int.self) == 0x200 else { return nil }
+        let descriptor = metadata.load(fromByteOffset: word, as: UnsafeRawPointer.self)
+        let count = Int(descriptor.load(fromByteOffset: 20, as: UInt32.self))
+        let vector = Int(descriptor.load(fromByteOffset: 24, as: UInt32.self))
+        return (0..<count).map { Int(metadata.load(fromByteOffset: vector * word + $0 * 4, as: UInt32.self)) }
+    }
+
+    static func mirrorFields(_ sample: Any, of type: Any.Type) -> [PropertyField] {
+        guard let offsets = metadataOffsets(type), offsets.count == Mirror(reflecting: sample).children.count else {
+            fatalError("Eidolon: cannot find the fields of \(type) without the runtime's field reflection")
+        }
+        var fields: [PropertyField] = []
+        for (child, offset) in zip(Mirror(reflecting: sample).children, offsets) {
+            if let field = classifyField(Swift.type(of: child.value), offset) { fields.append(field) }
+        }
+        return fields
+    }
+}
+
+func installFields(_ type: Any.Type, _ base: UnsafeMutableRawPointer, _ node: CompositeNode, _ keyBase: Int, _ sample: Any? = nil) {
+    for field in propertyFields(type, sample: sample) {
+        // a nested value is read from the same sample by its own Mirror only when the fallback is on
+        let nested: Any? = sample == nil ? nil : childValue(of: sample!, at: field.offset, type: type)
         switch field.kind {
         case .installer(let installer):
             installer.install(base + field.offset, node, keyBase + field.offset)
         case .dynamic(let dynamic):
-            installFields(field.type, base + field.offset, node, keyBase + field.offset)
+            installFields(field.type, base + field.offset, node, keyBase + field.offset, nested)
             updateDynamic(dynamic, base + field.offset)
         case .modifier:
-            installFields(field.type, base + field.offset, node, keyBase + field.offset)
+            installFields(field.type, base + field.offset, node, keyBase + field.offset, nested)
         }
     }
+}
+
+// The value of the field that starts at `offset`, found in a Mirror of the sample by the same offsets.
+func childValue(of sample: Any, at offset: Int, type: Any.Type) -> Any? {
+    guard let offsets = FieldReflection.metadataOffsets(type) else { return nil }
+    for (child, position) in zip(Mirror(reflecting: sample).children, offsets) where position == offset { return child.value }
+    return nil
 }
 
 func updateDynamic<T: DynamicProperty>(_ type: T.Type, _ pointer: UnsafeMutableRawPointer) {

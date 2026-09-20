@@ -7,7 +7,8 @@ struct MatchedKey: Hashable {
 }
 
 enum MatchedFrames {
-    nonisolated(unsafe) static var last: [MatchedKey: (frame: CGRect, owner: ObjectIdentifier)] = [:]
+    nonisolated(unsafe) static var last: [MatchedKey: (frame: CGRect, owner: Int)] = [:]
+    nonisolated(unsafe) static var nextOwner = 0
 }
 
 struct MatchedGeometryModifier: NodeModifier {
@@ -21,6 +22,8 @@ final class MatchedGeometryNode: ContainerNode {
     var isSource = true
     var from: CGRect?
     var placedOnce = false
+    // not ObjectIdentifier: a node that has gone can leave its address to the next one, which would then look like the same owner
+    let owner: Int = { MatchedFrames.nextOwner += 1; return MatchedFrames.nextOwner }()
 
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)
@@ -30,7 +33,7 @@ final class MatchedGeometryNode: ContainerNode {
         isSource = modifier.isSource
         content = adopt(reconcile(content, m.modifiedContent, env))
         if !placedOnce, Updates.animationForFlush != nil, let recorded = MatchedFrames.last[modifier.key],
-           recorded.owner != ObjectIdentifier(self) {
+           recorded.owner != owner {
             from = recorded.frame
         }
     }
@@ -52,7 +55,7 @@ final class MatchedGeometryNode: ContainerNode {
             children.first?.place(CGRect(x: 0, y: 0, width: size.width, height: size.height))
         }
         if isSource, let key {
-            MatchedFrames.last[key] = (uiView.convert(uiView.bounds, to: topmost(uiView)), ObjectIdentifier(self))
+            MatchedFrames.last[key] = (uiView.convert(uiView.bounds, to: topmost(uiView)), owner)
         }
     }
 }

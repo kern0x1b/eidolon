@@ -69,6 +69,28 @@ public final class _Probe {
     public var gestureCount: Int { gestureNodes.count }
 
     // The animations of shapes and effects are driven by a display link; a test drives them with a clock of its own.
+    // The fallback that finds a view's fields by Mirror, checked against the runtime's own reflection on the same value.
+    public static func useMirrorReflection(_ on: Bool) {
+#if !REV_NO_FIELD_REFLECTION
+        FieldReflection.forceMirror = on
+#endif
+    }
+
+    public static func mirrorReflectionAgrees<V: View>(_ view: V) -> Bool {
+#if REV_NO_FIELD_REFLECTION
+        return true
+#else
+        let fast = runtimeFields(V.self), slow = FieldReflection.mirrorFields(view, of: V.self)
+        return fast.count == slow.count && zip(fast, slow).allSatisfy { $0.offset == $1.offset && $0.type == $1.type }
+#endif
+    }
+
+    public static func observationTracking(_ on: Bool) {
+#if !REV_NO_FIELD_REFLECTION
+        CompositeNode.tracksObservation = on
+#endif
+    }
+
     public static func useVirtualClock() {
         ValueAnimator.manual = true
         ValueAnimator.clock = { 0 }

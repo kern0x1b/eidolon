@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `EditButton` works in a toolbar and follows the screen's editing state (UIKit's own `editButtonItem`), and `\.editMode`
   is honoured by lists.
 - `DatePicker` shows its label, takes `in:` ranges and all of Apple's initialisers.
+- `@Observable` models (Observation): a view is re-rendered when what its `body` read changes, and not otherwise;
+  `Bindable`, `@Environment(Model.self)` and `.environment(model)`. Tracking costs under 1% of a body evaluation.
+- The field reflection that finds `@State` and friends in a view checks itself once; if the runtime's entry points ever
+  disagree with Swift's layout it falls back to the struct's type metadata and a Mirror, and the whole suite passes in
+  that mode too.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
 - The engine tests, twenty-four rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
@@ -46,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - A `Button` whose label is not a single `Text` (an icon, a `Label`, a stack) drew an empty rounded rectangle and dropped
   its label; it now draws the label, dimmed while pressed.
 - `Image(_:scale:orientation:label:)` dropped its label.
+- `matchedGeometryEffect` sometimes did not animate: it told nodes apart by address, which a new node can reuse.
 - `.tabItem { Label(…) }` lost its title; an adaptive `LazyVGrid` column was one track; `aspectRatio` with one side
   proposed took the child's own shape; a disabled toolbar `Button` was drawn with button chrome; `EditButton` in a
   toolbar did nothing.

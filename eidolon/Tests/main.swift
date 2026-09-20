@@ -2,10 +2,13 @@ import SwiftUI
 import CoreData
 import UIKit
 import Foundation
+import Observation
 
 setvbuf(stdout, nil, _IONBF, 0)
 var failures = 0
 var checks = 0
+let mirrorAll = FileManager.default.fileExists(atPath: (CommandLine.arguments[0] as NSString).deletingLastPathComponent + "/mirror")
+if mirrorAll { _Probe.useMirrorReflection(true) }
 let traceChecks = FileManager.default.fileExists(atPath: (CommandLine.arguments[0] as NSString).deletingLastPathComponent + "/trace")
 
 func check(_ condition: Bool, _ what: String, _ detail: @autoclosure () -> String = "") {
@@ -2132,6 +2135,49 @@ let tileFrames = frames(adaptiveProbe)
 equal(tileFrames.count, 5, "an adaptive grid shows every tile")
 equal(Set(tileFrames.map { $0.origin.x }).count, 2, "in two columns, since two 30-point tiles and their gap fit in 100")
 equal(tileFrames.first?.size ?? .zero, CGSize(width: 45, height: 45), "each as wide as its share of the room")
+
+final class TaskStore0: ObservableObject { @Published var n = 0 }
+let taskStore0 = TaskStore0()
+struct TaskLikeCase: View { @ObservedObject var store: TaskStore0; @State var local = 1; var body: some View { Color.red.frame(width: 5, height: 5) } }
+// @Observable models: a view that reads one is re-rendered when what it read changes, and only then
+@Observable final class TallyModel { var count = 0; var other = 0 }
+struct ObservedCase: View {
+    let tally: TallyModel
+    var body: some View { Color.red.frame(width: CGFloat(10 + tally.count), height: 10) }
+}
+let tally = TallyModel()
+let observed = _Probe(ObservedCase(tally: tally), width: 100, height: 50)
+equal(frames(observed).first?.width ?? 0, 10, "a view of an @Observable model shows it")
+let evaluationsBefore = observed.bodyEvaluations
+tally.count = 20
+observed.flush()
+equal(frames(observed).first?.width ?? 0, 30, "and follows a change of what it read")
+tally.other = 5
+observed.flush()
+equal(observed.bodyEvaluations, evaluationsBefore + 1, "but not a change of what it did not read")
+struct EnvironmentObservedCase: View {
+    @Environment(TallyModel.self) var model: TallyModel?
+    var body: some View { Color.blue.frame(width: CGFloat(10 + (model?.count ?? 0)), height: 10) }
+}
+let environmentTallyModel = TallyModel()
+environmentTallyModel.count = 7
+let environmentProbe = _Probe(EnvironmentObservedCase().environment(environmentTallyModel), width: 100, height: 50)
+equal(frames(environmentProbe).first?.width ?? 0, 17, "an @Observable model comes from the environment by its type")
+let bindable = Bindable(wrappedValue: tally)
+bindable.count.wrappedValue = 3
+equal(tally.count, 3, "a Bindable makes a binding to a property of the model")
+
+// the Mirror fallback of the field reflection agrees with the runtime's own on real views
+check(_Probe.mirrorReflectionAgrees(Counter()), "the fallback finds the fields of a stateful view where the runtime does")
+check(_Probe.mirrorReflectionAgrees(ObservedCase(tally: tally)), "and of a view with a model")
+check(_Probe.mirrorReflectionAgrees(EnvironmentReader()), "and of one that reads the environment")
+check(_Probe.mirrorReflectionAgrees(TaskLikeCase(store: taskStore0)), "and of one that holds an observed object")
+check(_Probe.mirrorReflectionAgrees(CounterCase()), "and of one with a property wrapper that holds a state")
+_Probe.useMirrorReflection(true)
+let mirrored = _Probe(Counter(), width: 200, height: 100)
+mirrored.flush()
+check(!frames(mirrored).isEmpty, "a stateful view still renders with the fallback on")
+_Probe.useMirrorReflection(mirrorAll)
 
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {

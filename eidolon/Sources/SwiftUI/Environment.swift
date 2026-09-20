@@ -15,16 +15,17 @@ extension EnvironmentValues {
 
 @propertyWrapper
 public struct Environment<Value>: DynamicProperty, DynamicPropertyInstaller {
-    let keyPath: KeyPath<EnvironmentValues, Value>
+    let read: (EnvironmentValues) -> Value
     var resolved: Value?
-    public init(_ keyPath: KeyPath<EnvironmentValues, Value>) { self.keyPath = keyPath }
+    public init(_ keyPath: KeyPath<EnvironmentValues, Value>) { read = { $0[keyPath: keyPath] } }
+    init(read: @escaping (EnvironmentValues) -> Value) { self.read = read }
     public var wrappedValue: Value {
         if let resolved { return resolved }
-        return EnvironmentValues()[keyPath: keyPath]
+        return read(EnvironmentValues())
     }
     static func install(_ pointer: UnsafeMutableRawPointer, _ node: CompositeNode, _ key: Int) {
         let p = pointer.assumingMemoryBound(to: Environment<Value>.self)
-        p.pointee.resolved = node.env[keyPath: p.pointee.keyPath]
+        p.pointee.resolved = p.pointee.read(node.env)
     }
 }
 
