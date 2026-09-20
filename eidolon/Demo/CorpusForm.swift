@@ -96,3 +96,20 @@ struct PathStackCase: View {
         }
     }
 }
+
+struct FilterToken: Identifiable, Hashable { let id: String; var name: String { id } }
+
+struct TokenSearchCase: View {
+    @State private var query = ""
+    @State private var tokens = [FilterToken(id: "Unread"), FilterToken(id: "Starred")]
+    @State private var suggested = [FilterToken(id: "Today"), FilterToken(id: "Mine")]
+    var body: some View {
+        NavigationView {
+            List(1...6, id: \.self) { Text("Message \($0)") }
+                .navigationTitle("Mail")
+                .searchable(text: $query, tokens: $tokens, suggestedTokens: $suggested, prompt: "Search") { token in
+                    Text(token.name).font(.caption)
+                }
+        }
+    }
+}

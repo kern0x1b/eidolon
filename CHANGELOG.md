@@ -59,8 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `Alignment.topTrailing`/`.bottomLeading` and the baseline alignments, `Axis` as `CaseIterable`, `Font.monospaced()`,
   `Picker(selection:label:content:)`, the closure forms of `NavigationLink`, `Section` and `GestureState` forms,
   `Menu(primaryAction:)`.
+- `searchable(text:tokens:suggestedTokens:)`: tokens are a row of chips with a cross above the search field, suggested ones show while searching and a tap moves one into the tokens.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, thirty-three rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, thirty-four rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed
