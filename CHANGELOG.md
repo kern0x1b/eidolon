@@ -63,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `Image(_:scale:orientation:label:)` dropped its label.
 - A toolbar on a `ScrollView` (or any view that does not mount itself) left the content unmounted.
 - A `Text` beside a `Spacer` was offered half the room and wrapped; a search field had no default prompt.
+- A disabled view was not dimmed.
 - `matchedGeometryEffect` sometimes did not animate: it told nodes apart by address, which a new node can reuse.
 - `.tabItem { Label(…) }` lost its title; an adaptive `LazyVGrid` column was one track; `aspectRatio` with one side
   proposed took the child's own shape; a disabled toolbar `Button` was drawn with button chrome; `EditButton` in a

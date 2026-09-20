@@ -2281,6 +2281,17 @@ if let leading = bridgeProbe.swipeConfiguration(row: 1, leading: true) as? Stand
 } else { check(false, "the table answers a leading swipe with a configuration") }
 check(bridgeProbe.swipeConfiguration(row: 2, leading: false) == nil, "a row without swipe actions gets none")
 
+// .disabled dims what it covers and stops touches; .allowsHitTesting stops touches only
+func alphas(_ probe: _Probe) -> [CGFloat] {
+    var found: [CGFloat] = []
+    func walk(_ v: UIView) { found.append(v.alpha); v.subviews.forEach(walk) }
+    probe.hostView.subviews.forEach(walk)
+    return found
+}
+check(alphas(_Probe(Color.red.frame(width: 20, height: 20).disabled(true), width: 50, height: 50)).contains { abs($0 - 0.4) < 0.01 }, "a disabled view is dimmed")
+check(!alphas(_Probe(Color.red.frame(width: 20, height: 20).allowsHitTesting(false), width: 50, height: 50)).contains { abs($0 - 0.4) < 0.01 }, "a view that ignores touches is not")
+check(!alphas(_Probe(Color.red.frame(width: 20, height: 20).disabled(false), width: 50, height: 50)).contains { abs($0 - 0.4) < 0.01 }, "and one that is enabled is not")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

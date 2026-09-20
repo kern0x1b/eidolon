@@ -17,6 +17,7 @@ struct VisualEffect {
     var scale = CGSize(width: 1, height: 1)
     var scaleAnchor = UnitPoint.center
     var interaction: Bool?
+    var dimmed = false   // .disabled dims what it covers; .allowsHitTesting does not
 
     // an effect that only turns touches on or off, which is all .disabled and .allowsHitTesting say
     var onlyInteraction: Bool {
@@ -39,7 +40,7 @@ final class EffectNode: ContainerNode {
         effect = (m.modifierValue as! EffectModifier).effect
         content = adopt(reconcile(content, m.modifiedContent, env))
         let layer = uiView.layer
-        uiView.alpha = effect.opacity ?? 1
+        uiView.alpha = (effect.opacity ?? 1) * (effect.dimmed ? 0.4 : 1)
         uiView.isHidden = effect.hidden
         layer.cornerRadius = effect.cornerRadius ?? 0
         layer.borderWidth = effect.borderWidth
@@ -148,7 +149,7 @@ extension View {
     public func cornerRadius(_ radius: CGFloat, antialiased: Bool = true) -> some View { effect { $0.cornerRadius = radius } }
     public func clipped(antialiased: Bool = false) -> some View { effect { $0.clips = true } }
     public func hidden() -> some View { effect { $0.hidden = true } }
-    public func disabled(_ disabled: Bool) -> some View { effect { $0.interaction = !disabled } }
+    public func disabled(_ disabled: Bool) -> some View { effect { $0.interaction = !disabled; $0.dimmed = disabled } }
     public func allowsHitTesting(_ enabled: Bool) -> some View { effect { $0.interaction = enabled } }
     public func offset(_ size: CGSize) -> some View { effect { $0.offset = size } }
     public func offset(x: CGFloat = 0, y: CGFloat = 0) -> some View { effect { $0.offset = CGSize(width: x, height: y) } }
