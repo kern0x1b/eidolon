@@ -61,6 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `Menu(primaryAction:)`.
 - `searchable(text:tokens:suggestedTokens:)`: tokens are a row of chips with a cross above the search field, suggested ones show while searching and a tap moves one into the tokens.
 - `device-shots.sh`, `device-crash.py`: install the demo on a phone, render scenarios there, fetch pictures (also of the live screen) and read crash reports; `docs/device/` holds pictures from an iPhone 4S.
+- The demo can be given real touches on a phone (`--gesture`, the helper of the backports' device tests), links the phone's
+  backports library when `BACKPORTS_LIBS` names it, and `List` asks the backports' swipe facade to attach to its table.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
 - The engine tests, thirty-four rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.

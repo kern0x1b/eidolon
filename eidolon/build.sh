@@ -10,7 +10,8 @@ rm -rf $O/obj $O/mods; mkdir -p $O/obj $O/mods
 $SWIFTC $SWFLAGS -parse-as-library -wmo -module-name SwiftUI -emit-module -emit-module-path $O/mods/SwiftUI.swiftmodule \
   -c Sources/SwiftUI/*.swift -o $O/obj/SwiftUI.o
 echo "built SwiftUI"
-$SWIFTC $SWFLAGS -parse-as-library -wmo -module-name EidolonDemo -I $O/mods -c Demo/*.swift -o $O/obj/EidolonDemo.o
+$LLVM/bin/clang -target armv7-apple-ios -miphoneos-version-min=6.0 -isysroot $SDK -fobjc-arc -Wno-deprecated-declarations -c Demo/device/gesture.m -o $O/obj/gesture.o
+$SWIFTC $SWFLAGS -parse-as-library -wmo -module-name EidolonDemo -I $O/mods -import-objc-header Demo/device/bridge.h -c Demo/*.swift -o $O/obj/EidolonDemo.o
 echo "built Demo"
 $SWIFTC $SWFLAGS -disable-availability-checking -wmo -module-name EidolonTests -I $O/mods -c Tests/*.swift -o $O/obj/EidolonTests.o
 echo "built Tests"
@@ -20,10 +21,12 @@ A=$O/EidolonDemo.app; rm -rf $A; mkdir -p $A
 bundle_runtime $A
 link() {
   $LLVM/bin/clang -target armv7-apple-ios -miphoneos-version-min=6.0 -isysroot $SDK -mlinker-version=956.6 -fuse-ld=$LD -o $A/$1 \
-    $O/obj/$1.o $O/obj/SwiftUI.o $PKGLINK $OCLINK \
-    -lobjc -framework Foundation -framework CoreFoundation -framework UIKit -framework CoreGraphics -framework QuartzCore -framework CoreData
+    $O/obj/$1.o $O/obj/SwiftUI.o $2 $PKGLINK $OCLINK \
+    ${3:-} -lobjc -framework Foundation -framework CoreFoundation -framework UIKit -framework CoreGraphics -framework QuartzCore -framework CoreData
 }
-link EidolonDemo; link EidolonProbe; link EidolonTests
+# BACKPORTS_LIBS names a directory with the phone's libUIKitBackports and libFoundationBackports: the demo then weak-links them, so a phone that has the backports gives it their swipe actions and one that has not runs without
+BACKPORTS=""; [ -n "${BACKPORTS_LIBS:-}" ] && BACKPORTS="-L$BACKPORTS_LIBS ${BACKPORTS_LINK:--weak-lUIKitBackports -weak-lFoundationBackports}"
+link EidolonDemo $O/obj/gesture.o "$BACKPORTS"; link EidolonProbe; link EidolonTests
 for f in EidolonDemo EidolonProbe EidolonTests; do relink_runtime $A/$f; done
 cat > $A/Info.plist <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

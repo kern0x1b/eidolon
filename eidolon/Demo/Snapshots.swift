@@ -444,6 +444,7 @@ func snapshotCases() -> [SnapshotCase] {
                      },
                      note: { "path \(stackModel.path)" }),
         SnapshotCase(name: "app-tokens", width: 320, height: 400, view: TokenSearchCase(), inWindow: true),
+        SnapshotCase(name: "swipe-real", width: 320, height: 300, view: SwipeRealCase(), inWindow: true),
         SnapshotCase(name: "reserve", width: 200, height: 120, view: VStack { Text("One line").lineLimit(3, reservesSpace: true) }),
         SnapshotCase(name: "search", width: 320, height: 200, view: SearchCase()),
         SnapshotCase(name: "split", width: 320, height: 300, view: SplitCase(), inWindow: true, action: { $0.selectRow(1) }),

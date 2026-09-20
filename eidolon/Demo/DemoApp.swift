@@ -139,14 +139,41 @@ struct ContentView: View {
     }
 }
 
+func loadBackports() {
+    probe("backports: UISwipeActionsConfiguration \(NSClassFromString("UISwipeActionsConfiguration") != nil ? "present" : "absent")")
+}
+
+// /var/charon/gesture names a scenario whose real touches are run once it is on screen (a phone only).
+func runDeviceGesture(_ name: String) {
+    probe("swipe bridge: \(_Probe.swipeBridgeState())")
+    probe("table recognisers: \(_Probe.tableRecognizers(in: UIApplication.shared.keyWindow ?? UIView()))")
+    guard gesture_ready() else { probe("gesture: no HID client"); return }
+    switch name {
+    case "swipe-real":
+        // a drag from the right edge to the left over the first row opens its trailing actions; a tap on the first action runs it
+        gesture_drag({ CGPoint(x: 300, y: 42) }, { CGPoint(x: 90, y: 42) }, 12, 0.6)
+        gesture_step(1.0) { probe("gesture: opened") }
+        gesture_tap({ CGPoint(x: 230, y: 42) }, 0.5)
+        gesture_step(0.5) { probe("gesture: log \(swipeLog) \(_Probe.swipeBridgeState())") }
+    default: break
+    }
+    gesture_run { probe("gesture: done") }
+}
+
 @main
 struct DemoApp: App {
+    init() { loadBackports() }
+
     var body: some Scene {
         WindowGroup {
             // /var/charon/show names a scenario to keep on screen, so that a picture of the real screen can be taken
             if let name = try? String(contentsOfFile: "/var/charon/show", encoding: .utf8),
                let scenario = snapshotCases().first(where: { $0.name == name.trimmingCharacters(in: .whitespacesAndNewlines) }) {
-                AnyView(scenario.view)
+                AnyView(scenario.view).onAppear {
+                    if let gesture = try? String(contentsOfFile: "/var/charon/gesture", encoding: .utf8) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { runDeviceGesture(gesture.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                    }
+                }
             } else {
                 ContentView()
             }

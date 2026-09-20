@@ -321,6 +321,9 @@ final class ListNode: LayoutNode {
         let table = uiView as! UITableView
         table.dataSource = controller
         table.delegate = controller
+        // the swipe actions of the backports attach when a delegate is set after their library loaded; asking again is harmless
+        let install = NSSelectorFromString("charon_installSwipeActions")
+        if table.responds(to: install) { table.perform(install) }
     }
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)

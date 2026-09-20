@@ -103,6 +103,39 @@ public final class _Probe {
         return delegate.perform(selector, with: table, with: IndexPath(row: row, section: 0) as NSIndexPath)?.takeUnretainedValue()
     }
 
+    // Where the hand-over of swipe actions stands, for a phone: are the classes there, and do they answer the factory selectors.
+    public static func swipeBridgeState() -> String {
+        let action = NSClassFromString("UIContextualAction") as? NSObject.Type
+        let configuration = NSClassFromString("UISwipeActionsConfiguration") as? NSObject.Type
+        let makeAction = NSSelectorFromString("contextualActionWithStyle:title:handler:")
+        let makeConfiguration = NSSelectorFromString("configurationWithActions:")
+        var image = "?"
+        var info = Dl_info()
+        if let method = class_getInstanceMethod(UITableView.self, NSSelectorFromString("setDelegate:")),
+           dladdr(unsafeBitCast(method_getImplementation(method), to: UnsafeRawPointer.self), &info) != 0, let name = info.dli_fname {
+            image = String(cString: name)
+        }
+        let installer = objc_getClass("CharonSwipeInstaller") != nil
+        let installs = UITableView.instancesRespond(to: NSSelectorFromString("charon_installSwipeActions"))
+        return "installerClass=\(installer) tableInstallMethod=\(installs) setDelegateIn=\(image) "
+            + "available=\(SwipeActionsBridge.available) action=\(action != nil) configuration=\(configuration != nil) "
+            + "controllerResponds=\(ListController.instancesRespond(to: NSSelectorFromString("tableView:trailingSwipeActionsConfigurationForRowAtIndexPath:"))) queries=\(ListController.swipeQueries) "
+            + "makeAction=\(action?.responds(to: makeAction) ?? false) makeConfiguration=\(configuration?.responds(to: makeConfiguration) ?? false)"
+    }
+
+    // The recognisers on every table in a window, for a phone: does the swipe facade of the backports show among them?
+    public static func tableRecognizers(in root: UIView) -> String {
+        var found: [String] = []
+        func walk(_ v: UIView) {
+            if let table = v as? UITableView {
+                found.append((table.gestureRecognizers ?? []).map { "\(type(of: $0))(delegate \($0.delegate.map { String(describing: type(of: $0)) } ?? "nil"))" }.joined(separator: ","))
+            }
+            v.subviews.forEach(walk)
+        }
+        walk(root)
+        return found.joined(separator: " | ")
+    }
+
     public static func useVirtualClock() {
         ValueAnimator.manual = true
         ValueAnimator.clock = { 0 }

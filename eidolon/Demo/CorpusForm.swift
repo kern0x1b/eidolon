@@ -113,3 +113,22 @@ struct TokenSearchCase: View {
         }
     }
 }
+
+nonisolated(unsafe) var swipeLog: [String] = []
+
+struct SwipeRealCase: View {
+    var body: some View {
+        List {
+            ForEach(1...5, id: \.self) { row in
+                Text("Row \(row)")
+                    .swipeActions(edge: .trailing) {
+                        Button("Archive") { swipeLog.append("archive \(row)"); probe("swipe: archive \(row)") }.tint(.blue)
+                        Button("Delete", role: .destructive) { swipeLog.append("delete \(row)"); probe("swipe: delete \(row)") }
+                    }
+                    .swipeActions(edge: .leading) {
+                        Button("Pin") { probe("swipe: pin \(row)") }.tint(.orange)
+                    }
+            }
+        }
+    }
+}

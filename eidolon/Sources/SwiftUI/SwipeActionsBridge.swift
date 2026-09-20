@@ -45,17 +45,20 @@ enum SwipeActionsBridge {
 // module cannot name, and the backports look for them by selector.
 extension ListController {
     nonisolated(unsafe) private static var registered = false
+    nonisolated(unsafe) static var swipeQueries: [String] = []
 
     static func registerSwipeActions() {
         guard !registered, SwipeActionsBridge.available else { return }
         registered = true
         typealias Method = @convention(block) (AnyObject, AnyObject, NSIndexPath) -> AnyObject?
         let trailing: Method = { controller, _, path in
+            ListController.swipeQueries.append("trailing \(path.row)")
             guard let controller = controller as? ListController, let row = controller.node?.row(at: path as IndexPath),
                   let buttons = row.traits.trailingSwipe else { return nil }
             return SwipeActionsBridge.configuration(for: buttons, fullSwipe: row.traits.trailingFullSwipe)
         }
         let leading: Method = { controller, _, path in
+            ListController.swipeQueries.append("leading \(path.row)")
             guard let controller = controller as? ListController, let row = controller.node?.row(at: path as IndexPath),
                   let buttons = row.traits.leadingSwipe else { return nil }
             return SwipeActionsBridge.configuration(for: buttons, fullSwipe: row.traits.leadingFullSwipe)
