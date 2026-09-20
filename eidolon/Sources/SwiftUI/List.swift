@@ -219,24 +219,31 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
         guard let node, let row = node.row(at: indexPath) else { return UITableViewCell(style: .default, reuseIdentifier: nil) }
         let cell = row.cell ?? UITableViewCell(style: .default, reuseIdentifier: nil)
         row.cell = cell
+        configure(cell, row, node)
+        row.mount()
+        if row.uiView.superview !== cell.contentView { cell.contentView.addSubview(row.uiView) }
+        return cell
+    }
+    func configure(_ cell: UITableViewCell, _ row: ListRow, _ node: ListNode) {
         cell.accessoryType = row.destination != nil ? .disclosureIndicator : .none
         cell.accessoryView = row.traits.badge.map(badgeView)
         cell.selectionStyle = row.destination != nil || node.selection != nil ? .blue : .none
         if let selection = node.selection, let tag = row.tag, node.env.splitStage == nil {
             cell.accessoryType = selection.current().contains(tag) ? .checkmark : cell.accessoryType
         }
-        row.mount()
-        if row.uiView.superview !== cell.contentView { cell.contentView.addSubview(row.uiView) }
-        return cell
     }
+
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         let minimum = node?.env.defaultMinListRowHeight ?? 44
         guard let node, let row = node.row(at: indexPath) else { return minimum }
         let width = tableView.bounds.size.width - node.insetWidth
-        return max(minimum, row.sizeThatFits(ProposedSize(width: width, height: nil)).height + 22)
+        let height = max(minimum, row.sizeThatFits(ProposedSize(width: width, height: nil)).height + 22)
+        node.measuredHeights[ObjectIdentifier(row)] = height
+        return height
     }
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         guard let node, let row = node.row(at: indexPath) else { return }
+        cell.layoutIfNeeded()
         let bounds = cell.contentView.bounds
         row.place(CGRect(x: bounds.origin.x + 10, y: bounds.origin.y, width: bounds.size.width - 20, height: bounds.size.height))
     }
@@ -279,6 +286,7 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
     }
 
     func tableView(_ tableView: UITableView, moveRowAt source: IndexPath, to destination: IndexPath) {
+        node?.movedByTable = true
         node?.editable?.moveAction?(IndexSet(integer: source.row), destination.row)
     }
 
@@ -354,12 +362,19 @@ final class ListNode: LayoutNode {
         return indexPath.row < rows.count ? rows[indexPath.row] : nil
     }
 
+    // Rows are matched by the node they show, so a row keeps its cell when the list around it changes, and what was
+    // inserted, removed or moved is animated by the table; anything structural beyond that reloads it.
+    var movedByTable = false
+    var measuredHeights: [ObjectIdentifier: CGFloat] = [:]
+
     func syncRows() {
         editable = firstEditable(content)
-        var reusable = rows
+        let table = uiView as! UITableView
+        let previousSections = sections
+        var byContent: [ObjectIdentifier: ListRow] = [:]
+        for row in rows { if let content = row.content { byContent[ObjectIdentifier(content)] = row } }
         func take(_ item: LayoutNode) -> ListRow {
-            let row = reusable.isEmpty ? ListRow() : reusable.removeFirst()
-            if row.content !== item { row.cell = nil }
+            let row = byContent.removeValue(forKey: ObjectIdentifier(item)) ?? ListRow()
             row.content = item
             row.destination = (item as? NavigationLinkNode)?.destination
             row.traits = rowTraits(item, upTo: self)
@@ -381,7 +396,38 @@ final class ListNode: LayoutNode {
         if !loose.isEmpty || groups.isEmpty { groups.append((nil, nil, loose)) }
         sections = groups
         rows = groups.flatMap { $0.rows }
-        (uiView as! UITableView).reloadData()
+
+        let sameSections = previousSections.count == groups.count
+            && zip(previousSections, groups).allSatisfy { $0.title == $1.title && $0.footer == $1.footer }
+        let hadRows = previousSections.contains { !$0.rows.isEmpty }
+        if movedByTable {
+            movedByTable = false
+            return
+        }
+        guard sameSections, hadRows, table.window != nil || table.superview != nil else {
+            table.reloadData()
+            return
+        }
+        var deletions: [IndexPath] = [], insertions: [IndexPath] = []
+        for (section, pair) in zip(previousSections, groups).enumerated() {
+            let change = ListRowDiff.between(pair.0.rows, pair.1.rows)
+            deletions += change.deleted.map { IndexPath(row: $0, section: section) }
+            insertions += change.inserted.map { IndexPath(row: $0, section: section) }
+            // a row that moved shows in a new cell, so that no cell is on the way out and the way in at once
+            for index in change.inserted where change.deleted.contains(where: { previousSections[section].rows[$0] === pair.1.rows[index] }) {
+                pair.1.rows[index].cell = nil
+            }
+        }
+        if deletions.isEmpty && insertions.isEmpty {
+            controller.refreshVisible(table, self)
+            return
+        }
+        let animation: UITableView.RowAnimation = UIView.areAnimationsEnabled ? .fade : .none
+        table.beginUpdates()
+        table.deleteRows(at: deletions, with: animation)
+        table.insertRows(at: insertions, with: animation)
+        table.endUpdates()
+        controller.refreshVisible(table, self)
     }
     func traitsChanged() {
         for row in rows { if let item = row.content { row.traits = rowTraits(item, upTo: self) } }
@@ -414,4 +460,42 @@ func rowTag(_ item: Node, upTo list: Node) -> AnyHashable? {
         current = node.parent
     }
     return nil
+}
+
+enum ListRowDiff {
+    // Rows in both lists that keep their order stay; the rest are deleted from the old list and inserted in the new one.
+    static func between(_ old: [ListRow], _ new: [ListRow]) -> (deleted: [Int], inserted: [Int]) {
+        var oldIndex: [ObjectIdentifier: Int] = [:]
+        for (index, row) in old.enumerated() { oldIndex[ObjectIdentifier(row)] = index }
+        var common: [(new: Int, old: Int)] = []
+        for (index, row) in new.enumerated() { if let before = oldIndex[ObjectIdentifier(row)] { common.append((index, before)) } }
+        // the longest run of common rows that is in the same order in both lists is what stays where it is
+        var tails: [Int] = [], tailIndex: [Int] = [], parent = [Int](repeating: -1, count: common.count)
+        for (position, pair) in common.enumerated() {
+            var low = 0, high = tails.count
+            while low < high { let mid = (low + high) / 2; if tails[mid] < pair.old { low = mid + 1 } else { high = mid } }
+            if low == tails.count { tails.append(pair.old); tailIndex.append(position) } else { tails[low] = pair.old; tailIndex[low] = position }
+            parent[position] = low > 0 ? tailIndex[low - 1] : -1
+        }
+        var keptOld = Set<Int>(), keptNew = Set<Int>()
+        var at = tailIndex.last ?? -1
+        while at >= 0 { keptOld.insert(common[at].old); keptNew.insert(common[at].new); at = parent[at] }
+        return ((0..<old.count).filter { !keptOld.contains($0) }, (0..<new.count).filter { !keptNew.contains($0) })
+    }
+}
+
+extension ListController {
+    func refreshVisible(_ table: UITableView, _ node: ListNode) {
+        for path in table.indexPathsForVisibleRows ?? [] {
+            guard let cell = table.cellForRow(at: path), let row = node.row(at: path) else { continue }
+            configure(cell, row, node)
+        }
+        // the table measures its rows again only when one of them changed size
+        var resized = false
+        for path in table.indexPathsForVisibleRows ?? [] {
+            guard let row = node.row(at: path), let before = node.measuredHeights[ObjectIdentifier(row)] else { continue }
+            if abs(tableView(table, heightForRowAt: path) - before) > 0.5 { resized = true }
+        }
+        if resized { table.beginUpdates(); table.endUpdates() }
+    }
 }

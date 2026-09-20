@@ -2187,6 +2187,50 @@ equal(frames(toolbarScroll).count, 1, "a scroll view with a toolbar still shows 
 let besideSpacer = _Probe(HStack { Color.red.frame(maxWidth: 66, maxHeight: 10); Spacer(); Color.blue.frame(width: 22, height: 10) }, width: 152, height: 40)
 equal(frames(besideSpacer).first?.width ?? 0, 66, "a view beside a spacer gets its full width when there is room")
 
+// a binding to a collection is a collection of bindings
+var boundNumbers = [1, 2, 3]
+let boundCollection = Binding(get: { boundNumbers }, set: { boundNumbers = $0 })
+boundCollection[1].wrappedValue = 20
+equal(boundNumbers, [1, 20, 3], "an element of a bound collection is a binding to it")
+equal(boundCollection.filter { $0.wrappedValue > 1 }.count, 2, "a bound collection can be filtered like a collection")
+equal(boundCollection.count, 3, "and counted")
+
+// a list keeps its rows when the data around them changes: inserted, removed and moved rows come out right
+struct DiffCase: View {
+    @ObservedObject var store: Store
+    var body: some View {
+        List { ForEach(store.items, id: \.self) { item in Color.red.frame(height: CGFloat(item * 10)) } }
+    }
+}
+func rowWidths(_ probe: _Probe) -> [Int] {
+    frames(probe).filter { $0.size.width > 250 && $0.size.height >= 30 && $0.size.height.truncatingRemainder(dividingBy: 10) == 0 }
+        .sorted { $0.origin.y < $1.origin.y }.map { Int($0.size.height / 10) }
+}
+UIView.setAnimationsEnabled(false)
+let diffStore = Store()
+diffStore.items = [3, 4, 5]
+let diffProbe = _Probe(DiffCase(store: diffStore), width: 320, height: 400)
+equal(rowWidths(diffProbe), [3, 4, 5], "a list shows its rows")
+diffStore.items = [3, 6, 4, 5]
+diffProbe.flush()
+equal(rowWidths(diffProbe), [3, 6, 4, 5], "a row inserted in the middle appears there")
+diffStore.items = [3, 4, 5]
+diffProbe.flush()
+equal(rowWidths(diffProbe), [3, 4, 5], "a row removed is gone")
+diffStore.items = [5, 3, 4]
+diffProbe.flush()
+equal(rowWidths(diffProbe), [5, 3, 4], "rows that moved are where they went")
+diffStore.items = [4, 7, 5, 8]
+diffProbe.flush()
+equal(rowWidths(diffProbe), [4, 7, 5, 8], "moves, removals and insertions at once")
+diffStore.items = []
+diffProbe.flush()
+equal(rowWidths(diffProbe), [], "an emptied list shows nothing")
+diffStore.items = [7, 8]
+diffProbe.flush()
+equal(rowWidths(diffProbe), [7, 8], "and can be filled again")
+UIView.setAnimationsEnabled(true)
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

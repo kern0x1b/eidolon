@@ -19,7 +19,7 @@ final class SettingsModel: ObservableObject {
     @Published var notifications = true
     @Published var volume = 0.5
     @Published var accent = Color.blue
-    @Published var birthday = Date()
+    @Published var birthday = Date(timeIntervalSince1970: 800_000_000)
     @Published var isSaving = false
     @Published var error: String?
 

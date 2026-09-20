@@ -46,8 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   built-in glyph set, tinted like text; `Menu` labels other than text are drawn as they are and a destructive item is red.
 - `TabView` opens a `ForEach` into pages and selects by tag (strings included); the page style shows visible dots.
 - `Binding.init(projectedValue:)`, so `ForEach($items) { $item in … }` compiles.
+- A list matches rows by the node they show: inserted, removed and moved rows are animated by the table, rows keep their
+  cells, and edit state survives a change of data (before, every update reloaded the table).
+- A binding to a collection is a collection of bindings (`$items.filter { … }`, `ForEach($items)`), as in SwiftUI.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, thirty rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, thirty-one rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed

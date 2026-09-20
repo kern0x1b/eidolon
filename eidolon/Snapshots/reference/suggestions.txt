@@ -35,15 +35,15 @@ _HostRootView (0,0,320,300)
       UITableView (0,0,320,256) table sections=[-:2]
         UITableViewCell (0,44,320,44)
           UITableViewCellContentView (0,0,320,43)
-            UIView (10,0,300,44)
-              UIRoundedRectButton (0,12,300,21) button ""
+            UIView (10,0,300,43)
+              UIRoundedRectButton (0,11,300,21) button ""
                 UIView (0,0,300,21)
                   UILabel (0,0,300,21) "Plums"
           UIView (0,43,320,1)
         UITableViewCell (0,0,320,44)
           UITableViewCellContentView (0,0,320,43)
-            UIView (10,0,300,44)
-              UIRoundedRectButton (0,12,300,21) button ""
+            UIView (10,0,300,43)
+              UIRoundedRectButton (0,11,300,21) button ""
                 UIView (0,0,300,21)
                   UILabel (0,0,300,21) "Apricots"
           UIView (0,43,320,1)
