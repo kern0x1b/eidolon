@@ -99,7 +99,7 @@ let symbolGalleryNames = ["plus", "minus", "xmark", "checkmark", "chevron.right"
     "info.circle", "exclamationmark.triangle", "plus.circle", "plus.circle.fill", "xmark.circle", "xmark.circle.fill", "checkmark.circle",
     "checkmark.circle.fill", "checkmark.square", "checkmark.square.fill", "play.fill", "pause.fill", "stop.fill", "forward.fill", "backward.fill",
     "globe", "location", "location.fill", "mic", "wifi", "circle", "circle.fill", "square", "square.fill", "square.grid.2x2", "sun.max", "moon", "bolt", "bolt.fill",
-    "link", "slider.horizontal.3", "not.a.symbol"]
+    "link", "slider.horizontal.3", "speaker", "speaker.wave.1", "speaker.wave.2", "speaker.wave.3", "music.note", "not.a.symbol"]
 
 struct SymbolGallery: View {
     var body: some View {

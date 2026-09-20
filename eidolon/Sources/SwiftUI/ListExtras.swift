@@ -194,7 +194,7 @@ final class ListDecorationNode: Node {
             if searchBar == nil {
                 let bar = UISearchBar()
                 bar.delegate = searchDelegate
-                bar.placeholder = modifier.searchPrompt
+                bar.placeholder = modifier.searchPrompt ?? "Search"
                 bar.sizeToFit()
                 table.tableHeaderView = bar
                 searchBar = bar
@@ -335,7 +335,7 @@ struct _SearchField: UIViewRepresentable {
     func makeUIView(context: Context) -> UISearchBar {
         let bar = UISearchBar()
         bar.delegate = context.coordinator
-        bar.placeholder = prompt
+        bar.placeholder = prompt ?? "Search"
         bar.sizeToFit()
         return bar
     }

@@ -277,6 +277,22 @@ enum SymbolGlyphs {
         "link": { g in
             g.rotated(-45) { g.rect(0.02, 0.36, 0.56, 0.64, radius: 0.14, fillable: false); g.rect(0.44, 0.36, 0.98, 0.64, radius: 0.14, fillable: false) }
         },
+        "speaker": { g in g.lines([(0.15, 0.4), (0.33, 0.4), (0.55, 0.2), (0.55, 0.8), (0.33, 0.6), (0.15, 0.6)], closed: true, fillable: true) },
+        "speaker.wave.1": { g in
+            g.lines([(0.1, 0.4), (0.26, 0.4), (0.46, 0.2), (0.46, 0.8), (0.26, 0.6), (0.1, 0.6)], closed: true, fillable: true)
+            g.arc(0.46, 0.5, 0.2, from: -40, to: 40)
+        },
+        "speaker.wave.2": { g in
+            g.lines([(0.08, 0.4), (0.22, 0.4), (0.4, 0.2), (0.4, 0.8), (0.22, 0.6), (0.08, 0.6)], closed: true, fillable: true)
+            g.arc(0.4, 0.5, 0.18, from: -40, to: 40); g.arc(0.4, 0.5, 0.32, from: -40, to: 40)
+        },
+        "speaker.wave.3": { g in
+            g.lines([(0.05, 0.4), (0.18, 0.4), (0.34, 0.2), (0.34, 0.8), (0.18, 0.6), (0.05, 0.6)], closed: true, fillable: true)
+            g.arc(0.34, 0.5, 0.16, from: -40, to: 40); g.arc(0.34, 0.5, 0.29, from: -40, to: 40); g.arc(0.34, 0.5, 0.42, from: -40, to: 40)
+        },
+        "music.note": { g in
+            g.dot(0.34, 0.76, 0.13); g.lines([(0.46, 0.74), (0.46, 0.14)]); g.lines([(0.46, 0.14), (0.8, 0.28), (0.8, 0.42), (0.46, 0.3)], closed: true, fillable: true)
+        },
         "slider.horizontal.3": { g in
             for (y, x) in [(0.25, 0.3), (0.5, 0.65), (0.75, 0.4)] as [(CGFloat, CGFloat)] { g.lines([(0.1, y), (0.9, y)]); g.circle(x, y, 0.09) }
         },

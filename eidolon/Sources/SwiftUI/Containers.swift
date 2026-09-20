@@ -175,13 +175,30 @@ protocol TabViewLike {
     func tabSelect(_ index: Int)
 }
 
+// The pages of a tab view: what the builder made, with a ForEach or a group opened into its views.
+func tabPages(_ view: any View) -> [any View] {
+    if let each = view as? ForEachLike { return each.identifiedViews.flatMap { tabPages($0.1) } }
+    if let group = view as? GroupView, !(view is EnvironmentGroupView), !(view is TaggedViewLike) { return group.childViews.flatMap(tabPages) }
+    return [view]
+}
+
 extension TabView: TabViewLike {
-    var tabChildren: [any View] {
-        (content as? GroupView)?.childViews ?? [content]
+    var tabChildren: [any View] { tabPages(content) }
+    // a selection is matched to a page by its tag; without tags the page number is the selection
+    var tabSelectedIndex: Int? {
+        guard let value = selection?.wrappedValue else { return nil }
+        let tags = tabChildren.map { ($0 as? TaggedViewLike)?.tagValue }
+        if let index = tags.firstIndex(where: { $0 == AnyHashable(value) }) { return index }
+        return value as? Int
     }
-    var tabSelectedIndex: Int? { (selection?.wrappedValue as? Int) }
     func tabSelect(_ index: Int) {
-        if let selection, let value = index as? SelectionValue { selection.wrappedValue = value }
+        guard let selection else { return }
+        let pages = tabChildren
+        if index < pages.count, let tag = (pages[index] as? TaggedViewLike)?.tagValue, let value = tag.base as? SelectionValue {
+            selection.wrappedValue = value
+        } else if let value = index as? SelectionValue {
+            selection.wrappedValue = value
+        }
     }
 }
 

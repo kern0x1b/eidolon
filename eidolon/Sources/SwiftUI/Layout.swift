@@ -134,15 +134,20 @@ final class StackNode: ContainerNode {
             }
             return flex[left] < flex[right]
         }
-        var left = kids.count
+        // Views that can take any room (spacers, frames of infinite width) come last and share what the others leave;
+        // they do not dilute the share the others are offered, so a Text beside a Spacer gets its full width.
+        let greedy = flex.map { $0 > 1e7 }
+        var finiteLeft = greedy.filter { !$0 }.count
+        var greedyLeft = greedy.count - finiteLeft
         for i in order {
             var p = ProposedSize.unspecified
-            p[axis] = mins[i] + max(0, remaining / CGFloat(left))
+            let divisor = greedy[i] ? greedyLeft : finiteLeft
+            p[axis] = mins[i] + max(0, remaining / CGFloat(max(1, divisor)))
             p[cross] = proposal[cross]
             let s = kids[i].sizeThatFits(p)
             sizes[i] = s
             remaining -= max(0, s[axis] - mins[i])
-            left -= 1
+            if greedy[i] { greedyLeft -= 1 } else { finiteLeft -= 1 }
         }
         return sizes
     }

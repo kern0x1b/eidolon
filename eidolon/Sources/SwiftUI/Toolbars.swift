@@ -152,6 +152,7 @@ final class BarItemsNode: Node {
     var slots: [String: BarSlot] = [:]
     var hadBottom = false
     override var flattened: [LayoutNode] { child?.flattened ?? [] }
+    override func mountContents() { child?.mount() }
 
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)

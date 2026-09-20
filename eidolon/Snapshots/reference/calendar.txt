@@ -2,18 +2,18 @@ _HostRootView (0,0,320,300)
   UIView (0,46,320,209)
     UILabel (141,0,39,21) "Days"
     UIView (0,27,320,44)
-      UIRoundedRectButton (0,0,41,44) button "‹"
-        UIGroupTableViewCellBackground (0,0,41,44)
-        UIImageView (1,1,39,43)
-        UIButtonLabel (18,12,4,19) "‹"
-      UIView (49,22,49,0)
+      UIRoundedRectButton (0,0,72,44) button "‹"
+        UIGroupTableViewCellBackground (0,0,72,44)
+        UIImageView (1,1,70,43)
+        UIButtonLabel (34,12,4,19) "‹"
+      UIView (80,22,17,0)
       UIView (105,12,110,21)
         UILabel (0,0,110,21) "February 2026"
-      UIView (223,22,49,0)
-      UIRoundedRectButton (280,0,41,44) button "›"
-        UIGroupTableViewCellBackground (0,0,41,44)
-        UIImageView (1,1,39,43)
-        UIButtonLabel (18,12,4,19) "›"
+      UIView (223,22,17,0)
+      UIRoundedRectButton (248,0,72,44) button "›"
+        UIGroupTableViewCellBackground (0,0,72,44)
+        UIImageView (1,1,70,43)
+        UIButtonLabel (34,12,4,19) "›"
     UIView (22,77,276,132)
       UIView (0,0,36,30)
         UIView (0,0,36,30)

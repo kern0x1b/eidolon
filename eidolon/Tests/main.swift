@@ -2179,6 +2179,14 @@ mirrored.flush()
 check(!frames(mirrored).isEmpty, "a stateful view still renders with the fallback on")
 _Probe.useMirrorReflection(mirrorAll)
 
+// a toolbar on a scroll view leaves the content in place
+let toolbarScroll = _Probe(ScrollView { Color.red.frame(height: 50) }.toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Go") { } } }, width: 100, height: 200)
+equal(frames(toolbarScroll).count, 1, "a scroll view with a toolbar still shows its content")
+
+// a Spacer does not shrink what its neighbours are offered: content up to 66 wide beside a Spacer gets its 66
+let besideSpacer = _Probe(HStack { Color.red.frame(maxWidth: 66, maxHeight: 10); Spacer(); Color.blue.frame(width: 22, height: 10) }, width: 152, height: 40)
+equal(frames(besideSpacer).first?.width ?? 0, 66, "a view beside a spacer gets its full width when there is room")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

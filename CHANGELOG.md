@@ -44,9 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   that mode too.
 - `Image(systemName:)` draws about eighty common SF Symbols (plus their `.fill`, `.circle` and `.square` forms) with a
   built-in glyph set, tinted like text; `Menu` labels other than text are drawn as they are and a destructive item is red.
+- `TabView` opens a `ForEach` into pages and selects by tag (strings included); the page style shows visible dots.
 - `Binding.init(projectedValue:)`, so `ForEach($items) { $item in … }` compiles.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, twenty-seven rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, thirty rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed
@@ -54,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - A `Button` whose label is not a single `Text` (an icon, a `Label`, a stack) drew an empty rounded rectangle and dropped
   its label; it now draws the label, dimmed while pressed.
 - `Image(_:scale:orientation:label:)` dropped its label.
+- A toolbar on a `ScrollView` (or any view that does not mount itself) left the content unmounted.
+- A `Text` beside a `Spacer` was offered half the room and wrapped; a search field had no default prompt.
 - `matchedGeometryEffect` sometimes did not animate: it told nodes apart by address, which a new node can reuse.
 - `.tabItem { Label(…) }` lost its title; an adaptive `LazyVGrid` column was one track; `aspectRatio` with one side
   proposed took the child's own shape; a disabled toolbar `Button` was drawn with button chrome; `EditButton` in a

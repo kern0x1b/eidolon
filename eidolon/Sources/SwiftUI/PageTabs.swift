@@ -95,6 +95,8 @@ final class PagedTabsNode: LayoutNode {
         case .automatic: showsDots = pages.count > 1
         }
         dots.isHidden = !showsDots
+        dots.pageIndicatorTintColor = UIColor(white: 0.75, alpha: 1)
+        dots.currentPageIndicatorTintColor = UIColor(white: 0.3, alpha: 1)
         dots.backgroundColor = paged.settings.indexBackground == .always ? UIColor(white: 0, alpha: 0.25) : .clear
         mount()
         if let index = paged.source.tabSelectedIndex, index < pages.count, index != dots.currentPage {
