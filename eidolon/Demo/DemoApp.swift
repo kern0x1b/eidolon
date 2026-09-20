@@ -151,9 +151,10 @@ func runDeviceGesture(_ name: String) {
     switch name {
     case "swipe-real":
         // a drag from the right edge to the left over the first row opens its trailing actions; a tap on the first action runs it
-        gesture_drag({ CGPoint(x: 300, y: 42) }, { CGPoint(x: 90, y: 42) }, 12, 0.6)
+        let width = UIScreen.main.bounds.size.width
+        gesture_drag({ CGPoint(x: width - 20, y: 42) }, { CGPoint(x: width - 230, y: 42) }, 12, 0.6)
         gesture_step(1.0) { probe("gesture: opened") }
-        gesture_tap({ CGPoint(x: 230, y: 42) }, 0.5)
+        gesture_tap({ CGPoint(x: width - 45, y: 42) }, 0.5)
         gesture_step(0.5) { probe("gesture: log \(swipeLog) \(_Probe.swipeBridgeState())") }
     default: break
     }
