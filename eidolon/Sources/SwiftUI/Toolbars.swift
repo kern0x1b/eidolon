@@ -246,7 +246,11 @@ final class BarItemsNode: Node {
             slot.title = nil
             slot.item = nil
         }
-        host.setRootView(AnyView(HStack { AnyView(original) }), env: env)
+        // the bars of iOS 6 are dark, so what is drawn on them is white unless it says otherwise
+        var barEnv = env
+        barEnv.foregroundColor = .white
+        barEnv.tint = .white
+        host.setRootView(AnyView(HStack { AnyView(original) }), env: barEnv)
         _ = host.view
         host.fitContent()
         host.view.layoutIfNeeded()

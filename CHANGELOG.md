@@ -42,8 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The field reflection that finds `@State` and friends in a view checks itself once; if the runtime's entry points ever
   disagree with Swift's layout it falls back to the struct's type metadata and a Mirror, and the whole suite passes in
   that mode too.
+- `Image(systemName:)` draws about eighty common SF Symbols (plus their `.fill`, `.circle` and `.square` forms) with a
+  built-in glyph set, tinted like text; `Menu` labels other than text are drawn as they are and a destructive item is red.
+- `Binding.init(projectedValue:)`, so `ForEach($items) { $item in … }` compiles.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, twenty-four rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, twenty-seven rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed

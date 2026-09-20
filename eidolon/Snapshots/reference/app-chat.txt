@@ -21,17 +21,17 @@ _HostRootView (0,0,320,480)
               UIView (0,388,320,1)
               UIView (0,389,320,47)
                 UIView (8,8,304,31)
-                  UIView (0,0,296,31)
-                    UITextField (0,0,296,31) field "" placeholder="Message"
-                      UITextFieldRoundedRectBackgroundView (0,0,296,31)
+                  UIView (0,0,279,31)
+                    UITextField (0,0,279,31) field "" placeholder="Message"
+                      UITextFieldRoundedRectBackgroundView (0,0,279,31)
                         UIImageView (0,0,8,31)
-                        UIImageView (8,0,280,31)
-                        UIImageView (288,0,8,31)
-                      UITextFieldLabel (7,2,282,21) "Message"
-                  UIView (304,16,0,0)
-                    UIButton (0,0,0,0) button ""
-                      UIView (0,0,0,0)
-                        UIImageView (0,0,0,0)
+                        UIImageView (8,0,263,31)
+                        UIImageView (271,0,8,31)
+                      UITextFieldLabel (7,2,265,21) "Message"
+                  UIView (287,7,17,17)
+                    UIButton (0,0,17,17) button ""
+                      UIView (0,0,17,17)
+                        UIImageView (0,0,17,17)
     UINavigationBar (0,0,320,44)
       _UINavigationBarBackground (0,0,320,44)
         UIImageView (0,44,320,3)

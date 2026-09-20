@@ -28,7 +28,11 @@ struct _MenuButton: View, PrimitiveView {
     var body: Never { neverBody(Self.self) }
     let label: any View
     let content: any View
-    func makeNode(_ env: EnvironmentValues) -> Node { let n = MenuNode(borderless: env.menuBorderless); n.update(self, env); return n }
+    func makeNode(_ env: EnvironmentValues) -> Node {
+        // a plain text label is the titled button of iOS 6; anything else (an icon, a Label) is drawn as it is
+        if label is Text { let n = MenuNode(borderless: env.menuBorderless); n.update(self, env); return n }
+        let n = MenuLabelNode(); n.update(self, env); return n
+    }
 }
 
 extension Menu where Label == Text {
@@ -40,18 +44,22 @@ extension Menu where Label == Text {
 protocol MenuLike {
     var menuLabel: any View { get }
     var menuItems: [(String, () -> Void)] { get }
+    var menuItemsWithRoles: [(title: String, action: () -> Void, destructive: Bool)] { get }
 }
 
 extension _MenuButton: MenuLike {
     var menuLabel: any View { label }
     var menuItems: [(String, () -> Void)] { menuEntries(content) }
+    var menuItemsWithRoles: [(title: String, action: () -> Void, destructive: Bool)] { SwiftUI.menuItemsWithRoles(content) }
 }
 
-func menuEntries(_ view: any View) -> [(String, () -> Void)] {
-    var found: [(String, () -> Void)] = []
+func menuEntries(_ view: any View) -> [(String, () -> Void)] { menuItemsWithRoles(view).map { ($0.title, $0.action) } }
+
+func menuItemsWithRoles(_ view: any View) -> [(title: String, action: () -> Void, destructive: Bool)] {
+    var found: [(title: String, action: () -> Void, destructive: Bool)] = []
     func walk(_ value: any View) {
         if let button = value as? ButtonLike {
-            found.append((findText(button.buttonLabel)?.content ?? "", button.buttonAction))
+            found.append((findText(button.buttonLabel)?.content ?? "", button.buttonAction, (value as? RoleButtonLike)?.buttonRole == .destructive))
             return
         }
         if let group = value as? GroupView { group.childViews.forEach(walk) }
@@ -62,10 +70,57 @@ func menuEntries(_ view: any View) -> [(String, () -> Void)] {
     return found
 }
 
+// The action sheet a menu opens; a destructive item is the red one, as in a confirmation dialog.
+func presentMenu(_ items: [(title: String, action: () -> Void, destructive: Bool)], _ delegate: SheetDelegate, in host: UIViewController?) {
+    guard let host else { return }
+    let sheet = UIActionSheet()
+    sheet.delegate = delegate
+    delegate.actions = items.map { $0.action }
+    delegate.dismissed = {}
+    for item in items { sheet.addButton(withTitle: item.title) }
+    sheet.addButton(withTitle: "Cancel")
+    sheet.cancelButtonIndex = items.count
+    if let destructive = items.firstIndex(where: { $0.destructive }) { sheet.destructiveButtonIndex = destructive }
+    sheet.show(in: host.view)
+}
+
+final class MenuLabelNode: ContainerNode {
+    let hit = UIButton(type: .custom)
+    let target = ControlTarget()
+    let delegate = SheetDelegate()
+    var items: [(title: String, action: () -> Void, destructive: Bool)] = []
+    weak var host: UIViewController?
+
+    override init() {
+        super.init()
+        hit.addTarget(target, action: #selector(ControlTarget.fire), for: .touchUpInside)
+        target.action = { [weak self] in
+            guard let self else { return }
+            presentMenu(self.items, self.delegate, in: self.host)
+        }
+    }
+
+    override func update(_ view: any View, _ env: EnvironmentValues) {
+        super.update(view, env)
+        guard let menu = view as? _MenuButton else { return }
+        host = env.host
+        items = menuItemsWithRoles(menu.content)
+        let accent = Color(env.foregroundColor ?? env.tint ?? UIColor(red: 0.2, green: 0.45, blue: 0.85, alpha: 1))
+        content = adopt(reconcile(content, AnyView(menu.label).foregroundColor(accent), env))
+    }
+
+    override func mountContents() { super.mountContents(); uiView.addSubview(hit) }
+    override func computeSize(_ p: ProposedSize) -> CGSize { children.first?.sizeThatFits(p) ?? .zero }
+    override func layoutContents(_ size: CGSize) {
+        children.first?.place(CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        hit.frame = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+    }
+}
+
 final class MenuNode: LayoutNode {
     let target = ControlTarget()
     let delegate = SheetDelegate()
-    var items: [(String, () -> Void)] = []
+    var items: [(title: String, action: () -> Void, destructive: Bool)] = []
     weak var host: UIViewController?
     var button: UIButton { uiView as! UIButton }
 
@@ -84,22 +139,12 @@ final class MenuNode: LayoutNode {
         super.update(view, env)
         guard let menu = view as? MenuLike else { return }
         host = env.host
-        items = menu.menuItems
+        items = menu.menuItemsWithRoles
         let title = findText(menu.menuLabel)?.content ?? ""
         if button.title(for: .normal) != title { button.setTitle(title, for: .normal) }
     }
 
-    func present() {
-        guard let host else { return }
-        let sheet = UIActionSheet()
-        sheet.delegate = delegate
-        delegate.actions = items.map { $0.1 }
-        delegate.dismissed = {}
-        for item in items { sheet.addButton(withTitle: item.0) }
-        sheet.addButton(withTitle: "Cancel")
-        sheet.cancelButtonIndex = items.count
-        sheet.show(in: host.view)
-    }
+    func present() { presentMenu(items, delegate, in: host) }
 
     override func computeSize(_ p: ProposedSize) -> CGSize {
         let wanted = button.sizeThatFits(CGSize(width: infinity, height: infinity))

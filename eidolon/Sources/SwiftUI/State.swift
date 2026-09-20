@@ -44,6 +44,7 @@ public struct Binding<Value> {
     let get: () -> Value
     let set: (Value) -> Void
     public init(get: @escaping () -> Value, set: @escaping (Value) -> Void) { self.get = get; self.set = set }
+    public init(projectedValue: Binding<Value>) { self = projectedValue }
     public static func constant(_ value: Value) -> Binding<Value> { Binding(get: { value }, set: { _ in }) }
     public var wrappedValue: Value {
         get { get() }

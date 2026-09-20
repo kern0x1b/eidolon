@@ -172,7 +172,9 @@ public struct Image: View, PrimitiveView {
     public init(systemName: String) {
         name = systemName
         system = true
-        _Unsupported.note("Image(systemName:)", "iOS 6 has no SF Symbols; the name is looked up in the bundle instead")
+        if SymbolGlyphs.resolve(systemName) == nil {
+            _Unsupported.note("Image(systemName:)", "iOS 6 has no SF Symbols and this name is not in the set drawn here; the bundle is searched for it, then an outlined square is shown")
+        }
     }
     func makeNode(_ env: EnvironmentValues) -> Node { let n = ImageNode(view: UIImageView()); n.update(self, env); return n }
 }
@@ -188,7 +190,15 @@ final class ImageNode: LayoutNode {
         mode = image.contentMode ?? .fit
         let imageView = uiView as! UIImageView
         var picture = image.stored ?? UIImage(named: image.name)
-        if let base = picture, image.template {
+        var template = image.template
+        if picture == nil, image.system {
+            let scale: CGFloat = env.imageScale == .small ? 0.8 : env.imageScale == .large ? 1.3 : 1
+            let points = image.isResizable ? 64 : ceil((env.fontValue?.pointSize ?? 17) * scale)
+            picture = SymbolGlyphs.image(named: image.name, points: points, bold: env.textBold) ?? SymbolGlyphs.placeholder(points: points)
+            if let base = picture { picture = templated(base, env.foregroundColor ?? .black) }
+            template = false
+        }
+        if let base = picture, template {
             picture = templated(base, env.foregroundColor ?? env.tint ?? UIColor(red: 0.2, green: 0.45, blue: 0.85, alpha: 1))
         }
         if let base = picture, image.capInsets != EdgeInsets() || image.tiles {
@@ -331,7 +341,9 @@ final class ButtonNode: LayoutNode {
         target.action = b.buttonAction
         styleBody = env.buttonStyle
         if styleBody == nil && !plainText {
-            styleBody = { AnyView($0.label.opacity($0.isPressed ? 0.4 : 1)) }
+            // a button's label takes the tint (or the foreground colour set outside), as in SwiftUI
+            let accent = Color(env.foregroundColor ?? env.tint ?? UIColor(red: 0.2, green: 0.45, blue: 0.85, alpha: 1))
+            styleBody = { AnyView($0.label.foregroundColor(accent).opacity($0.isPressed ? 0.4 : 1)) }
         }
         if styleBody == nil {
             styled?.dispose()
