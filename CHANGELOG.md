@@ -49,8 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - A list matches rows by the node they show: inserted, removed and moved rows are animated by the table, rows keep their
   cells, and edit state survives a change of data (before, every update reloaded the table).
 - A binding to a collection is a collection of bindings (`$items.filter { … }`, `ForEach($items)`), as in SwiftUI.
+- `swipeActions` on both edges, with colours (`.tint`) and `allowsFullSwipe`, handed to the table as UIKit's own
+  contextual actions when the backports provide them (looked up at run time; stock iOS 6 keeps its Delete button). Checked
+  against stand-in classes; not yet on a phone with the backports.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, thirty-one rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, thirty-two rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed

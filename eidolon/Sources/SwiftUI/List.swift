@@ -317,6 +317,7 @@ final class ListNode: LayoutNode {
         self.grouped = grouped
         super.init(view: UITableView(frame: .zero, style: grouped ? .grouped : .plain))
         controller.node = self
+        ListController.registerSwipeActions()
         let table = uiView as! UITableView
         table.dataSource = controller
         table.delegate = controller

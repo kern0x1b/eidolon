@@ -4,6 +4,7 @@ struct SwipeButton {
     let title: String
     let action: () -> Void
     let destructive: Bool
+    var tint: UIColor? = nil
 }
 
 struct RowTraits {
@@ -11,6 +12,9 @@ struct RowTraits {
     var deleteDisabled: Bool?
     var moveDisabled: Bool?
     var trailingSwipe: [SwipeButton]?
+    var leadingSwipe: [SwipeButton]?
+    var trailingFullSwipe = true
+    var leadingFullSwipe = true
 }
 
 struct RowTraitModifier: NodeModifier {
@@ -46,14 +50,23 @@ func rowTraits(_ item: Node, upTo list: Node) -> RowTraits {
     return traits
 }
 
-func swipeButtons(_ view: any View, destructive: Bool = false) -> [SwipeButton] {
+func swipeButtons(_ view: any View, destructive: Bool = false, tint: UIColor? = nil) -> [SwipeButton] {
     if let button = view as? ButtonLike {
         let role = (view as? RoleButtonLike)?.buttonRole
         return [SwipeButton(title: findText(button.buttonLabel)?.content ?? findLabelTitle(button.buttonLabel) ?? "",
-                            action: button.buttonAction, destructive: destructive || role == .destructive)]
+                            action: button.buttonAction, destructive: destructive || role == .destructive, tint: tint)]
     }
-    if let group = view as? GroupView { return group.childViews.flatMap { swipeButtons($0, destructive: destructive) } }
-    if let modified = view as? ModifiedViewLike { return swipeButtons(modified.modifiedContent, destructive: destructive) }
+    if let group = view as? GroupView { return group.childViews.flatMap { swipeButtons($0, destructive: destructive, tint: tint) } }
+    if let modified = view as? ModifiedViewLike {
+        // .tint(…) on a swipe button is the colour of its background
+        var inner = tint
+        if let environment = modified.modifierValue as? EnvironmentModifier {
+            var values = EnvironmentValues()
+            environment.apply(&values)
+            inner = values.tint ?? inner
+        }
+        return swipeButtons(modified.modifiedContent, destructive: destructive, tint: inner)
+    }
     return []
 }
 
@@ -95,11 +108,13 @@ extension View {
     }
     public func swipeActions<T: View>(edge: HorizontalEdge = .trailing, allowsFullSwipe: Bool = true, @ViewBuilder content: () -> T) -> some View {
         let buttons = swipeButtons(content())
-        if edge == .leading {
-            _Unsupported.note("swipeActions(edge: .leading)", "a UITableView row on iOS 6 swipes only from the trailing side")
+        // a row swipes from the leading side, in colours and by full swipe, only where UIKit's swipe actions exist
+        if !SwipeActionsBridge.available && (edge == .leading || buttons.contains { $0.tint != nil }) {
+            _Unsupported.note("swipeActions(edge: .leading)", "a UITableView row on iOS 6 swipes only from the trailing side, in one colour; the swipe actions of later iOS, which the backports carry, do more")
         }
         return _ModifiedView(content: self, modifier: RowTraitModifier(apply: { traits in
-            if edge == .trailing { traits.trailingSwipe = buttons }
+            if edge == .trailing { traits.trailingSwipe = buttons; traits.trailingFullSwipe = allowsFullSwipe }
+            else { traits.leadingSwipe = buttons; traits.leadingFullSwipe = allowsFullSwipe }
         }))
     }
 }

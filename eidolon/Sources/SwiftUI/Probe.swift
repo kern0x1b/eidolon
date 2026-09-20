@@ -91,6 +91,18 @@ public final class _Probe {
 #endif
     }
 
+    // What the table's delegate answers for a row's swipe, as the backports would ask it.
+    public func swipeConfiguration(row: Int, leading: Bool) -> AnyObject? {
+        var table: UITableView?
+        func walk(_ v: UIView) { if table == nil, let t = v as? UITableView { table = t }; v.subviews.forEach(walk) }
+        walk(hostView)
+        guard let table, let delegate = table.delegate as? NSObject else { return nil }
+        let selector = NSSelectorFromString(leading ? "tableView:leadingSwipeActionsConfigurationForRowAtIndexPath:"
+                                                    : "tableView:trailingSwipeActionsConfigurationForRowAtIndexPath:")
+        guard delegate.responds(to: selector) else { return nil }
+        return delegate.perform(selector, with: table, with: IndexPath(row: row, section: 0) as NSIndexPath)?.takeUnretainedValue()
+    }
+
     public static func useVirtualClock() {
         ValueAnimator.manual = true
         ValueAnimator.clock = { 0 }

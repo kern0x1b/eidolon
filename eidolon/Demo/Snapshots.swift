@@ -433,6 +433,7 @@ func snapshotCases() -> [SnapshotCase] {
         SnapshotCase(name: "app-onboarding", width: 320, height: 568, view: OnboardingView(), inWindow: true),
         SnapshotCase(name: "app-player", width: 320, height: 568, view: PlayerView(), inWindow: true),
         SnapshotCase(name: "app-contacts", width: 320, height: 568, view: ContactsView(), inWindow: true),
+        SnapshotCase(name: "app-browser", width: 320, height: 568, view: BrowserView(), inWindow: true),
         SnapshotCase(name: "reserve", width: 200, height: 120, view: VStack { Text("One line").lineLimit(3, reservesSpace: true) }),
         SnapshotCase(name: "search", width: 320, height: 200, view: SearchCase()),
         SnapshotCase(name: "split", width: 320, height: 300, view: SplitCase(), inWindow: true, action: { $0.selectRow(1) }),
