@@ -38,7 +38,7 @@ Two numbers, and they measure different things.
   that iOS 6 cannot honour is *declared*, writes a line to a journal when used, and is listed with its reason. Nothing
   is a silent no-op — the build fails if an ignored or simplified API is not named in the ledger.
 - **By declaration:** comparing Apple's SwiftUI interface for iOS 16.4 with this module signature by signature
-  (`bridge/api-surface.sh`) finds, of the 4740 declarations of Apple's public interface, **3233 (68%) callable as Apple writes them, 314 (7%) present with a different signature and 1193 (25%) absent**.
+  (`bridge/api-surface.sh`) finds, of the 4740 declarations of Apple's public interface, **3233 (68%) callable as Apple writes them, 314 (7%) present with a different signature, 927 (20%) absent and still to write, and 266 (6%) of types that iOS 6 or a phone cannot have, listed with a reason in `bridge/not-applicable.txt`**.
   A good part of the absent ones has nothing to correspond to on iOS 6 (widgets, documents, windows, accessibility
   rotors); the rest is the work queue.
 

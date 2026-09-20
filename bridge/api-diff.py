@@ -12,6 +12,7 @@ Names starting with an underscore and implicit (compiler-made) declarations are 
 """
 import collections
 import json
+import os
 import re
 import sys
 
@@ -86,6 +87,14 @@ def main():
         if base and len(params) == len(labels):
             ours_shapes[(path[-1] if path else '', base)].append([(label, bool(p.get('hasDefaultArg'))) for label, p in zip(labels, params)])
 
+    not_applicable = {}
+    listed = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'not-applicable.txt')
+    if os.path.exists(listed):
+        for line in open(listed):
+            if line.strip() and not line.startswith('#'):
+                name, _, reason = line.rstrip('\n').partition('\t')
+                not_applicable[name] = reason
+
     missing = collections.defaultdict(list)
     for path, node in apple:
         usr = node.get('usr')
@@ -105,15 +114,20 @@ def main():
         if kind in ('Func', 'Constructor') and covered_by_defaults(ours_shapes, owner, printed):
             continue
         state = 'variant' if ours_names.get((owner, printed)) else 'absent'
+        if state == 'absent' and owner in not_applicable:
+            state = 'not-applicable'
         missing[owner].append((state, kind, printed, signature(node)))
 
     total = collections.Counter()
     for owner, items in sorted(missing.items(), key=lambda kv: -len(kv[1])):
         for state, kind, printed, sig in sorted(items):
             total[state] += 1
-            if '--variants' in flags or state == 'absent':
+            if '--variants' in flags or state == 'absent' or (state == 'not-applicable' and '--not-applicable' in flags):
                 print(f'{owner}\t{state}\t{kind}\t{printed}\t{sig}')
-    print(f'# absent {total["absent"]}, variant {total["variant"]}', file=sys.stderr)
+    print(f'# absent {total["absent"]}, variant {total["variant"]}, not applicable {total["not-applicable"]} (bridge/not-applicable.txt, with reasons)', file=sys.stderr)
+    unused = sorted(set(not_applicable) - {owner for owner, items in missing.items() if any(i[0] == 'not-applicable' for i in items)})
+    if unused:
+        print('# not-applicable.txt names types with nothing absent (remove them): ' + ', '.join(unused), file=sys.stderr)
 
     if '--conformances' in flags:
         ours_conf = collections.defaultdict(set)
