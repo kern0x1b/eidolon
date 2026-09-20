@@ -79,28 +79,30 @@ final class GridNode: ContainerNode {
         content = adopt(reconcile(content, grid.gridContent, env))
     }
 
+    // An adaptive item becomes as many tracks as fit in the room it is given; the other items are one track each.
     func tracks(_ available: CGFloat) -> [CGFloat] {
         guard !items.isEmpty else { return [] }
-        var sizes = [CGFloat](repeating: 0, count: items.count)
-        var flexible: [Int] = []
-        var remaining = available - spacing * CGFloat(items.count - 1)
-        for (index, item) in items.enumerated() {
+        var fixedTotal: CGFloat = 0
+        var flexibleCount = 0
+        for item in items {
             switch item.size {
-            case .fixed(let value):
-                sizes[index] = value
-                remaining -= value
-            case .flexible, .adaptive:
-                flexible.append(index)
+            case .fixed(let value): fixedTotal += value
+            case .flexible, .adaptive: flexibleCount += 1
             }
         }
-        if !flexible.isEmpty {
-            let each = max(0, remaining / CGFloat(flexible.count))
-            for index in flexible {
-                switch items[index].size {
-                case .flexible(let minimum, let maximum): sizes[index] = min(max(each, minimum), maximum.isFinite ? maximum : each)
-                case .adaptive(let minimum, let maximum): sizes[index] = min(max(each, minimum), maximum.isFinite ? maximum : each)
-                case .fixed(let value): sizes[index] = value
-                }
+        let room = max(0, available - spacing * CGFloat(items.count - 1) - fixedTotal)
+        let share = flexibleCount == 0 ? 0 : room / CGFloat(flexibleCount)
+        var sizes: [CGFloat] = []
+        for item in items {
+            switch item.size {
+            case .fixed(let value):
+                sizes.append(value)
+            case .flexible(let minimum, let maximum):
+                sizes.append(min(max(share, minimum), maximum.isFinite ? maximum : share))
+            case .adaptive(let minimum, let maximum):
+                let count = max(1, Int(((share + spacing) / (minimum + spacing)).rounded(.down)))
+                let each = (share - spacing * CGFloat(count - 1)) / CGFloat(count)
+                sizes += [CGFloat](repeating: min(max(each, minimum), maximum.isFinite ? maximum : each), count: count)
             }
         }
         return sizes

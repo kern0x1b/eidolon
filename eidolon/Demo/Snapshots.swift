@@ -415,6 +415,17 @@ func snapshotCases() -> [SnapshotCase] {
         SnapshotCase(name: "toolbar", width: 320, height: 300, view: ToolbarCase(), inWindow: true,
                      action: pressBarItems, note: { "taps \(toolbarLog.taps.sorted())" }),
         SnapshotCase(name: "destination", width: 320, height: 200, view: DestinationCase(), inWindow: true),
+        SnapshotCase(name: "app-settings", width: 320, height: 640, view: SettingsView(), inWindow: true),
+        SnapshotCase(name: "app-inbox", width: 320, height: 480, view: Inbox(), inWindow: true,
+                     action: { probe in
+                         guard let window = UIApplication.shared.keyWindow else { return }
+                         allViews(window, of: UIButton.self).first { $0.title(for: .normal) == "Edit" }?.sendActions(for: .touchUpInside)
+                         probe.flush()
+                         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.5))
+                     },
+                     note: { "editing \(allViews(UIApplication.shared.keyWindow ?? UIView(), of: UITableView.self).contains { $0.isEditing })" }),
+        SnapshotCase(name: "app-chat", width: 320, height: 480, view: NavigationView { ChatView() }, inWindow: true),
+        SnapshotCase(name: "app-dashboard", width: 320, height: 640, view: DashboardView(), inWindow: true),
         SnapshotCase(name: "reserve", width: 200, height: 120, view: VStack { Text("One line").lineLimit(3, reservesSpace: true) }),
         SnapshotCase(name: "search", width: 320, height: 200, view: SearchCase()),
         SnapshotCase(name: "split", width: 320, height: 300, view: SplitCase(), inWindow: true, action: { $0.selectRow(1) }),

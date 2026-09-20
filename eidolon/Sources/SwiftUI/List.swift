@@ -325,6 +325,27 @@ final class ListNode: LayoutNode {
         selection = (view as! ListLike).listSelection
         content = adopt(reconcile(content, (view as! ListLike).listContent, inner))
         syncRows()
+        editing = editingAccess(env)
+        if let host = env.host as? _HostingViewController, editingHost !== host {
+            editingHost?.editingObservers[ObjectIdentifier(self)] = nil
+            editingHost = host
+            host.editingObservers[ObjectIdentifier(self)] = { [weak self] animated in self?.applyEditing(animated) }
+        }
+        applyEditing(false)
+    }
+
+    var editing: EditingAccess?
+    weak var editingHost: _HostingViewController?
+
+    func applyEditing(_ animated: Bool) {
+        guard let want = editing?.get() else { return }
+        let table = uiView as! UITableView
+        if table.isEditing != want { table.setEditing(want, animated: animated) }
+    }
+
+    override func dispose() {
+        editingHost?.editingObservers[ObjectIdentifier(self)] = nil
+        super.dispose()
     }
 
     func row(at indexPath: IndexPath) -> ListRow? {

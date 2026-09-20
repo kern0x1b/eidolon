@@ -202,28 +202,51 @@ final class BarItemsNode: Node {
         }
     }
 
-    func makeItem(_ view: any View, _ slot: BarSlot, _ env: EnvironmentValues) -> UIBarButtonItem {
+    func textItem(_ title: String, _ action: @escaping () -> Void, _ slot: BarSlot) -> UIBarButtonItem {
+        slot.target.action = action
+        if slot.host == nil, let item = slot.item, slot.title == title { return item }
+        slot.host = nil
+        slot.title = title
+        let item = UIBarButtonItem(title: title, style: .plain, target: slot.target, action: #selector(BarButtonTarget.fire))
+        slot.item = item
+        return item
+    }
+
+    func makeItem(_ original: any View, _ slot: BarSlot, _ env: EnvironmentValues) -> UIBarButtonItem {
+        // .disabled on a plain button is the bar item's own isEnabled, so the button keeps the look of a bar button
+        var view = original
+        var enabled = true
+        while let modified = view as? ModifiedViewLike, let effect = modified.modifierValue as? EffectModifier, effect.effect.onlyInteraction {
+            if effect.effect.interaction == false { enabled = false }
+            view = modified.modifiedContent
+        }
+        let item = makeBarItem(view, original, slot, env)
+        if item.isEnabled != enabled { item.isEnabled = enabled }
+        return item
+    }
+
+    func makeBarItem(_ view: any View, _ original: any View, _ slot: BarSlot, _ env: EnvironmentValues) -> UIBarButtonItem {
         if view is Spacer {
             let item = slot.item ?? UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
             slot.item = item
             return item
         }
-        if let button = view as? ButtonLike, let text = button.buttonLabel as? Text, !text.content.isEmpty {
-            slot.target.action = button.buttonAction
-            if slot.host == nil, let item = slot.item, slot.title == text.content { return item }
-            slot.host = nil
-            slot.title = text.content
-            let item = UIBarButtonItem(title: text.content, style: .plain, target: slot.target, action: #selector(BarButtonTarget.fire))
-            slot.item = item
-            return item
+        if view is EditButton {
+            if env.editMode == nil, let host = env.host { return host.editButtonItem }
+            if let access = editingAccess(env) {
+                return textItem(access.get() ? "Done" : "Edit", { access.set(!access.get()) }, slot)
+            }
         }
-        let host = slot.host ?? BarItemHost(rootView: view)
+        if let button = view as? ButtonLike, let text = button.buttonLabel as? Text, !text.content.isEmpty {
+            return textItem(text.content, button.buttonAction, slot)
+        }
+        let host = slot.host ?? BarItemHost(rootView: original)
         if slot.host == nil {
             slot.host = host
             slot.title = nil
             slot.item = nil
         }
-        host.setRootView(AnyView(HStack { AnyView(view) }), env: env)
+        host.setRootView(AnyView(HStack { AnyView(original) }), env: env)
         _ = host.view
         host.fitContent()
         host.view.layoutIfNeeded()

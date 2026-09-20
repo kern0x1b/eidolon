@@ -71,6 +71,13 @@ open class _HostingViewController: UIViewController {
 
     var onPopped: (() -> Void)?
 
+    // The screen's editing state is UIKit's own (editButtonItem, setEditing); lists and edit buttons follow it.
+    var editingObservers: [ObjectIdentifier: (Bool) -> Void] = [:]
+    open override func setEditing(_ editing: Bool, animated: Bool) {
+        super.setEditing(editing, animated: animated)
+        for observer in Array(editingObservers.values) { observer(animated) }
+    }
+
     open override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         if isMovingFromParent { onPopped?() }

@@ -63,8 +63,6 @@ func findLabelTitle(_ view: any View) -> String? {
     return nil
 }
 
-protocol LabelTitled { var labelTitle: any View { get } }
-extension Label: LabelTitled { var labelTitle: any View { title } }
 
 protocol RoleButtonLike { var buttonRole: ButtonRole? { get } }
 

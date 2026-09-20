@@ -2117,6 +2117,22 @@ check(!frames(pathProbe).isEmpty, "a path is a view")
 equal(Set([Color.red, Color.red, Color.blue]).count, 2, "colors that look the same are one in a set")
 check(Color(UIColor.red) == Color.red, "a color made from a UIColor is that color")
 
+// an aspect ratio with only the width proposed, and an adaptive grid column that becomes as many tracks as fit
+let ratioProbe = _Probe(VStack { Color.red.aspectRatio(2, contentMode: .fit) }, width: 100, height: 200)
+equal(frames(ratioProbe).first?.size ?? .zero, CGSize(width: 100, height: 50), "a view of aspect ratio 2 in a stack is twice as wide as high")
+struct AdaptiveCase: View {
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 30), spacing: 10)], spacing: 10) {
+            ForEach(0..<5) { _ in Color.red.aspectRatio(1, contentMode: .fit) }
+        }
+    }
+}
+let adaptiveProbe = _Probe(AdaptiveCase(), width: 100, height: 200)
+let tileFrames = frames(adaptiveProbe)
+equal(tileFrames.count, 5, "an adaptive grid shows every tile")
+equal(Set(tileFrames.map { $0.origin.x }).count, 2, "in two columns, since two 30-point tiles and their gap fit in 100")
+equal(tileFrames.first?.size ?? .zero, CGSize(width: 45, height: 45), "each as wide as its share of the room")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

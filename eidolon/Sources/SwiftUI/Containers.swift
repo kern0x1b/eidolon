@@ -209,6 +209,7 @@ final class TabItemNode: Node {
 
 func findImage(_ view: any View) -> Image? {
     if let image = view as? Image { return image }
+    if let label = view as? LabelParts { return findImage(label.labelIcon) }
     if let group = view as? GroupView { for child in group.childViews { if let found = findImage(child) { return found } } }
     if let wrapper = view as? WrappedView { return findImage(wrapper.wrapped) }
     return nil
@@ -254,7 +255,10 @@ final class TabViewNode: LayoutNode {
     func tabItemInfo(_ view: any View) -> (String?, String?, String?) {
         var badge: String?
         var current: any View = view
-        while let modified = current as? ModifiedViewLike {
+        while true {
+            // .tabItem is usually written before .tag, so the tag is what wraps it
+            if let tagged = current as? TaggedViewLike { current = tagged.taggedContent; continue }
+            guard let modified = current as? ModifiedViewLike else { break }
             if let trait = modified.modifierValue as? RowTraitModifier, let value = trait.badge { badge = badge ?? value }
             if let item = modified.modifierValue as? TabItemModifier {
                 let label = item.label()

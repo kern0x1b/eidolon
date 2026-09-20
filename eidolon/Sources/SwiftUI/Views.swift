@@ -267,8 +267,13 @@ extension Button: ButtonLike {
     var buttonLabel: any View { label }
 }
 
+protocol LabelParts { var labelTitle: any View { get }; var labelIcon: any View { get } }
+extension Label: LabelParts { var labelTitle: any View { title }; var labelIcon: any View { icon } }
+typealias LabelTitled = LabelParts
+
 func findText(_ view: any View) -> Text? {
     if let t = view as? Text { return t }
+    if let label = view as? LabelParts { return findText(label.labelTitle) }
     if let g = view as? GroupView { for c in g.childViews { if let t = findText(c) { return t } } }
     if let w = view as? WrappedView { return findText(w.wrapped) }
     return nil

@@ -51,31 +51,57 @@ struct _EditButtonBody: View, PrimitiveView {
     func makeNode(_ env: EnvironmentValues) -> Node { let n = EditButtonNode(); n.update(self, env); return n }
 }
 
+// Where "is the screen being edited" lives: the \.editMode binding when the app gives one, the screen itself otherwise.
+struct EditingAccess {
+    let get: () -> Bool
+    let set: (Bool) -> Void
+}
+
+func editingAccess(_ env: EnvironmentValues) -> EditingAccess? {
+    if let binding = env.editMode {
+        return EditingAccess(get: { binding.wrappedValue.isEditing }, set: { binding.wrappedValue = $0 ? .active : .inactive })
+    }
+    if let host = env.host {
+        return EditingAccess(get: { host.isEditing }, set: { host.setEditing($0, animated: true) })
+    }
+    return nil
+}
+
 final class EditButtonNode: LayoutNode {
     let target = ControlTarget()
     var button: UIButton { uiView as! UIButton }
-    weak var list: ListNode?
+    var access: EditingAccess?
+    weak var editingHost: _HostingViewController?
 
     init() {
         let control = UIButton(type: .roundedRect)
         super.init(view: control)
         control.addTarget(target, action: #selector(ControlTarget.fire), for: .touchUpInside)
         target.action = { [weak self] in
-            guard let table = self?.list?.uiView as? UITableView else { return }
-            table.setEditing(!table.isEditing, animated: true)
+            guard let access = self?.access else { return }
+            access.set(!access.get())
             self?.refreshTitle()
         }
     }
 
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)
-        list = env.list
+        access = editingAccess(env)
+        if let host = env.host as? _HostingViewController, editingHost !== host {
+            editingHost?.editingObservers[ObjectIdentifier(self)] = nil
+            editingHost = host
+            host.editingObservers[ObjectIdentifier(self)] = { [weak self] _ in self?.refreshTitle() }
+        }
         refreshTitle()
     }
 
+    override func dispose() {
+        editingHost?.editingObservers[ObjectIdentifier(self)] = nil
+        super.dispose()
+    }
+
     func refreshTitle() {
-        let editing = (list?.uiView as? UITableView)?.isEditing ?? false
-        button.setTitle(editing ? "Done" : "Edit", for: .normal)
+        button.setTitle((access?.get() ?? false) ? "Done" : "Edit", for: .normal)
     }
 
     override func computeSize(_ p: ProposedSize) -> CGSize {

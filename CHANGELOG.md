@@ -34,8 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `Color` is `Hashable` and can be made from a `UIColor` or `CGColor`; `import SwiftUI` brings UIKit, as on iOS.
 - `Text`: `bold(_:)`, `italic(_:)`, `monospaced(_:)`, `baselineOffset`, `accessibilityLabel`, `accessibilityHeading`,
   `init(_:formatter:)`; `Image` from a bundle, with a label or decorative.
+- `EditButton` works in a toolbar and follows the screen's editing state (UIKit's own `editButtonItem`), and `\.editMode`
+  is honoured by lists.
+- `DatePicker` shows its label, takes `in:` ranges and all of Apple's initialisers.
 - `View` is main-actor isolated, as Apple's is, so `@MainActor` models work from `body` and property initialisers.
-- The engine tests, twenty rendered scenarios with tree references, an in-app timing scenario and an arm64
+- The engine tests, twenty-four rendered scenarios with tree references, an in-app timing scenario and an arm64
   guest-ABI check.
 
 ### Fixed
@@ -43,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - A `Button` whose label is not a single `Text` (an icon, a `Label`, a stack) drew an empty rounded rectangle and dropped
   its label; it now draws the label, dimmed while pressed.
 - `Image(_:scale:orientation:label:)` dropped its label.
+- `.tabItem { Label(…) }` lost its title; an adaptive `LazyVGrid` column was one track; `aspectRatio` with one side
+  proposed took the child's own shape; a disabled toolbar `Button` was drawn with button chrome; `EditButton` in a
+  toolbar did nothing.
 - A view with a transform is placed by size and centre, not by `frame`.
 - An animated update lays out only the screens that re-rendered.
 - A change beneath `.padding()` or `.frame()` resets the wrapper's own cached size.
