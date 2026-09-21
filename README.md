@@ -120,7 +120,7 @@ Apple's interface with it, to prove that the symbols such an app needs are all t
 | [`docs/research.md`](docs/research.md) | why Apple's SwiftUI cannot be ported, and the design of this implementation (Russian) |
 | [`bridge/README.md`](bridge/README.md) | the guest-ABI check |
 | [`combine/RESULTS.md`](combine/RESULTS.md) | OpenCombine on iOS 6 before the Styx fork: 1448 of 1453 of its tests |
-| [`CLAUDE.md`](CLAUDE.md) | the contributor guide |
+| [`AGENTS.md`](AGENTS.md) | the contributor guide |
 
 ## Trademarks
 
