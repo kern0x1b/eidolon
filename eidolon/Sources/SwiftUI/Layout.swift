@@ -278,7 +278,7 @@ public enum Edge: Int8, CaseIterable {
     }
 }
 
-public struct EdgeInsets: Equatable {
+public struct EdgeInsets: Hashable {
     public var top: CGFloat, leading: CGFloat, bottom: CGFloat, trailing: CGFloat
     public init(top: CGFloat = 0, leading: CGFloat = 0, bottom: CGFloat = 0, trailing: CGFloat = 0) {
         self.top = top; self.leading = leading; self.bottom = bottom; self.trailing = trailing

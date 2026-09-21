@@ -4,16 +4,18 @@ _HostRootView (0,0,320,300)
       UIViewControllerWrapperView (0,44,320,256)
         _HostRootView (0,0,320,256)
           UITableView (0,0,320,256) table sections=[-:1]
-            UITableViewCell (0,0,320,44)
-              UITableViewCellContentView (0,0,320,43)
-                UIView (10,0,300,43)
-                  UILabel (0,11,300,21) "No items"
-              UIView (0,43,320,1)
-            UITableViewHeaderFooterView (0,44,320,22)
-              _UITableViewHeaderFooterViewBackground (0,0,320,23)
-                UIView (0,0,320,23)
-              _UITableViewHeaderFooterContentView (0,0,320,23)
-                _UITableViewHeaderFooterViewLabel (12,1,287,22) "Nothing here yet. Tap Add to create the first item."
+            UITableViewBackgroundView (0,0,320,256)
+              UIImageView (0,0,320,256)
+              UIView (0,0,320,256)
+            UITableViewCell (0,10,320,46)
+              UIGroupTableViewCellBackground (9,0,302,46)
+              UITableViewCellContentView (10,1,300,43)
+                UIView (10,0,280,43)
+                  UILabel (0,11,280,21) "No items"
+              UIImageView (10,1,300,7)
+            UITableViewHeaderFooterView (0,56,320,60)
+              _UITableViewHeaderFooterContentView (0,0,320,60)
+                _UITableViewHeaderFooterViewLabel (25,6,270,38) "Nothing here yet. Tap Add to create the first item."
     UINavigationBar (0,0,320,44)
       _UINavigationBarBackground (0,0,320,44)
         UIImageView (0,44,320,3)

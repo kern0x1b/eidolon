@@ -1,7 +1,7 @@
 import UIKit
 import CoreGraphics
 
-public struct Angle: Equatable, Comparable {
+public struct Angle: Hashable, Comparable {
     public var radians: Double
     public var degrees: Double {
         get { radians * 180 / .pi }
@@ -16,7 +16,7 @@ public struct Angle: Equatable, Comparable {
     public static let zero = Angle()
 }
 
-public struct UnitPoint: Equatable {
+public struct UnitPoint: Hashable {
     public var x: CGFloat
     public var y: CGFloat
     public init() { x = 0; y = 0 }
