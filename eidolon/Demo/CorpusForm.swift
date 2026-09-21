@@ -132,3 +132,23 @@ struct SwipeRealCase: View {
         }
     }
 }
+
+struct EmptyStateCase: View {
+    @State private var items: [String] = []
+    var body: some View {
+        NavigationView {
+            List {
+                if items.isEmpty {
+                    Section(footer: Text("Nothing here yet. Tap Add to create the first item.")) {
+                        Text("No items").foregroundColor(.secondary)
+                    }
+                } else {
+                    ForEach(items, id: \.self) { Text($0) }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Items")
+            .toolbar { Button("Add") { items.append("Item \(items.count + 1)") } }
+        }
+    }
+}

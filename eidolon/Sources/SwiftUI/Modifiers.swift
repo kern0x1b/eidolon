@@ -220,7 +220,7 @@ extension View {
     }
     public func navigationBarTitle(_ titleKey: LocalizedStringKey) -> some View { navigationTitle(titleKey) }
     public func listStyle<S: ListStyle>(_ style: S) -> some View {
-        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.listStyleGrouped = style is GroupedListStyle }, onUpdate: nil))
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.listStyleGrouped = style is GroupedListStyle || style is InsetGroupedListStyle }, onUpdate: nil))
     }
     public func onAppear(perform action: (() -> Void)? = nil) -> some View {
         _ModifiedView(content: self, modifier: AppearModifier(action: action, disappear: nil))
