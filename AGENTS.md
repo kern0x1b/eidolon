@@ -33,13 +33,18 @@ named `SwiftUI` because every symbol an app takes from SwiftUI is mangled with t
 ```bash
 eidolon/build.sh                                    # begins with the ledger check
 cd eidolon && ../run-emu.sh t1 out/EidolonDemo.app EidolonTests
-../snapshots.sh                                     # 16 rendered scenarios against references
+../snapshots.sh                                     # 37 rendered scenarios against eidolon/Snapshots/reference/
 ../bridge/guest-abi-check.sh                        # arm64 module with library evolution
 ```
 
+`run-emu.sh` and `snapshots.sh` (through `run-app.sh`) boot the older emulator, iLEmu, from the lab `EMULATOR_LAB`
+names in `local.env`.
+
 A change is done when the engine tests, every snapshot, the ledger check and the guest-ABI check pass. Anything that
 touches layout, gestures, animation, dialogs or navigation also gets a run on hardware (an iPad 2 or an iPhone 4S on
-iOS 6.1.3, through Charon's `xmake device claim` … `release`; claim, run, clean up, release).
+iOS 6.1.3): the repository skill `device-ssh-access` says how to reach one from here.
+
+Workspace-wide procedures are skills in `$HOME/Git/projects/ios/.agents/skills/`: `device-session` (claim, run, install, launch, tap on a real device), `canon-install`, `patch-merge`, `worktree-sweep`, `session-handoff`, `band-launch`, `band-supervise`. A session started inside this repository does not list them — read `<name>/SKILL.md` there.
 
 ## Rules that matter
 

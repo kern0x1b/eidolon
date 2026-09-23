@@ -1,57 +1,63 @@
 ---
 name: device-ssh-access
-description: Reach a jailbroken legacy-iOS device over its USB tunnel in this workspace — claim/release, run a command, copy a file, tell whether it's actually alive, and read a "Permission denied" or connection-reset failure correctly instead of assuming the credentials are wrong. Use whenever a task needs to touch a real device (not the shade emulator).
+description: Reach a real iOS 6 device from this repository — claim it, copy the demo or a probe over with device.lua, take device snapshots with device-shots.sh, and read "Permission denied" or connection-reset failures correctly. Use whenever Eidolon work needs hardware (not the emulator). The fleet discipline itself (claim, launch, tap, respring, privacy, cleanup) is the workspace skill `device-session`.
 ---
 
-# Device access
+# Device access from Eidolon
 
-Every device-touching repo in this workspace goes through charon's device transport
-(`charon/modules/device.lua`), driven by the `xmake device` plugin tasks — never hand-rolled
-`ssh`/`scp` to a guessed host/port.
+The procedure for any device session — claiming, launching, touching, respring, privacy,
+cleanup — is the workspace skill `device-session`: read
+`$HOME/Git/projects/ios/.agents/skills/device-session/SKILL.md` first. This file only adds what
+is specific to Eidolon.
 
-## Claim, run, release
+## Claim
+
+`xmake device` runs in any directory holding a `device.env` (or `device.NAME.env`). Eidolon has
+no root xmake project and keeps no `device.env` (`rtpkg/` has none either), so claim from a
+directory that has one — the shared charon checkout, or the `DEVICE_ROOT` of `local.env`:
 
 ```
-xmake device claim [--minutes N]
-xmake device run "<command>"
-xmake device copy <local> <remote>   # and fetch <remote> <local>
-xmake device release
+export CHARON_DEVICE_HOLDER=<task>
+cd $HOME/Git/projects/ios/charon            # or "$DEVICE_ROOT"
+xmake device list
+xmake device --minutes=30 claim             # -d NAME (or CHARON_DEVICE=NAME) picks device.NAME.env
 ```
 
-Claim before any use, hold it only as long as the work needs, release when done — a failed claim
-is a stop, not a thing to work around. `DEVICE_UDID` / `DEVICE_HOST` / `DEVICE_PORT` /
-`DEVICE_PASSWORD` come from a gitignored `device.env` next to the project, or the environment.
-The well-known default password on a freshly jailbroken device is `alpine`; nothing more
-specific than that belongs in a tracked file, a commit, or this skill.
+A claim without a holder errors; `run` and the rest check the claim through
+`CHARON_DEVICE_HOLDER` only, so keep it exported for the whole session. `xmake device` has no
+copy or fetch action: its actions are install, uninstall, log, run, where, list, claim, release.
 
-## "Permission denied (publickey,password,...)" almost never means the password is wrong
+## Copy, fetch, run: device.lua
 
-It means the command reached the wrong device. On a host running a USB tunnel (`iproxy`), a
-port number by itself reaches whichever device that tunnel currently serves — not necessarily
-the one you think, especially with more than one device attached. `xmake device run`/`copy`
-already checks this and raises `port %s tunnels to %s, not to %s` before it would ever reach an
-auth prompt; a raw `ssh`/`scp` to a guessed port has no such check and just fails at the
-credential stage instead, which reads exactly like a wrong password but isn't one.
+```
+export CHARON_MODULES=$HOME/Git/projects/ios/charon/modules
+set -a; . $HOME/Git/projects/ios/charon/device.env; set +a     # DEVICE_HOST/PORT/UDID/PASSWORD
+xmake l device.lua copy <local> <remote>
+xmake l device.lua fetch <remote> <local>
+xmake l device.lua run "<command>" [SECONDS]
+xmake l device.lua log [SECONDS]
+```
 
-- Find what's actually bound: `pgrep -fl iproxy` (lines look like `iproxy <port> 22 -u <udid>`).
-- Or ask the tool directly: `xmake device list` shows every attached device, its UDID and
-  tunnel port.
-- Never guess a port. On a host with more than one attached device, a guessed port reaches
-  whichever phone that tunnel happens to serve today.
+`device.lua` imports charon's `device` module from `CHARON_MODULES` and reads the phone only from
+the `DEVICE_*` environment variables, never from a `device.env`; the module still checks the claim
+against `CHARON_DEVICE_HOLDER`.
 
-## The device looks dead
+## Device snapshots: device-shots.sh
 
-- `launchctl list | grep com.apple.SpringBoard` is the reliable liveness check. The device's
-  busybox `ps ax | grep` does **not** match reliably — an empty result there does not mean
-  SpringBoard is down.
-- A screenshot (`/usr/bin/shot`, always writes to `/tmp/screenshot.png` regardless of any path
-  argument) confirms whether the UI is actually up.
-- `kex_exchange_identification: read: Connection reset by peer` while the tunnel is still
-  listening is usually the USB tunnel glitching, or dropbear rate-limiting rapid reconnects —
-  slow down and retry, or re-seat USB. It is usually not a device crash.
+```
+./device-shots.sh [--live | --gesture] SCENARIO...
+```
 
-## Privacy
+It installs `eidolon/out/EidolonDemo.app`, renders each scenario in the app and fetches the
+results into `device-shots/` (git-ignored). It reads `DEVICE_ROOT` (a Charon port directory whose
+`device.env` names the phone) and `CHARON_DEVICE_HOLDER` from `local.env`, and talks to the phone
+through the Conan CLI `charon --root "$DEVICE_ROOT" device run|copy|fetch`, which checks no claim:
+claim with `xmake device` first.
 
-Never write a real device UDID, IP/hostname, or password into a tracked file, a commit message,
-or a skill — `alpine` (the well-known jailbreak default) is the only credential-shaped string
-that's safe to name. Everything device-specific lives in the gitignored `device.env`.
+## Traps
+
+- "Permission denied (publickey,password,...)" from a raw `ssh`/`scp` to a guessed port means the wrong device, not the wrong password: `pgrep -fl iproxy` shows which UDID each tunnel serves.
+- `kex_exchange_identification: Connection reset` is the USB tunnel or dropbear rate-limiting: slow down and retry; it is not a crash.
+- `launchctl list | grep com.apple.SpringBoard` is the liveness check; the device's `ps ax | grep` is not reliable.
+- `/usr/bin/shot` always writes `/tmp/screenshot.png`, whatever path it is given.
+- No UDID, address, hostname or password in a tracked file, commit or skill; `alpine`, the public jailbreak default, is the only credential that may be named.
