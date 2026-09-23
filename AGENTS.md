@@ -19,6 +19,14 @@ named `SwiftUI` because every symbol an app takes from SwiftUI is mangled with t
 - `eidolon/Demo/` — the demo app and its snapshot scenarios; `eidolon/Snapshots/reference/` — the tree references.
 - `eidolon/README.md` + `eidolon/coverage.py` — the ledger and its checker.
 - `bridge/` — the guest-ABI check and the typed API diff (`api-surface.sh`, `api-diff.py`).
+- `combine/` — the pre-Styx port of OpenCombine and its upstream test suite on iOS 6 (`build.sh`, `emu-loop.sh`,
+  `gentests.py`, `stage-pkg.sh`), with results in `combine/RESULTS.md`. Historical: Styx, the `Combine` module Eidolon
+  actually links, carries its own tests now.
+- `rtpkg/` — the xmake project that builds the runtime packages Eidolon and Styx link against (`xmake.lua`, `control`,
+  `main.swift`); everything else under it (`build/`, `*.log`, `xmake-addons.lock`) is xmake's own output and
+  git-ignored.
+- `device-run/` — probe output captured on hardware (`probe-ipad2.out`, `probe-iphone4s.out`), the source of the
+  performance numbers in `eidolon/README.md`.
 
 ## Build and test
 
