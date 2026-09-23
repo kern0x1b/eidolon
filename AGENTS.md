@@ -71,5 +71,5 @@ tested with a virtual clock (`_Probe.useVirtualClock()`, `_Probe.advanceAnimatio
 
 ## Conventions
 
-- Commit subjects are plain and imperative; keep the `Co-Authored-By: Claude` trailer.
+- Commit subjects are plain and imperative; an agent's commit ends with its own `Co-Authored-By:` trailer.
 - Documents in `docs/` and the ledger are in Russian; the front README and this guide are in English.
