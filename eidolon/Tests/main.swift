@@ -897,6 +897,29 @@ if let leaving {
     while let v = outer { if abs(v.transform.a - 0.5) < 0.01 { scaled = true }; outer = v.superview }
     check(scaled, "the removal uses the removal transition (scale), not the insertion one")
 } else { check(false, "the leaving view is still on screen during its removal") }
+struct PushCase: View {
+    @ObservedObject var store: Store
+    var body: some View {
+        VStack {
+            if store.show {
+                Color.red.frame(width: 33, height: 33).transition(.push(from: .bottom))
+            }
+        }
+    }
+}
+store.show = true
+let pushed = _Probe(PushCase(store: store), width: 100, height: 100)
+_ = frames(pushed)
+withAnimation(.linear(duration: 0.3)) { store.show = false }
+pushed.flush()
+leaving = nil
+findLeaving(pushed.hostView)
+if let leaving {
+    var outer: UIView? = leaving
+    var slid = false
+    while let v = outer { if abs(v.transform.tx) > 1 || abs(v.transform.ty) > 1 { slid = true }; outer = v.superview }
+    check(slid, "a push takes the old view out through the far edge")
+} else { check(false, "a pushed view stays on screen while it leaves") }
 
 // 37. onOpenURL, badge, scrollContentBackground, redaction
 var opened: [URL] = []
@@ -2475,68 +2498,71 @@ func tableHeaderTapsWriteTheOrderAndTurnTheArrow() {
 
 // Springs and timing curves: the numbers Apple's own framework answers with, measured on macOS 27
 // (.agent-work/host/spring.out in the band that wrote them; the values are the same to nine decimals).
-func near(_ got: Double, _ want: Double, _ what: String, _ tolerance: Double = 1e-6) {
+func closeTo(_ got: Double, _ want: Double, _ what: String, _ tolerance: Double = 1e-6) {
     check(abs(got - want) <= tolerance, what, "got \(got), want \(want)")
 }
-let eased = UnitCurve.easeIn
-near(eased.value(at: 0.3), 0.129576683, "easeIn at 0.3 is the cubic Bezier Apple uses")
-near(eased.velocity(at: 0.3), 0.768389702, "and its slope with it")
-near(UnitCurve.easeOut.value(at: 0.7), 0.870423317, "easeOut is the same curve the other way round")
-near(UnitCurve.easeInOut.value(at: 0.5), 0.5, "easeInOut is at its middle half way")
+let easeInCurve = UnitCurve.easeIn
+closeTo(easeInCurve.value(at: 0.3), 0.129576683, "easeIn at 0.3 is the cubic Bezier Apple uses")
+closeTo(easeInCurve.velocity(at: 0.3), 0.768389702, "and its slope with it")
+closeTo(UnitCurve.easeOut.value(at: 0.7), 0.870423317, "easeOut is the same curve the other way round")
+closeTo(UnitCurve.easeInOut.value(at: 0.5), 0.5, "easeInOut is at its middle half way")
 check(UnitCurve.easeInEaseOut == .easeInOut, "and easeInEaseOut is that curve")
-near(UnitCurve.circularEaseIn.value(at: 0.3), 0.046060799, "circularEaseIn is a quarter circle")
-near(UnitCurve.circularEaseIn.velocity(at: 0.3), 0.314485451, "whose slope is the circle's")
-near(UnitCurve.circularEaseOut.value(at: 0.3), 0.714142843, "circularEaseOut is its mirror")
-near(UnitCurve.circularEaseInOut.value(at: 0.4), 0.2, "circularEaseInOut is two of them, halved")
-near(UnitCurve.linear.value(at: 0.25), 0.25, "the linear curve is the identity")
-near(UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.25, y: 0.1), endControlPoint: UnitPoint(x: 0.25, y: 1)).value(at: 0.5), 0.802403450, "a Bezier of two control points")
-near(UnitCurve.easeInOut.inverse.value(at: 0.2), 0.309797287, "the inverse of a curve runs it backwards", 1e-5)
+closeTo(UnitCurve.circularEaseIn.value(at: 0.3), 0.046060799, "circularEaseIn is a quarter circle")
+closeTo(UnitCurve.circularEaseIn.velocity(at: 0.3), 0.314485451, "whose slope is the circle's")
+closeTo(UnitCurve.circularEaseOut.value(at: 0.3), 0.714142843, "circularEaseOut is its mirror")
+closeTo(UnitCurve.circularEaseInOut.value(at: 0.4), 0.2, "circularEaseInOut is two of them, halved")
+closeTo(UnitCurve.linear.value(at: 0.25), 0.25, "the linear curve is the identity")
+closeTo(UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.25, y: 0.1), endControlPoint: UnitPoint(x: 0.25, y: 1)).value(at: 0.5), 0.802403450, "a Bezier of two control points")
+closeTo(UnitCurve.easeInOut.inverse.value(at: 0.2), 0.309797287, "the inverse of a curve runs it backwards", 1e-5)
 
-let plain = Spring(duration: 0.5, bounce: 0)
-near(plain.response, 0.5, "a spring's duration is its response")
-near(plain.dampingRatio, 1, "and no bounce is critical damping")
-near(plain.mass, 1, "a spring is unit mass")
-near(plain.stiffness, 157.913670417, "its stiffness follows the response")
-near(plain.damping, 25.132741229, "and its damping the ratio")
-near(plain.value(target: 1.0, time: 0.1), 0.357739556, "a critical spring's value at a tenth of a second")
-near(plain.value(target: 1.0, time: 0.5), 0.986399069, "and halfway through")
-near(plain.velocity(target: 1.0, time: 0.1), 4.494373762, "its velocity there")
-near(plain.velocity(target: 1.0, time: 0), 0, "and none at the start")
-near(plain.force(target: 1.0, position: 0.5, velocity: 0), 78.956835209, "the force that pulls a spring back")
-near(plain.settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 0.8, "and when it has settled")
-let bouncy = Spring(duration: 0.5, bounce: 0.15)
-near(bouncy.dampingRatio, 0.85, "a bounce damps the spring by that much less")
-near(bouncy.value(target: 1.0, time: 0.4), 1.001616993, "an under-damped spring passes the target")
-near(bouncy.value(target: 1.0, time: 1.0), 0.999966082, "and comes back to it")
-let lazy = Spring(duration: 1, bounce: -0.2)
-near(lazy.dampingRatio, 1.25, "a negative bounce damps it more than critical")
-near(lazy.bounce, -0.2, "and is itself that bounce again")
-near(lazy.stiffness, 83.891637409, "with the stiffness that ratio needs")
-near(lazy.value(target: 1.0, time: 0.5), 0.723449712, "an over-damped spring comes up slowly")
-near(lazy.settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 2.3, "and settles late")
-near(Spring(mass: 1, stiffness: 100, damping: 10).response, 0.628318531, "a spring of a mass, a stiffness and a damping reads its response off them")
-near(Spring(mass: 1, stiffness: 100, damping: 10).dampingRatio, 0.5, "and its damping ratio")
-near(Spring(mass: 1, stiffness: 100, damping: 100).dampingRatio, 1, "while more damping than critical is refused")
-near(Spring(mass: 1, stiffness: 100, damping: 100, allowOverDamping: true).dampingRatio, 1, "unless it is asked for")
-near(Spring.smooth.bounce, 0, "the smooth spring does not bounce")
-near(Spring.snappy.bounce, 0.15, "the snappy one a little")
-near(Spring.bouncy.bounce, 0.3, "and the bouncy one more")
-near(Spring.bouncy(duration: 0.4, extraBounce: 0.1).duration, 0.4, "a preset takes a duration")
-near(Spring(response: 0.5, dampingRatio: 0.825).bounce, 0.175, "a spring built of a ratio bounces by its remainder")
-var stepped = Double(0), steppedSpeed = Double(0)
-for _ in 0..<6 { Spring(duration: 0.5).update(value: &stepped, velocity: &steppedSpeed, target: 1, deltaTime: 1.0 / 60) }
-near(stepped, plain.value(target: 1.0, time: 0.1), "six frames of a spring are where its curve says")
-near(steppedSpeed, plain.velocity(target: 1.0, time: 0.1), "and carry its velocity")
-near(plain.value(fromValue: 0.2, toValue: 1.0, initialVelocity: 0, time: 0.3), 0.912027151, "a spring from a value it did not start at")
-near(plain.velocity(fromValue: 0.2, toValue: 1.0, initialVelocity: 0, time: 0.3), 0.873734220, "and its velocity there", 1e-5)
+let plainSpring = Spring(duration: 0.5, bounce: 0)
+closeTo(plainSpring.response, 0.5, "a spring's duration is its response")
+closeTo(plainSpring.dampingRatio, 1, "and no bounce is critical damping")
+closeTo(plainSpring.mass, 1, "a spring is unit mass")
+closeTo(plainSpring.stiffness, 157.913670417, "its stiffness follows the response")
+closeTo(plainSpring.damping, 25.132741229, "and its damping the ratio")
+closeTo(plainSpring.value(target: 1.0, time: 0.1), 0.357739556, "a critical spring's value at a tenth of a second")
+closeTo(plainSpring.value(target: 1.0, time: 0.5), 0.986399069, "and halfway through")
+closeTo(plainSpring.velocity(target: 1.0, time: 0.1), 4.494373762, "its velocity there")
+closeTo(plainSpring.velocity(target: 1.0, time: 0), 0, "and none at the start")
+closeTo(plainSpring.force(target: 1.0, position: 0.5, velocity: 0), 78.956835209, "the force that pulls a spring back")
+closeTo(plainSpring.settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 0.8, "and when it has settled")
+let bouncySpring = Spring(duration: 0.5, bounce: 0.15)
+closeTo(bouncySpring.dampingRatio, 0.85, "a bounce damps the spring by that much less")
+closeTo(bouncySpring.value(target: 1.0, time: 0.4), 1.001616993, "an under-damped spring passes the target")
+closeTo(bouncySpring.value(target: 1.0, time: 1.0), 0.999966082, "and comes back to it")
+let lazySpring = Spring(duration: 1, bounce: -0.2)
+closeTo(lazySpring.dampingRatio, 1.25, "a negative bounce damps it more than critical")
+closeTo(lazySpring.bounce, -0.2, "and is itself that bounce again")
+closeTo(lazySpring.stiffness, 83.891637409, "with the stiffness that ratio needs")
+closeTo(lazySpring.value(target: 1.0, time: 0.5), 0.723449712, "an over-damped spring comes up slowly")
+closeTo(lazySpring.settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 2.3, "and settles late")
+closeTo(Spring(mass: 1, stiffness: 100, damping: 10).response, 0.628318531, "a spring of a mass, a stiffness and a damping reads its response off them")
+closeTo(Spring(mass: 1, stiffness: 100, damping: 10).dampingRatio, 0.5, "and its damping ratio")
+closeTo(Spring(mass: 1, stiffness: 100, damping: 100).dampingRatio, 1, "while more damping than critical is refused")
+closeTo(Spring(mass: 1, stiffness: 100, damping: 100, allowOverDamping: true).dampingRatio, 1, "unless it is asked for")
+closeTo(Spring.smooth.bounce, 0, "the smooth spring does not bounce")
+closeTo(Spring.snappy.bounce, 0.15, "the snappy one a little")
+closeTo(Spring.bouncy.bounce, 0.3, "and the bouncy one more")
+closeTo(Spring.bouncy(duration: 0.4, extraBounce: 0.1).duration, 0.4, "a preset takes a duration")
+closeTo(Spring(response: 0.5, dampingRatio: 0.825).bounce, 0.175, "a spring built of a ratio bounces by its remainder")
+var steppedValue = Double(0), steppedSpeed = Double(0)
+for _ in 0..<6 { Spring(duration: 0.5).update(value: &steppedValue, velocity: &steppedSpeed, target: 1, deltaTime: 1.0 / 60) }
+closeTo(steppedValue, plainSpring.value(target: 1.0, time: 0.1), "six frames of a spring are where its curve says")
+closeTo(steppedSpeed, plainSpring.velocity(target: 1.0, time: 0.1), "and carry its velocity")
+let cornerToCorner = CGPoint(x: 0.2, y: 0.4)
+closeTo(plainSpring.value(fromValue: cornerToCorner, toValue: CGPoint(x: 1, y: 1), initialVelocity: .zero, time: 0.3).x, 0.912027151, "a spring from a value it did not start at")
+closeTo(plainSpring.velocity(fromValue: cornerToCorner, toValue: CGPoint(x: 1, y: 1), initialVelocity: .zero, time: 0.3).x, 0.873734220, "and its velocity there", 1e-5)
 
-near(Animation.spring.duration, 0.5, "the default spring lasts half a second")
-near(Animation.spring.bouncy(duration: 0.4, extraBounce: 0.1).duration, 0.4, "a spring animation takes a duration")
-near(Animation.smooth.duration, 0.5, "the smooth animation is that spring")
-near(Animation.snappy.duration, 0.5, "and so are the snappy and the bouncy ones")
-near(Animation.timingCurve(.circularEaseIn, duration: 2).progress(0.5), 0.133974596, "a timing curve animation follows its curve")
-near(Animation.spring(duration: 0.5).progress(0.2), plain.value(target: 1.0, time: 0.1), "and a spring animation follows the spring")
-near(Animation.linear.progress(0.3), 0.3, "the linear animation is the identity")
+check(Animation.spring == Animation.spring(duration: 0.5, bounce: 0), "the default spring is a half-second spring that does not bounce")
+check(Animation.smooth == Animation.spring(duration: 0.5, bounce: 0), "and the smooth animation is that spring")
+check(Animation.snappy == Animation.spring(duration: 0.5, bounce: 0.15), "the snappy one is the spring with a little bounce")
+check(Animation.bouncy(duration: 0.4, extraBounce: 0.1) == Animation.spring(duration: 0.4, bounce: 0.4), "and a bouncy animation takes both of its numbers")
+check(Animation.interactiveSpring == Animation.spring(duration: 0.15, bounce: 0.15), "the interactive spring is the snappy duration without the extra bounce")
+check(Animation.smooth != Animation.bouncy, "two springs of the same length are told apart by their bounce")
+check(Animation.spring(duration: 0.5).delay(0.2) != Animation.spring(duration: 0.5), "a delay makes another animation")
+check(Animation.timingCurve(.circularEaseIn, duration: 2) != Animation.linear(duration: 2), "and so does a timing curve")
+check(Animation.timingCurve(0.42, 0, 1, 1, duration: 1) == Animation.timingCurve(.easeIn, duration: 1), "the four points of a timingCurve are the control points of the Bezier")
 
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {

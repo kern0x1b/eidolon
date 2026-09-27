@@ -151,6 +151,20 @@ public struct AnyTransition {
     public static func offset(_ offset: CGSize) -> AnyTransition {
         AnyTransition(storage: TransitionSpec(fades: false, scale: nil, offset: offset))
     }
+    public static func offset(x: CGFloat = 0, y: CGFloat = 0) -> AnyTransition {
+        offset(CGSize(width: x, height: y))
+    }
+    // The old view is pushed out of the edge the new one came in by, as a stack of cards is.
+    public static func push(from edge: Edge) -> AnyTransition {
+        let opposite: Edge
+        switch edge {
+        case .leading: opposite = .trailing
+        case .trailing: opposite = .leading
+        case .top: opposite = .bottom
+        case .bottom: opposite = .top
+        }
+        return .asymmetric(insertion: .move(edge: edge), removal: .move(edge: opposite))
+    }
     public func combined(with other: AnyTransition) -> AnyTransition {
         var merged = storage
         if other.storage.fades { merged.fades = true }
