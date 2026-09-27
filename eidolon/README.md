@@ -55,7 +55,7 @@
 | Модальность | `.sheet` (в том числе `sheet(item:)`), `.fullScreenCover`, `.alert` (родной `UIAlertView`), `.actionSheet`, `.confirmationDialog`, `contextMenu`, `presentationMode` |
 | Оформление | фон и накладка стилем (`.background(.ultraThinMaterial)`, `.background(.blue, in: Capsule())`, `.background(in:)` с `backgroundStyle`), `foregroundStyle` со `ShapeStyle`, `containerShape` для `ContainerRelativeShape`, `contentTransition` (смена текста наплывом `CATransition`), `projectionEffect` (`CATransform3D`), `compositingGroup` (растеризация слоя — так в iOS 6 получается групповая прозрачность), `buttonBorderShape` для `bordered`/`borderedProminent`, `opacity`, `cornerRadius`, `border`, `shadow`, `clipped`, `clipShape`, `offset`, `rotationEffect`, `scaleEffect`, `overlay`, `background` видом, `hidden`, `zIndex`, `drawingGroup`, `redacted` |
 | Жесты | Движок с типизированными событиями: `TapGesture`, `SpatialTapGesture`, `LongPressGesture` (нажатие с момента касания, а не через `minimumDuration`), `DragGesture` (с `minimumDistance` и `coordinateSpace`), `MagnificationGesture`, `RotationGesture`; `onChanged`, `onEnded`, `map`, `updating` с `@GestureState` (значение сбрасывается, когда жест кончился или отменён), `simultaneously`, `sequenced` (второй жест ждёт первого), `exclusively` (второй ждёт, пока не откажет первый), `AnyGesture`, жесты, собранные через `body`; `gesture`, `simultaneousGesture`, `highPriorityGesture` с `including:`; `onTapGesture`, `onLongPressGesture` с `onPressingChanged`; `contentShape` (форма, в которой жест принимает касание) |
-| Анимация | `Animation`, `withAnimation`, `.animation` поверх `UIView.animate`, `repeatForever`, `repeatCount` (с `autoreverses`), `transition`, `matchedGeometryEffect` с `@Namespace`; **данные `Animatable` интерполируются кадр за кадром** у своих `Shape` (`animatableData`), `GeometryEffect`, `ViewModifier & Animatable` и `Layout`; у встроенных — `trim`, углы `RoundedRectangle`, `offset`, `scale`, `rotation` фигур |
+| Анимация | `Animation` (`.linear`, `.easeIn`, `.easeOut`, `.easeInOut`, `.spring` — по `response:dampingFraction:`, по `duration:bounce:` и по `Spring`, `.interactiveSpring`, `.interpolatingSpring`, `.smooth`, `.snappy`, `.bouncy`, `timingCurve(_:duration:)` для `UnitCurve` и для четырёх точек, `delay`, `speed`, `repeatCount`, `repeatForever`, `logicallyComplete`), `Spring` (все четыре способа построить, `value`/`velocity`/`force`/`update` для `VectorArithmetic` и для `Animatable`, `settlingDuration`, `smooth`/`snappy`/`bouncy`), `UnitCurve` (кривые Безье и три круговые, `value`, `velocity`, `inverse`, `bezier(startControlPoint:endControlPoint:)`), `withAnimation`, `.animation` поверх `UIView.animate`, `transition`, `matchedGeometryEffect` с `@Namespace`; **данные `Animatable` интерполируются кадр за кадром** у своих `Shape` (`animatableData`), `GeometryEffect`, `ViewModifier & Animatable` и `Layout`; у встроенных — `trim`, углы `RoundedRectangle`, `offset`, `scale`, `rotation` фигур |
 | Геометрия | `Path` (`forEach`, `addLines`, `addRects`, `addRelativeArc`, `strokedPath`, `trimmedPath`), `Shape.trim`, `Shape.size`, `Shape.sizeThatFits` (круг берёт меньшую сторону), `GeometryEffect` (переход слоя по `ProjectionTransform`, начало координат в левом верхнем углу, как у Apple), `ProjectionTransform` (`concatenating`, `inverted`, `isAffine`) |
 | Анимация | `Animation`, `withAnimation`, `.animation` поверх `UIView.animate`, `transition`, `matchedGeometryEffect` с `@Namespace` (новый вид едет из места старого) |
 | Core Data | `@FetchRequest` и `SectionedFetchRequest` поверх `NSFetchedResultsController` (перечитывание при сохранении контекста, изменение предиката и сортировки через `$request`), `FetchedResults`, `SectionedFetchResults`, `\.managedObjectContext` |
@@ -89,9 +89,10 @@
 `matchedGeometryEffect(isSource: false)` (не-источник не подстраивается под источник).
 
 **Упрощены** — работают, но с расхождением, которого iOS 6 не позволяет избежать; каждое пишет строку в журнал и
-отчёт прогона при первом использовании: `Animation.spring` (и `interactiveSpring`, `interpolatingSpring`: у `UIView` нет пружинной анимации — кривая
-ease-out той же длительности, затухание не моделируется), `Animation.timingCurve` (в iOS 6 четыре кривые времени и
-нет кубической Безье — берётся ближайшая из них), `ShadowStyle.inner` (внутренних теней в CoreAnimation нет — не рисуется),
+отчёт прогона при первом использовании: `Animation.spring` (и `interactiveSpring`, `interpolatingSpring`, `smooth`,
+`snappy`, `bouncy`: у `UIView` iOS 6 нет пружинной анимации, поэтому свойство `UIView` идёт по ближайшей из
+четырёх кривых времени; анимации самого движка, идущие кадр за кадром, считаются настоящей пружиной — `Spring`
+решает систему в закрытом виде), `ShadowStyle.inner` (внутренних теней в CoreAnimation нет — не рисуется),
 `Text.LineStyle.Pattern` (только сплошные подчёркивание и зачёркивание), `Font.leading` (вариантов интерлиньяжа у
 `UIFont` нет — используйте `lineSpacing`), `Font.Design.rounded` (скруглённого системного шрифта нет — обычный),
 `foregroundStyle(gradient)` у текста (текст одного цвета — первый цвет градиента), `submitLabel(.continue)`
@@ -103,8 +104,8 @@ ease-out той же длительности, затухание не моде�
 устроен иначе, чем в SwiftUI: распознаватели предка и потомка срабатывают одновременно, а не «потомок побеждает»;
 `highPriorityGesture` заставляет распознаватели потомков ждать распознавателя предка, `simultaneousGesture` не
 отличается от `gesture`. `Layout.spacing` не читается родительским стеком: расстояния между видами задаёт
-сам стек. Анимация `Animatable`-данных идёт по времени, кривой и повторам `Animation`; пружина заменена кривой
-ease-out (см. выше). `coverage.py --check` требует, чтобы каждая такая запись в коде была названа здесь.
+сам стек. Анимация `Animatable`-данных идёт по времени, кривой и повторам `Animation`; пружина, кривая `UnitCurve`
+и `timingCurve` считаются точно (см. выше и «Замеры»). `coverage.py --check` требует, чтобы каждая такая запись в коде была названа здесь.
 
 `GeometryProxy.containerCornerInsets` отдаёт нулевые отступы: на iOS 6 ни один контейнер не рисуется со скруглёнными углами, скруглять нечего. У `LayoutSubview` и `LayoutSubviews` `==` объявлены явно, а у `GridItem`, `GridItem.Size`, `ScrollPosition` и `ScrollDismissesKeyboardMode` — через синтез компилятора: в отличие от `@frozen` типов Apple, наш модуль не печатает выведенные равенства в своём интерфейсе, и `bridge/api-diff.py` видит их как `__derived_struct_equals`.
 
@@ -189,6 +190,17 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   когда меняется только одна строка из шести, обновление на iPad 2 падает: d=1 — 3,4 мс, d=3 — 10 мс, d=5 — 18 мс.
   Текст (внутри приложения, `perf.sh`; вне приложения на устройстве нет шрифтового сервера, процесс падает на
   первом `Text`) идёт немного дороже цвета на глубоких экранах из-за измерения строк, но растёт так же линейно.
+
+- `Spring` и `UnitCurve` сверены с фреймворком macOS 27 (`.agent-work/host/` — снимок замеров и хост-проверка): совпадают до девятого
+  знака `value`/`force`/`update` для всех четырёх способов построить пружину, все семь её свойств
+  (`response`, `dampingRatio`, `duration`, `bounce`, `mass`, `stiffness`, `damping`), значения и скорости трёх
+  круговых кривых, и `settlingDuration` пружины без колебаний. Расходятся в трёх местах, и все три измерены:
+  Безье-кривые — на 5·10⁻⁷ (наш корень точнее: у Apple он одинарной точности, `0.399999619` против `0.4` —
+  это `Float`); `settlingDuration` колеблющейся пружины — у Apple в 1.24–1.48 раза больше аналитического времени
+  и из замкнутого решения оно не восстанавливается, а своя ветка у Apple для колебаний другая (у нас — точное
+  время, после которого ошибка уже не выходит за `epsilon`); `velocity` перезатухающей пружины (`dampingRatio > 1`)
+  — у Apple она не является производной его же `value` (при `dampingRatio` 1.25, `response` 1, t=0.1 Apple отвечает
+  2.867334, производная равна 1.867334), у нас — производная, иначе `update(value:velocity:target:deltaTime:)` врал бы.
 
 ## Ограничения окружения
 

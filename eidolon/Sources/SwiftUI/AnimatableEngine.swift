@@ -47,28 +47,11 @@ extension UnitPoint: Animatable {
 enum Easing {
     static func apply(_ curve: Animation.Curve, _ t: Double) -> Double {
         switch curve {
-        case .linear: return t
-        case .easeIn: return bezier(0.42, 0, 1, 1, t)
-        case .easeOut, .spring: return bezier(0, 0, 0.58, 1, t)
-        case .easeInOut: return bezier(0.42, 0, 0.58, 1, t)
+        case .linear: return UnitCurve.linear.value(at: t)
+        case .easeIn: return UnitCurve.easeIn.value(at: t)
+        case .easeOut: return UnitCurve.easeOut.value(at: t)
+        case .easeInOut, .spring: return UnitCurve.easeInOut.value(at: t)
         }
-    }
-
-    // The same cubic Bézier that Core Animation's named timing curves are, solved for the time.
-    static func bezier(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ x: Double) -> Double {
-        if x <= 0 { return 0 }
-        if x >= 1 { return 1 }
-        func sample(_ a: Double, _ b: Double, _ u: Double) -> Double {
-            3 * a * (1 - u) * (1 - u) * u + 3 * b * (1 - u) * u * u + u * u * u
-        }
-        var low = 0.0, high = 1.0, u = x
-        for _ in 0..<24 {
-            let value = sample(x1, x2, u)
-            if abs(value - x) < 1e-6 { break }
-            if value < x { low = u } else { high = u }
-            u = (low + high) / 2
-        }
-        return sample(y1, y2, u)
     }
 }
 
@@ -146,7 +129,7 @@ final class ValueAnimator {
         let whole = floor(passes)
         let fraction = passes - whole
         let raw = animation.autoreverses ? (Int(whole) % 2 == 0 ? fraction : 1 - fraction) : fraction
-        return (Easing.apply(animation.curve, raw), false)
+        return (animation.progress(raw), false)
     }
 }
 
