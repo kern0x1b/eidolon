@@ -3,14 +3,14 @@
   "types": 509,
   "apple_mods": 311,
   "mods": 311,
-  "working": 189,
+  "working": 190,
   "pending": 0,
-  "ignored": 122,
+  "ignored": 121,
   "ios_apple_types": 520,
   "ios_types": 493,
   "ios_apple_mods": 289,
   "ios_mods": 289,
-  "ios_working": 188,
+  "ios_working": 189,
   "ios_pending": 0,
-  "ios_ignored": 101
+  "ios_ignored": 100
 }

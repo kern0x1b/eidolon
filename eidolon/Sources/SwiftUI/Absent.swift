@@ -26,7 +26,6 @@ public struct ContentTransition: Equatable {
 }
 public enum HoverPhase { case active(CGPoint), ended }
 public enum HoverEffect { case automatic, highlight, lift }
-public struct SymbolVariants { public static let none = SymbolVariants(); public static let fill = SymbolVariants(); public static let circle = SymbolVariants() }
 public struct PreviewDevice: ExpressibleByStringLiteral {
     public init(stringLiteral: String) {}
     public init(rawValue: String) {}
@@ -188,9 +187,6 @@ extension View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
             if sensitive && environment.redactionReasons.contains(.privacy) { environment.redactedDrawing = true }
         }, onUpdate: nil))
-    }
-    public func symbolVariant(_ variant: SymbolVariants) -> some View {
-        ignored(self, "symbolVariant", "iOS 6 has no SF Symbols")
     }
     public func flipsForRightToLeftLayoutDirection(_ enabled: Bool) -> some View {
         ignored(self, "flipsForRightToLeftLayoutDirection", "UIView of iOS 6 has no semantic content attribute")

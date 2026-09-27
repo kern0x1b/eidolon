@@ -24,7 +24,6 @@ struct VerticalSizeClassKey: EnvironmentKey { static var defaultValue: UserInter
 struct DisplayScaleKey: EnvironmentKey { static var defaultValue: CGFloat { UIScreen.main.scale } }
 struct OpenURLKey: EnvironmentKey { static var defaultValue: OpenURLAction { OpenURLAction() } }
 struct SymbolRenderingModeKey: EnvironmentKey { static var defaultValue: SymbolRenderingMode { .monochrome } }
-struct SymbolVariantsKey: EnvironmentKey { static var defaultValue: SymbolVariants { .none } }
 struct VerticalScrollIndicatorKey: EnvironmentKey { static var defaultValue: Visibility { .automatic } }
 struct HorizontalScrollIndicatorKey: EnvironmentKey { static var defaultValue: Visibility { .automatic } }
 struct VerticalScrollBounceKey: EnvironmentKey { static var defaultValue: ScrollBounceBehavior { .automatic } }
@@ -92,10 +91,6 @@ extension EnvironmentValues {
     public var symbolRenderingMode: SymbolRenderingMode {
         get { self[SymbolRenderingModeKey.self] }
         set { self[SymbolRenderingModeKey.self] = newValue }
-    }
-    public var symbolVariants: SymbolVariants {
-        get { self[SymbolVariantsKey.self] }
-        set { self[SymbolVariantsKey.self] = newValue }
     }
     /// iOS 6 has no text content types, so the field never gets one.
     /// Whether the scroll view of a vertical axis draws its indicator. `.automatic` leaves the

@@ -2718,6 +2718,18 @@ if let scroller = scrollerOf(scrolled) {
 let plainScroller = scrollerOf(_Probe(ScrollView { Color.red }.scrollIndicators(.hidden), width: 50, height: 50))
 check(plainScroller?.showsVerticalScrollIndicator == false, "and the view's own flag still decides when the environment says nothing")
 
+// SymbolVariants: the flags, their combinations and the name a variant gives a symbol — the whole
+// type is OpenSwiftUI's, and this checks it says what its own documentation says.
+check(SymbolVariants.none == SymbolVariants.none, "the empty variant is one value")
+check(!SymbolVariants.fill.contains(.none), "and the filled one is not the empty one")
+check(SymbolVariants.fill.contains(.fill), "a filled variant contains fill")
+check(SymbolVariants.circle.contains(.circle), "and a circle variant contains circle")
+check(!SymbolVariants.circle.contains(.square), "but not a square one")
+check(SymbolVariants.fill.circle.contains(.fill) && SymbolVariants.fill.circle.contains(.circle),
+      "a variant can be filled and in a circle at once")
+check(SymbolVariants.fill != SymbolVariants.circle, "and the two are told apart")
+check(SymbolVariants.fill.square == SymbolVariants.square.fill, "the two orders of the flags agree")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
