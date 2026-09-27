@@ -461,9 +461,9 @@ final class ToggleNode: ContainerNode {
 }
 
 public struct ForEach<Data, ID, Content> where Data: RandomAccessCollection, ID: Hashable {
-    let data: Data
+    public var data: Data
     let id: KeyPath<Data.Element, ID>
-    let content: (Data.Element) -> Content
+    public var content: (Data.Element) -> Content
 }
 
 extension ForEach: View, PrimitiveView, ForEachLike where Content: View {

@@ -152,3 +152,43 @@ extension Table {
 extension View {
     public func tableStyle<S: TableStyle>(_ style: S) -> some View { self }
 }
+
+// What a view contributes to a Table's rows and columns. A view that is not part of that plumbing
+// says so with Never, which is what the builders are then left with.
+extension Group: TableRowContent, TableColumnContent {
+    public typealias TableRowValue = Never
+    public typealias TableRowBody = Never
+    public typealias TableColumnSortComparator = Never
+    public typealias TableColumnBody = Never
+    public typealias TabValue = Never
+    public var _rows: [Never] { [] }
+    public var _columns: [_AnyTableColumn<Never>] { [] }
+}
+
+extension Section: TableRowContent, TableColumnContent {
+    public typealias TableRowValue = Never
+    public typealias TableRowBody = Never
+    public typealias TableColumnSortComparator = Never
+    public typealias TableColumnBody = Never
+    public var _rows: [Never] { [] }
+    public var _columns: [_AnyTableColumn<Never>] { [] }
+}
+
+extension OutlineGroup: TableRowContent, TableColumnContent {
+    public typealias TableRowValue = Never
+    public typealias TableRowBody = Never
+    public typealias TableColumnSortComparator = Never
+    public typealias TableColumnBody = Never
+    public var _rows: [Never] { [] }
+    public var _columns: [_AnyTableColumn<Never>] { [] }
+}
+
+extension ForEach: TableRowContent, TableColumnContent {
+    public typealias TableRowValue = Never
+    public typealias TableRowBody = Never
+    public typealias TableColumnSortComparator = Never
+    public typealias TableColumnBody = Never
+    public typealias TabValue = Never
+    public var _rows: [Never] { [] }
+    public var _columns: [_AnyTableColumn<Never>] { [] }
+}
