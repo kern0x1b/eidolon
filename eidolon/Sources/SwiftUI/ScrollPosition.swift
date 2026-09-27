@@ -1,7 +1,186 @@
 import UIKit
 import CoreGraphics
 
-public enum ScrollAxis: Hashable, CaseIterable { case horizontal, vertical }
+import UIKit
+import CoreGraphics
+
+/// Where a scroller may come to rest: the rectangle in its content's coordinates, and the point of
+/// that rectangle the container aligns with.
+public struct ScrollTarget: Hashable {
+    public var rect: CGRect
+    public var anchor: UnitPoint?
+    public init() { rect = .zero; anchor = nil }
+    public init(rect: CGRect, anchor: UnitPoint? = nil) { self.rect = rect; self.anchor = anchor }
+    public static func == (a: ScrollTarget, b: ScrollTarget) -> Bool { a.rect == b.rect && a.anchor == b.anchor }
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(rect.origin.x); hasher.combine(rect.origin.y)
+        hasher.combine(rect.size.width); hasher.combine(rect.size.height)
+        hasher.combine(anchor)
+    }
+    public var hashValue: Int { var h = Hasher(); hash(into: &h); return h.finalize() }
+}
+
+/// What the behaviour is told when it is asked where to rest: the target it started from, how fast
+/// the content is moving, how big everything is, and the environment of the scroller.
+@dynamicMemberLookup
+public struct ScrollTargetBehaviorContext {
+    public var originalTarget: ScrollTarget = ScrollTarget()
+    public var velocity: CGVector = .zero
+    public var contentSize: CGSize = .zero
+    public var containerSize: CGSize = .zero
+    public var axes: Axis.Set = .vertical
+    var environment = EnvironmentValues()
+    public init() {}
+    public subscript<T>(dynamicMember keyPath: KeyPath<EnvironmentValues, T>) -> T { environment[keyPath: keyPath] }
+}
+
+/// The properties a behaviour animates between two resting points, and the context it reads them from.
+public struct ScrollTargetBehaviorProperties: Equatable {
+    public var limitsScrolls: Bool
+    public init() { limitsScrolls = true }
+    public static func == (a: ScrollTargetBehaviorProperties, b: ScrollTargetBehaviorProperties) -> Bool {
+        a.limitsScrolls == b.limitsScrolls
+    }
+}
+
+public struct ScrollTargetBehaviorPropertiesContext {
+    public var environment: EnvironmentValues = EnvironmentValues()
+    public var axes: Axis.Set = .vertical
+    public init() {}
+}
+
+public protocol ScrollTargetLayout {}
+
+public protocol ScrollTargetBehavior {
+    typealias TargetContext = ScrollTargetBehaviorContext
+    typealias Properties = ScrollTargetBehaviorProperties
+    typealias PropertiesContext = ScrollTargetBehaviorPropertiesContext
+    /// Moves `target` to where the scroller should rest. The scroller scrolls so that the target's
+    /// rectangle sits at its anchor.
+    func updateTarget(_ target: inout ScrollTarget, context: Self.TargetContext)
+}
+
+extension ScrollTargetBehavior {
+    public func properties(context: PropertiesContext) -> Properties { Properties() }
+}
+
+public struct PagingScrollTargetBehavior: ScrollTargetBehavior {
+    public init() {}
+    public func updateTarget(_ target: inout ScrollTarget, context: ScrollTargetBehaviorContext) {
+        let step = context.containerSize
+        target.rect = CGRect(x: (target.rect.origin.x / max(step.width, 1)).rounded() * step.width,
+                             y: (target.rect.origin.y / max(step.height, 1)).rounded() * step.height,
+                             width: step.width, height: step.height)
+        target.anchor = .topLeading
+    }
+    public func properties(context: ScrollTargetBehaviorPropertiesContext) -> ScrollTargetBehaviorProperties {
+        var properties = ScrollTargetBehaviorProperties()
+        properties.limitsScrolls = false
+        return properties
+    }
+}
+
+public struct ViewAlignedScrollTargetBehavior: ScrollTargetBehavior {
+    public struct LimitBehavior {
+        let stopsAtBoundaries: Bool
+        let limit: Int?
+        init(stopsAtBoundaries: Bool, limit: Int?) { self.stopsAtBoundaries = stopsAtBoundaries; self.limit = limit }
+        public static var automatic: LimitBehavior { LimitBehavior(stopsAtBoundaries: true, limit: nil) }
+        public static var always: LimitBehavior { LimitBehavior(stopsAtBoundaries: true, limit: nil) }
+        public static var alwaysByOne: LimitBehavior { LimitBehavior(stopsAtBoundaries: true, limit: 1) }
+        public static var alwaysByFew: LimitBehavior { LimitBehavior(stopsAtBoundaries: true, limit: 2) }
+        public static var never: LimitBehavior { LimitBehavior(stopsAtBoundaries: false, limit: nil) }
+    }
+    public let limitBehavior: LimitBehavior
+    public let anchor: UnitPoint?
+    public init(limitBehavior: LimitBehavior = .automatic) {
+        self.limitBehavior = limitBehavior; anchor = nil
+    }
+    public init(limitBehavior: LimitBehavior, anchor: UnitPoint?) {
+        self.limitBehavior = limitBehavior; self.anchor = anchor
+    }
+    public init(anchor: UnitPoint?) {
+        limitBehavior = .automatic; self.anchor = anchor
+    }
+    public func updateTarget(_ target: inout ScrollTarget, context: ScrollTargetBehaviorContext) {
+        target.anchor = anchor ?? target.anchor
+    }
+    public func properties(context: ScrollTargetBehaviorPropertiesContext) -> ScrollTargetBehaviorProperties {
+        var properties = ScrollTargetBehaviorProperties()
+        properties.limitsScrolls = limitBehavior.stopsAtBoundaries
+        return properties
+    }
+}
+
+extension ScrollTargetBehavior where Self == PagingScrollTargetBehavior {
+    public static var paging: Self { PagingScrollTargetBehavior() }
+}
+
+extension ScrollTargetBehavior where Self == ViewAlignedScrollTargetBehavior {
+    public static func viewAligned(limitBehavior: ViewAlignedScrollTargetBehavior.LimitBehavior) -> Self {
+        ViewAlignedScrollTargetBehavior(limitBehavior: limitBehavior)
+    }
+    public static func viewAligned(limitBehavior: ViewAlignedScrollTargetBehavior.LimitBehavior, anchor: UnitPoint?) -> Self {
+        ViewAlignedScrollTargetBehavior(limitBehavior: limitBehavior, anchor: anchor)
+    }
+    public static func viewAligned(anchor: UnitPoint?) -> Self {
+        ViewAlignedScrollTargetBehavior(anchor: anchor)
+    }
+}
+
+public struct AnyScrollTargetBehavior: ScrollTargetBehavior {
+    public var base: any ScrollTargetBehavior
+    public init(_ base: some ScrollTargetBehavior) { self.base = base }
+    public func updateTarget(_ target: inout ScrollTarget, context: ScrollTargetBehaviorContext) {
+        base.updateTarget(&target, context: context)
+    }
+    public func properties(context: ScrollTargetBehaviorPropertiesContext) -> ScrollTargetBehaviorProperties {
+        base.properties(context: context)
+    }
+}
+
+/// What a scroll anchor is for: where the content starts, where it stays when its size changes, and
+/// what a view is aligned against.
+public struct ScrollAnchorRole: Hashable {
+    let name: String
+    public static var initialOffset: ScrollAnchorRole { ScrollAnchorRole(name: "initialOffset") }
+    public static var sizeChanges: ScrollAnchorRole { ScrollAnchorRole(name: "sizeChanges") }
+    public static var alignment: ScrollAnchorRole { ScrollAnchorRole(name: "alignment") }
+}
+
+public struct ScrollPhase: Equatable, Hashable {
+    public enum Phase { case idle, tracking, interacting, decelerating, animating }
+    public let phase: Phase
+    public init(_ phase: Phase) { self.phase = phase }
+    public var isScrolling: Bool { phase != .idle }
+    public static func == (a: ScrollPhase, b: ScrollPhase) -> Bool { a.phase == b.phase }
+    public func hash(into hasher: inout Hasher) { hasher.combine(phase) }
+    public var hashValue: Int { var h = Hasher(); hash(into: &h); return h.finalize() }
+    public var debugDescription: String { "ScrollPhase(\(phase))" }
+}
+
+public struct ScrollPhaseChangeContext {
+    public var velocity: CGVector
+    public init() { velocity = .zero }
+}
+
+public struct ScrollGeometry: Equatable {
+    public var contentOffset: CGPoint = .zero
+    public var contentSize: CGSize = .zero
+    public var contentInsets: EdgeInsets = EdgeInsets()
+    public var containerSize: CGSize = .zero
+    public var visibleRect: CGRect = .zero
+    public var bounds: CGRect = .zero
+    public init() {}
+    public static func == (a: ScrollGeometry, b: ScrollGeometry) -> Bool {
+        a.contentOffset == b.contentOffset && a.contentSize == b.contentSize
+            && a.contentInsets == b.contentInsets && a.containerSize == b.containerSize
+            && a.visibleRect == b.visibleRect && a.bounds == b.bounds
+    }
+    public var debugDescription: String {
+        "offset \(contentOffset.x),\(contentOffset.y) content \(contentSize.width)x\(contentSize.height)"
+    }
+}
 
 public struct ScrollPosition: Equatable {
     public var id: AnyHashable?
@@ -57,118 +236,22 @@ public struct ScrollPosition: Equatable {
     }
 }
 
-public struct ScrollTargetContext {
-    public var contentOffset: CGPoint?
-    var scroller: UIScrollView?
-    var targetOffsets: [CGPoint] = []
-    public init() {}
-    mutating func settle(_ offset: CGPoint) {
-        guard let scroller else { return }
-        let limit = CGPoint(x: max(0, scroller.contentSize.width - scroller.bounds.size.width),
-                            y: max(0, scroller.contentSize.height - scroller.bounds.size.height))
-        scroller.setContentOffset(CGPoint(x: min(max(0, offset.x), limit.x), y: min(max(0, offset.y), limit.y)),
-                                 animated: false)
-        contentOffset = scroller.contentOffset
-    }
-    mutating func nearestTarget(to offset: CGPoint) -> CGPoint? {
-        targetOffsets.min { distance($0, offset) < distance($1, offset) }
-    }
-}
-
-private func distance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
-    let dx = a.x - b.x, dy = a.y - b.y
-    return dx * dx + dy * dy
-}
-
-public struct ScrollTargetProperties {
-    public var offset: CGSize = .zero
-    public init() {}
-}
-
-public struct ScrollTargetPropertiesContext {
-    public var proposedOffset: CGPoint = .zero
-    public init() {}
-}
-
-public protocol ScrollTargetLayout {}
-
-public protocol ScrollTargetBehavior {
-    func updateTarget(_ target: inout ScrollTargetContext)
-}
-
-extension ScrollTargetBehavior {
-    public typealias TargetContext = ScrollTargetContext
-    public typealias Properties = ScrollTargetProperties
-    public typealias PropertiesContext = ScrollTargetPropertiesContext
-    public func properties(context: PropertiesContext) -> Properties { Properties() }
-}
-
-// SwiftUI nests this one in the protocol, which a protocol extension cannot hold on this compiler, so it is a type of
-// its own that the protocol names.
-public struct ScrollTargetLimitBehavior {
-    let stopsAtBoundaries: Bool
-    public init(stopsAtBoundaries: Bool) { self.stopsAtBoundaries = stopsAtBoundaries }
-}
-
-extension ScrollTargetBehavior {
-    public typealias LimitBehavior = ScrollTargetLimitBehavior
-    public static var automatic: LimitBehavior { ScrollTargetLimitBehavior(stopsAtBoundaries: true) }
-    public static var always: LimitBehavior { ScrollTargetLimitBehavior(stopsAtBoundaries: true) }
-    public static var neverByNumber: LimitBehavior { ScrollTargetLimitBehavior(stopsAtBoundaries: false) }
-}
-
-public struct PagingScrollTargetBehavior: ScrollTargetBehavior {
-    public init() {}
-    public func updateTarget(_ target: inout ScrollTargetContext) {
-        guard let view = target.scroller else { return }
-        let step = view.bounds.size
-        target.settle(CGPoint(x: (view.contentOffset.x / max(step.width, 1)).rounded() * step.width,
-                              y: (view.contentOffset.y / max(step.height, 1)).rounded() * step.height))
-    }
-}
-
-public struct ViewAlignedScrollTargetBehavior: ScrollTargetBehavior {
-    public let limitBehavior: LimitBehavior?
-    public let anchor: UnitPoint
-    public init(limitBehavior: LimitBehavior? = nil, anchor: UnitPoint = .top) {
-        self.limitBehavior = limitBehavior; self.anchor = anchor
-    }
-    public func updateTarget(_ target: inout ScrollTargetContext) {
-        guard let view = target.scroller, let resting = target.nearestTarget(to: view.contentOffset) else { return }
-        target.settle(resting)
-    }
-}
-
-extension ScrollTargetBehavior where Self == PagingScrollTargetBehavior {
-    public static var paging: PagingScrollTargetBehavior { PagingScrollTargetBehavior() }
-}
-
-extension ScrollTargetBehavior where Self == ViewAlignedScrollTargetBehavior {
-    public static func viewAligned(limitBehavior: LimitBehavior) -> ViewAlignedScrollTargetBehavior {
-        ViewAlignedScrollTargetBehavior(limitBehavior: limitBehavior)
-    }
-    public static func viewAligned(limitBehavior: LimitBehavior, anchor: UnitPoint) -> ViewAlignedScrollTargetBehavior {
-        ViewAlignedScrollTargetBehavior(limitBehavior: limitBehavior, anchor: anchor)
-    }
-    public static func viewAligned(anchor: UnitPoint) -> ViewAlignedScrollTargetBehavior {
-        ViewAlignedScrollTargetBehavior(anchor: anchor)
-    }
-}
-
-public struct AnyScrollTargetBehavior: ScrollTargetBehavior {
-    public var base: any ScrollTargetBehavior
-    public init(_ base: some ScrollTargetBehavior) { self.base = base }
-    public func updateTarget(_ target: inout ScrollTargetContext) { base.updateTarget(&target) }
-}
-
 struct ScrollPositionRequest {
     var binding: Binding<ScrollPosition>
     var anchor: UnitPoint?
 }
 
 struct ScrollAnchors: Equatable {
-    var vertical = UnitPoint.top
-    var horizontal = UnitPoint.leading
+    var initialOffset = UnitPoint.top
+    var sizeChanges = UnitPoint.top
+    var alignment = UnitPoint.leading
+}
+
+struct ScrollObservers {
+    var onGeometry: ((ScrollGeometry, ScrollGeometry) -> Void)?
+    var onPhase: ((ScrollPhase, ScrollPhase, ScrollPhaseChangeContext) -> Void)?
+    var lastGeometry: ScrollGeometry?
+    var lastPhase: ScrollPhase = ScrollPhase(.idle)
 }
 
 extension View {
@@ -190,22 +273,25 @@ extension View {
                 }), anchor: anchor)
         }, onUpdate: nil))
     }
-    public func defaultScrollAnchor(_ anchors: UnitPoint...) -> some View {
+    public func defaultScrollAnchor(_ anchor: UnitPoint?) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
             var current = environment.scrollAnchors ?? ScrollAnchors()
-            if let first = anchors.first { current.vertical = first }
-            if anchors.count > 1 { current.horizontal = anchors[1] }
+            current.initialOffset = anchor ?? current.initialOffset
             environment.scrollAnchors = current
         }, onUpdate: nil))
     }
-    public func defaultScrollAnchor(_ anchor: UnitPoint, for axis: ScrollAxis) -> some View {
+    public func defaultScrollAnchor(_ anchor: UnitPoint?, for role: ScrollAnchorRole) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
             var current = environment.scrollAnchors ?? ScrollAnchors()
-            if axis == .vertical { current.vertical = anchor } else { current.horizontal = anchor }
+            switch role {
+            case .initialOffset: current.initialOffset = anchor ?? current.initialOffset
+            case .sizeChanges: current.sizeChanges = anchor ?? current.sizeChanges
+            default: current.alignment = anchor ?? current.alignment
+            }
             environment.scrollAnchors = current
         }, onUpdate: nil))
     }
-    public func scrollClipDisabled(_ disabled: Bool) -> some View {
+    public func scrollClipDisabled(_ disabled: Bool = true) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.scrollClipDisabled = disabled }, onUpdate: nil))
     }
     public func scrollTargetLayout(isEnabled: Bool = true) -> some View {
@@ -213,6 +299,27 @@ extension View {
     }
     public func scrollTargetBehavior(_ behavior: some ScrollTargetBehavior) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.scrollTarget = AnyScrollTargetBehavior(behavior) }, onUpdate: nil))
+    }
+    public func onScrollGeometryChange<T: Equatable>(for type: T.Type, of transform: @escaping (ScrollGeometry) -> T,
+                                                     action: @escaping (T, T) -> Void) -> some View {
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
+            var observers = environment.scrollObservers ?? ScrollObservers()
+            observers.onGeometry = { old, new in
+                let before = transform(old), after = transform(new)
+                if before != after { action(before, after) }
+            }
+            environment.scrollObservers = observers
+        }, onUpdate: nil))
+    }
+    public func onScrollPhaseChange(_ action: @escaping (ScrollPhase, ScrollPhase) -> Void) -> some View {
+        onScrollPhaseChange { old, new, _ in action(old, new) }
+    }
+    public func onScrollPhaseChange(_ action: @escaping (ScrollPhase, ScrollPhase, ScrollPhaseChangeContext) -> Void) -> some View {
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
+            var observers = environment.scrollObservers ?? ScrollObservers()
+            observers.onPhase = action
+            environment.scrollObservers = observers
+        }, onUpdate: nil))
     }
 }
 

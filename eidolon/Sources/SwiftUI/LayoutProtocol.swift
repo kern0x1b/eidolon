@@ -32,6 +32,7 @@ public struct LayoutSubview: Equatable {
         node.place(CGRect(origin: origin, size: size))
     }
     // the subview behind a LayoutSubview is the node it was made from, so that is what tells two of them apart
+    public var containerValues: ContainerValues { ContainerValues.collect(from: node) }
     public static func == (a: LayoutSubview, b: LayoutSubview) -> Bool { a.node === b.node }
 }
 

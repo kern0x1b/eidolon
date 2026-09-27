@@ -435,7 +435,9 @@ final class ScrollNode: ContainerNode {
     var request: ScrollPositionRequest?
     var target: AnyScrollTargetBehavior?
     var anchors: ScrollAnchors?
-    var restingOffsets: [CGPoint] = []
+    var restingTargets: [ScrollTarget] = []
+    var observers: ScrollObservers?
+    var phase: ScrollPhase = ScrollPhase(.idle)
     private var applying = false
     private var animatingTo: CGPoint?
     let scrollDelegate = ScrollNodeDelegate()
@@ -459,6 +461,7 @@ final class ScrollNode: ContainerNode {
         request = env.scrollPosition
         target = env.scrollTarget
         anchors = env.scrollAnchors
+        observers = env.scrollObservers
         requested = env.scrollPosition?.binding.wrappedValue
         scrollView.isScrollEnabled = env.isScrollEnabled
         content = adopt(reconcile(content, s.scrollContent, env))
@@ -496,6 +499,7 @@ final class ScrollNode: ContainerNode {
         }
         scrollView.contentSize = CGSize(width: max(inner.width, size.width), height: max(inner.height, size.height))
         collectTargets()
+        reportGeometry()
         if applied == nil, let anchors { applyAnchors(anchors) }
         if let wanted = requested, wanted != applied, let offset = restingOffset(for: wanted) {
             apply(offset, wanted: wanted)
@@ -504,18 +508,17 @@ final class ScrollNode: ContainerNode {
 
     // The resting offset of every target the content marks with `scrollTargetLayout`, in this scroller's coordinates.
     private func collectTargets() {
-        var found: [CGPoint] = []
+        var found: [ScrollTarget] = []
         for kid in children { walkTargets(kid, into: &found) }
-        restingOffsets = found
+        restingTargets = found
     }
 
-    private func walkTargets(_ node: Node, into found: inout [CGPoint]) {
+    private func walkTargets(_ node: Node, into found: inout [ScrollTarget]) {
         if node is ScrollTargetLayoutNode {
             let inner = node.flattened
             if inner.isEmpty || node.childNodes.isEmpty {
                 if let view = inner.first?.uiView {
-                    let rect = view.convert(view.bounds, to: scrollView)
-                    found.append(CGPoint(x: -rect.origin.x, y: -rect.origin.y))
+                    found.append(ScrollTarget(rect: view.convert(view.bounds, to: scrollView), anchor: request?.anchor))
                 }
             } else {
                 for child in node.childNodes { walkTargets(child, into: &found) }
@@ -523,6 +526,22 @@ final class ScrollNode: ContainerNode {
             return
         }
         for child in node.childNodes { walkTargets(child, into: &found) }
+    }
+
+    /// The geometry and the phase as SwiftUI reports them: from the scroller itself, whenever either moved.
+    private func reportGeometry() {
+        guard var stored = observers else { return }
+        let view = scrollView
+        var current = ScrollGeometry()
+        current.contentOffset = view.contentOffset
+        current.contentSize = view.contentSize
+        current.containerSize = view.bounds.size
+        current.visibleRect = CGRect(origin: view.contentOffset, size: view.bounds.size)
+        current.bounds = CGRect(origin: .zero, size: view.bounds.size)
+        if let last = stored.lastGeometry, last != current, let action = stored.onGeometry { action(last, current) }
+        stored.lastGeometry = current
+        stored.lastPhase = phase
+        observers = stored
     }
 
     private func restingOffset(for position: ScrollPosition) -> CGPoint? {
@@ -554,7 +573,7 @@ final class ScrollNode: ContainerNode {
         let view = scrollView
         let limit = CGSize(width: max(0, view.contentSize.width - view.bounds.size.width),
                            height: max(0, view.contentSize.height - view.bounds.size.height))
-        move(to: CGPoint(x: anchors.horizontal.x * limit.width, y: anchors.vertical.y * limit.height))
+        move(to: CGPoint(x: anchors.alignment.x * limit.width, y: anchors.initialOffset.y * limit.height))
         applied = requested ?? ScrollPosition()
     }
 
@@ -585,20 +604,71 @@ final class ScrollNode: ContainerNode {
 
     func animationSettled() { animatingTo = nil }
 
+    func phaseChanged(to next: ScrollPhase.Phase) {
+        let updated = ScrollPhase(next)
+        guard updated != phase else { return }
+        let old = phase
+        phase = updated
+        guard let observers, let action = observers.onPhase else { return }
+        var context = ScrollPhaseChangeContext()
+        context.velocity = scrollVelocity
+        action(old, updated, context)
+    }
+
     func settleOnTarget() {
-        guard let target, !restingOffsets.isEmpty else { return }
-        var context = ScrollTargetContext()
-        context.scroller = scrollView
-        context.targetOffsets = restingOffsets
-        target.updateTarget(&context)
-        if let offset = context.contentOffset, offset != scrollView.contentOffset { userScrolled(to: offset) }
+        guard let target, !restingTargets.isEmpty else { return }
+        let view = scrollView
+        var context = ScrollTargetBehaviorContext()
+        context.originalTarget = nearestTarget(to: view.contentOffset) ?? ScrollTarget()
+        context.velocity = scrollVelocity
+        context.contentSize = view.contentSize
+        context.containerSize = view.bounds.size
+        context.axes = axes
+        var wanted = context.originalTarget
+        target.updateTarget(&wanted, context: context)
+        guard let offset = offset(for: wanted), offset != view.contentOffset else { return }
+        move(to: offset)
+        userScrolled(to: offset)
+    }
+
+    private var scrollVelocity: CGVector {
+        let pan = scrollView.panGestureRecognizer
+        let velocity = pan.velocity(in: scrollView)
+        return axes.contains(.horizontal) ? CGVector(dx: velocity.x, dy: 0) : CGVector(dx: 0, dy: velocity.y)
+    }
+
+    private func nearestTarget(to offset: CGPoint) -> ScrollTarget? {
+        restingTargets.min {
+            let a = $0.rect.origin, b = $1.rect.origin
+            return (a.x - offset.x) * (a.x - offset.x) + (a.y - offset.y) * (a.y - offset.y)
+                < (b.x - offset.x) * (b.x - offset.x) + (b.y - offset.y) * (b.y - offset.y)
+        }
+    }
+
+    private func offset(for target: ScrollTarget) -> CGPoint? {
+        let view = scrollView
+        let limit = CGSize(width: max(0, view.contentSize.width - view.bounds.size.width),
+                           height: max(0, view.contentSize.height - view.bounds.size.height))
+        let anchor = target.anchor ?? .topLeading
+        let raw = CGPoint(x: target.rect.origin.x + target.rect.size.width * anchor.x - view.bounds.size.width * anchor.x,
+                          y: target.rect.origin.y + target.rect.size.height * anchor.y - view.bounds.size.height * anchor.y)
+        return CGPoint(x: min(max(0, raw.x), limit.width), y: min(max(0, raw.y), limit.height))
     }
 }
 
 final class ScrollNodeDelegate: NSObject, UIScrollViewDelegate {
     weak var node: ScrollNode?
     func scrollViewDidScroll(_ scrollView: UIScrollView) { node?.userScrolled(to: scrollView.contentOffset) }
-    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { node?.settleOnTarget() }
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { node?.phaseChanged(to: .tracking) }
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        guard !decelerate else { return }
+        node?.phaseChanged(to: .animating)
+        node?.settleOnTarget()
+    }
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        node?.phaseChanged(to: .animating)
+        node?.settleOnTarget()
+    }
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         node?.animationSettled()
         node?.settleOnTarget()

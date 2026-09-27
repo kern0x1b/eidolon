@@ -63,6 +63,7 @@ public struct EnvironmentValues {
     var scrollTarget: AnyScrollTargetBehavior?
     var scrollAnchors: ScrollAnchors?
     var scrollClipDisabled = false
+    var scrollObservers: ScrollObservers?
     init() {}
 
     func isSame(_ other: EnvironmentValues) -> Bool {
@@ -78,7 +79,7 @@ public struct EnvironmentValues {
             && styles.count == other.styles.count && kerning == other.kerning && allowsTightening == other.allowsTightening && scrollBackgroundHidden == other.scrollBackgroundHidden && redactedDrawing == other.redactedDrawing && (paging == nil) == (other.paging == nil) && buttonBorderShape == other.buttonBorderShape && (menuStyle == nil) == (other.menuStyle == nil) && (disclosureGroupStyle == nil) == (other.disclosureGroupStyle == nil)
             && (scrollPosition == nil) == (other.scrollPosition == nil) && (scrollTarget == nil) == (other.scrollTarget == nil)
             && scrollAnchors == other.scrollAnchors && isScrollEnabled == other.isScrollEnabled
-            && scrollClipDisabled == other.scrollClipDisabled
+            && scrollClipDisabled == other.scrollClipDisabled && (scrollObservers == nil) == (other.scrollObservers == nil)
     }
 }
 
