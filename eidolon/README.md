@@ -24,7 +24,7 @@
 ### Что поддержано, что игнорируется, чего нет
 
 Счёт ведётся скриптом `coverage.py` по интерфейсу SwiftUI из SDK 16.4 (592 публичных типа, 311 модификаторов `View`).
-На сегодня: **508 типов** и **311 модификаторов**, из них **189 действуют**, 0 заглушки (пишут в журнал), 122 объявлены и игнорируются.
+На сегодня: **509 типов** и **311 модификаторов**, из них **189 действуют**, 0 заглушки (пишут в журнал), 122 объявлены и игнорируются.
 Из того, что Apple объявляет доступным на iOS: **491 из 520 типов** и **289 из 289 модификаторов**, из них **188 действуют**, 0 заглушки, 101 игнорируются
 (остальное в интерфейсе помечено `@available(iOS, unavailable)` — это macOS, tvOS и watchOS; списки строит `../bridge/ios-surface.py`).
 
@@ -222,6 +222,21 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   `verticalScrollBounceBehavior` и `horizontalScrollBounceBehavior` читает полоса прокрутки (`ScrollNode.update`):
   видимость индикатора берётся из окружения, а `.automatic` оставляет решение флагу вида (`scrollIndicators(_:axes:)`);
   отдача — `alwaysBounceVertical`/`alwaysBounceHorizontal` `UIScrollView`, `.automatic` оставляет её как есть.
+- `EnvironmentValues` несёт и остальные 78 ключей SDK 26.2: у каждого тип, какой объявляет интерфейс Apple, и
+  значение по умолчанию — снято с фреймворка macOS 27 (`.agent-work/host/envdefaults.txt`, 64 ключа читаются
+  публично; остальные берут значение из тел Apple's собственных расширений или то, что человек на iOS 6 включить
+  не мог). Ключ — это хранилище: значение читают виды и пишут модификаторы, независимо от того, читает ли его
+  сегодня хоть один вид. Значения, названные типами, которых у этого порта нет, объявлены рядом
+  (`EnvironmentValueTypes.swift`) по списку случаев из интерфейса Apple.
+  Не объявлены 12: `immersiveSpaceDisplacement` (тип `Spatial.Pose3D` — Spatial не фреймворк iOS),
+  `openImmersiveSpace` и `dismissImmersiveSpace` (immersive space — виvisionOS), `allowedDynamicRange`
+  (запас яркости выше SDR у экранов iOS 6 нет), `openWindow`, `pushWindow`, `dismissWindow`, `openSettings`,
+  `newDocument`, `openDocument` и `rename` (окон и документов в iOS 6 нет), `realHorizontalSizeClass` и
+  `realVerticalSizeClass` (классы размера Catalyst), `defaultWheelPickerItemHeight` (колесо выбора — watchOS),
+  `isSceneCaptured`, `fontResolutionContext` (`Font.Context` — тип SwiftUI iOS 18, вложенного `Context` у нашего
+  `Font` нет), `lineHeight` и `_lineHeightMultiple` (это свойства `AttributedString`, которого в этом заходе
+  ещё нет). Для них — `bridge/not-applicable.txt`.
+
 - Стили кнопки, которых у SwiftUI 26.2 больше, чем было в 16.4: `PrimitiveButtonStyle.link` (синее подчёркнутое слово,
   как ссылка в `UITableViewCell` iOS 6), `.card` (скруглённая кнопка релиза без градиентной заливки),
   `PrimitiveButtonStyle.glass` и `PrimitiveButtonStyle.glassProminent` (живого размытия в iOS 6 нет — кнопка

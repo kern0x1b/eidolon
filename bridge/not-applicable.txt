@@ -71,3 +71,19 @@ View#scenePadding	scene padding is for watchOS
 View#userActivity	NSUserActivity came with iOS 8
 View#contextMenu	context menu previews and selection menus came with iOS 13 and 16
 View#keyboardShortcut	shortcuts of a hardware keyboard came with iOS 13.4
+EnvironmentValues.immersiveSpaceDisplacement	Spatial.Pose3D is a visionOS type; Spatial is not an iOS framework, and iOS 6 has no immersive space
+EnvironmentValues.openImmersiveSpace	visionOS immersive space
+EnvironmentValues.dismissImmersiveSpace	visionOS immersive space
+EnvironmentValues.allowedDynamicRange	iOS 6 displays have no headroom above SDR
+EnvironmentValues.openWindow	iOS 6 has the one window the app is in and no way to open another
+EnvironmentValues.pushWindow	iOS 6 has no window stack
+EnvironmentValues.dismissWindow	iOS 6 has the one window the app is in
+EnvironmentValues.openSettings	iOS 6 has no settings scene
+EnvironmentValues.newDocument	iOS 6 has no document browser
+EnvironmentValues.openDocument	iOS 6 has no document browser
+EnvironmentValues.rename	iOS 6 has no file renaming through an app
+EnvironmentValues.realHorizontalSizeClass	Mac Catalyst
+EnvironmentValues.realVerticalSizeClass	Mac Catalyst
+EnvironmentValues.defaultWheelPickerItemHeight	the wheel picker is watchOS
+EnvironmentValues.isSceneCaptured	scene capture is visionOS
+EnvironmentValues.fontResolutionContext	Font.Context is an iOS 18 SwiftUI type; this port has no nested Context on Font
