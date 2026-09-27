@@ -28,7 +28,7 @@ func topmost(_ view: UIView) -> UIView {
 public struct GeometryReader<Content: View>: View, PrimitiveView {
     public typealias Body = Never
     public var body: Never { neverBody(Self.self) }
-    let content: (GeometryProxy) -> Content
+    public var content: (GeometryProxy) -> Content
     public init(@ViewBuilder content: @escaping (GeometryProxy) -> Content) { self.content = content }
     func makeNode(_ env: EnvironmentValues) -> Node { let n = GeometryNode(); n.update(self, env); return n }
 }

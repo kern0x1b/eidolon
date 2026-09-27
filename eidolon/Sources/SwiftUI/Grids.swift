@@ -1,8 +1,8 @@
 import UIKit
 import CoreGraphics
 
-public struct GridItem {
-    public enum Size {
+public struct GridItem: Equatable {
+    public enum Size: Equatable {
         case fixed(CGFloat)
         case flexible(minimum: CGFloat = 10, maximum: CGFloat = .infinity)
         case adaptive(minimum: CGFloat, maximum: CGFloat = .infinity)
@@ -477,7 +477,7 @@ func scroll(to target: LayoutNode, anchor: UnitPoint?, animated: Bool) {
 public struct ScrollViewReader<Content: View>: View, PrimitiveView {
     public typealias Body = Never
     public var body: Never { neverBody(Self.self) }
-    let content: (ScrollViewProxy) -> Content
+    public var content: (ScrollViewProxy) -> Content
     public init(@ViewBuilder content: @escaping (ScrollViewProxy) -> Content) { self.content = content }
     func makeNode(_ env: EnvironmentValues) -> Node { let n = ScrollReaderNode(); n.update(self, env); return n }
 }

@@ -120,6 +120,7 @@ public struct AnyShape: Shape, PrimitiveView {
 }
 
 public struct ContainerRelativeShape: Shape, PrimitiveView, InsettableShape {
+    public typealias Body = Never
     var insetAmount: CGFloat = 0
     public init() {}
     public func path(in rect: CGRect) -> Path { Path(roundedRect: insetRect(rect, insetAmount), cornerRadius: max(0, 8 - insetAmount)) }

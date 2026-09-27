@@ -2300,6 +2300,64 @@ check(frames(cornerProbe2).contains { $0.origin == CGPoint(x: 0, y: 40) && $0.si
 equal(Axis.allCases.count, 2, "Axis lists its cases")
 equal(Axis(rawValue: 1) ?? .horizontal, .vertical, "and is made from its raw value")
 
+// Layout protocol: the direction of the environment, and the container values a subview carries
+struct DirectionProbe: Layout {
+    static var seen: LayoutDirection = .leftToRight
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        DirectionProbe.seen = subviews.layoutDirection
+        return CGSize(width: 10, height: 10)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {}
+}
+_ = frames(_Probe(DirectionProbe() { Color.red }, width: 50, height: 50))
+equal(DirectionProbe.seen, LayoutDirection.leftToRight, "a custom layout is told the layout direction of its environment")
+_ = frames(_Probe(DirectionProbe() { Color.red }.environment(\.layoutDirection, .rightToLeft), width: 50, height: 50))
+equal(DirectionProbe.seen, LayoutDirection.rightToLeft, "and it follows the environment when that is right to left")
+
+// ScrollPosition is a value: scrollTo replaces what the position pointed at
+var byPoint = ScrollPosition(id: 3)
+byPoint.scrollTo(point: UnitPoint(x: 0.5, y: 0.5))
+check(byPoint != ScrollPosition(id: 3), "scrollTo(point:) replaces what the position pointed at")
+equal(byPoint.viewID(type: Int.self), nil, "and the view id is gone after it")
+var byID = ScrollPosition()
+byID.scrollTo(id: "row", anchor: .bottom)
+equal(byID.viewID, AnyHashable("row"), "scrollTo(id:) names the view to scroll to")
+equal(byID.anchor, UnitPoint.bottom, "with the anchor it was given")
+equal(byID[Edge.self], nil, "the id subscript answers only for the type it was made with")
+equal(byID[Edge.self], nil, "and a position that was never set is equal to another like it")
+
+// ScrollView: scrollPosition moves the scroller, and what the user does comes back through the binding
+final class PositionStore: ObservableObject { @Published var position = ScrollPosition() }
+struct PositionCase: View {
+    @ObservedObject var store: PositionStore
+    var body: some View {
+        let position = Binding<ScrollPosition>(get: { store.position }, set: { store.position = $0 })
+        return ScrollView {
+            VStack(spacing: 0) {
+                Color.red.frame(width: 100, height: 100)
+                Color.green.frame(width: 100, height: 100).id("second")
+                Color.blue.frame(width: 100, height: 100)
+            }
+        }.scrollPosition(position)
+    }
+}
+let positionStore = PositionStore()
+let positioned = _Probe(PositionCase(store: positionStore), width: 100, height: 100)
+_ = frames(positioned)
+if let scroller = firstScroller(positioned.hostView) {
+    equal(scroller.contentSize.height, 300, "the scroller's content is the whole stack")
+    positionStore.position.scrollTo(id: "second", anchor: .top)
+    positioned.flush()
+    equal(scroller.contentOffset.y, 100, "scrollTo(id:) moved the scroller to that view")
+    scroller.contentOffset = CGPoint(x: 0, y: 40)
+    scroller.delegate?.scrollViewDidScroll?(scroller)
+    equal(positionStore.position.y ?? -1, 40, "what the user scrolled to came back into the binding")
+    check(positionStore.position.isPositionedByUser, "and it is marked as the user's own position")
+    positionStore.position.scrollTo(edge: .bottom)
+    positioned.flush()
+    equal(scroller.contentOffset.y, 200, "scrollTo(edge: .bottom) rests at the end of the content")
+} else { check(false, "the scroll view with a position made a scroller") }
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

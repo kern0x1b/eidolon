@@ -59,6 +59,10 @@ public struct EnvironmentValues {
     var textStrikethrough = false
     public var imageScale = Image.Scale.medium
     var defaults = UserDefaults.standard
+    var scrollPosition: ScrollPositionRequest?
+    var scrollTarget: AnyScrollTargetBehavior?
+    var scrollAnchors: ScrollAnchors?
+    var scrollClipDisabled = false
     init() {}
 
     func isSame(_ other: EnvironmentValues) -> Bool {
@@ -72,6 +76,9 @@ public struct EnvironmentValues {
             && (buttonStyle == nil) == (other.buttonStyle == nil) && (primitiveButtonStyle == nil) == (other.primitiveButtonStyle == nil) && (toggleStyle == nil) == (other.toggleStyle == nil)
             && (labelStyle == nil) == (other.labelStyle == nil) && (progressViewStyle == nil) == (other.progressViewStyle == nil)
             && styles.count == other.styles.count && kerning == other.kerning && allowsTightening == other.allowsTightening && scrollBackgroundHidden == other.scrollBackgroundHidden && redactedDrawing == other.redactedDrawing && (paging == nil) == (other.paging == nil) && buttonBorderShape == other.buttonBorderShape && (menuStyle == nil) == (other.menuStyle == nil) && (disclosureGroupStyle == nil) == (other.disclosureGroupStyle == nil)
+            && (scrollPosition == nil) == (other.scrollPosition == nil) && (scrollTarget == nil) == (other.scrollTarget == nil)
+            && scrollAnchors == other.scrollAnchors && isScrollEnabled == other.isScrollEnabled
+            && scrollClipDisabled == other.scrollClipDisabled
     }
 }
 

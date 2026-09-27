@@ -18,7 +18,7 @@ public struct ProposedViewSize: Equatable {
     }
 }
 
-public struct LayoutSubview {
+public struct LayoutSubview: Equatable {
     let node: LayoutNode
     public func sizeThatFits(_ proposal: ProposedViewSize) -> CGSize { node.sizeThatFits(proposal.proposal) }
     public func dimensions(in proposal: ProposedViewSize) -> ViewDimensions {
@@ -31,13 +31,18 @@ public struct LayoutSubview {
         let origin = CGPoint(x: position.x - size.width * anchor.x, y: position.y - size.height * anchor.y)
         node.place(CGRect(origin: origin, size: size))
     }
+    // the subview behind a LayoutSubview is the node it was made from, so that is what tells two of them apart
+    public static func == (a: LayoutSubview, b: LayoutSubview) -> Bool { a.node === b.node }
 }
 
 public struct LayoutSubviews: RandomAccessCollection {
     var items: [LayoutSubview]
+    let direction: LayoutDirection
+    public var layoutDirection: LayoutDirection { direction }
     public var startIndex: Int { items.startIndex }
     public var endIndex: Int { items.endIndex }
     public subscript(index: Int) -> LayoutSubview { items[index] }
+    public static func == (lhs: LayoutSubviews, rhs: LayoutSubviews) -> Bool { lhs.items == rhs.items }
 }
 
 public protocol Layout: Animatable {
@@ -115,7 +120,7 @@ final class CustomLayoutNode<L: Layout>: ContainerNode, LayoutContainer, Explici
         refreshCache()
     }
 
-    var subviews: LayoutSubviews { LayoutSubviews(items: children.map { LayoutSubview(node: $0) }) }
+    var subviews: LayoutSubviews { LayoutSubviews(items: children.map { LayoutSubview(node: $0) }, direction: env.layoutDirection) }
 
     // The layout is asked for its cache once and told when its inputs change, as SwiftUI does, not once per pass.
     func refreshCache() {

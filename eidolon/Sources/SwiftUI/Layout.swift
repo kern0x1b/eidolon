@@ -244,7 +244,7 @@ extension HStack: VStackLike {
 public struct Spacer: View, PrimitiveView {
     public typealias Body = Never
     public var body: Never { neverBody(Self.self) }
-    let minLength: CGFloat?
+    public var minLength: CGFloat?
     public init(minLength: CGFloat? = nil) { self.minLength = minLength }
     func makeNode(_ env: EnvironmentValues) -> Node { SpacerNode(minLength: minLength ?? 8) }
 }
@@ -395,7 +395,9 @@ extension ZStack: ZStackLike {
 public struct ScrollView<Content: View>: View, PrimitiveView {
     public typealias Body = Never
     public var body: Never { neverBody(Self.self) }
-    let axes: Axis.Set, showsIndicators: Bool, content: Content
+    public var axes: Axis.Set
+    public var showsIndicators: Bool
+    public var content: Content
     public init(_ axes: Axis.Set = .vertical, showsIndicators: Bool = true, @ViewBuilder content: () -> Content) {
         self.axes = axes; self.showsIndicators = showsIndicators; self.content = content()
     }
@@ -428,12 +430,23 @@ final class ScrollNode: ContainerNode {
 
     var axes: Axis.Set = .vertical
     var scrollView: UIScrollView { uiView as! UIScrollView }
+    private(set) var requested: ScrollPosition?
+    private(set) var applied: ScrollPosition?
+    var request: ScrollPositionRequest?
+    var target: AnyScrollTargetBehavior?
+    var anchors: ScrollAnchors?
+    var restingOffsets: [CGPoint] = []
+    private var applying = false
+    private var animatingTo: CGPoint?
+    let scrollDelegate = ScrollNodeDelegate()
 
     override init() {
         super.init()
         let scroller = UIScrollView()
         scroller.backgroundColor = .clear
         replaceView(scroller)
+        scrollDelegate.node = self
+        scroller.delegate = scrollDelegate
     }
 
     override func update(_ view: any View, _ env: EnvironmentValues) {
@@ -442,11 +455,19 @@ final class ScrollNode: ContainerNode {
         axes = s.scrollAxes
         scrollView.showsVerticalScrollIndicator = s.scrollIndicators && axes.contains(.vertical)
         scrollView.showsHorizontalScrollIndicator = s.scrollIndicators && axes.contains(.horizontal)
+        scrollView.clipsToBounds = !env.scrollClipDisabled
+        request = env.scrollPosition
+        target = env.scrollTarget
+        anchors = env.scrollAnchors
+        requested = env.scrollPosition?.binding.wrappedValue
+        scrollView.isScrollEnabled = env.isScrollEnabled
         content = adopt(reconcile(content, s.scrollContent, env))
     }
 
     override func computeSize(_ p: ProposedSize) -> CGSize {
-        CGSize(width: p.width ?? contentSize(p).width, height: p.height ?? contentSize(p).height)
+        if env.isScrollEnabled { return CGSize(width: p.width ?? contentSize(p).width, height: p.height ?? contentSize(p).height) }
+        let inner = contentSize(p)
+        return CGSize(width: p.width ?? inner.width, height: p.height ?? inner.height)
     }
 
     func contentSize(_ p: ProposedSize) -> CGSize {
@@ -474,6 +495,113 @@ final class ScrollNode: ContainerNode {
             y += s.height
         }
         scrollView.contentSize = CGSize(width: max(inner.width, size.width), height: max(inner.height, size.height))
+        collectTargets()
+        if applied == nil, let anchors { applyAnchors(anchors) }
+        if let wanted = requested, wanted != applied, let offset = restingOffset(for: wanted) {
+            apply(offset, wanted: wanted)
+        }
+    }
+
+    // The resting offset of every target the content marks with `scrollTargetLayout`, in this scroller's coordinates.
+    private func collectTargets() {
+        var found: [CGPoint] = []
+        for kid in children { walkTargets(kid, into: &found) }
+        restingOffsets = found
+    }
+
+    private func walkTargets(_ node: Node, into found: inout [CGPoint]) {
+        if node is ScrollTargetLayoutNode {
+            let inner = node.flattened
+            if inner.isEmpty || node.childNodes.isEmpty {
+                if let view = inner.first?.uiView {
+                    let rect = view.convert(view.bounds, to: scrollView)
+                    found.append(CGPoint(x: -rect.origin.x, y: -rect.origin.y))
+                }
+            } else {
+                for child in node.childNodes { walkTargets(child, into: &found) }
+            }
+            return
+        }
+        for child in node.childNodes { walkTargets(child, into: &found) }
+    }
+
+    private func restingOffset(for position: ScrollPosition) -> CGPoint? {
+        let view = scrollView
+        let limit = CGSize(width: max(0, view.contentSize.width - view.bounds.size.width),
+                           height: max(0, view.contentSize.height - view.bounds.size.height))
+        var offset = view.contentOffset
+        if let id = position.id, let target = findIdentified(id, in: self) {
+            let rect = target.uiView.convert(target.uiView.bounds, to: view)
+            let anchor = position.anchor ?? request?.anchor ?? .top
+            offset = CGPoint(x: rect.origin.x + rect.size.width * anchor.x - view.bounds.size.width * anchor.x,
+                             y: rect.origin.y + rect.size.height * anchor.y - view.bounds.size.height * anchor.y)
+        } else if let edge = position.edge {
+            switch edge {
+            case .top, .leading: offset = .zero
+            case .bottom: offset = CGPoint(x: offset.x, y: limit.height)
+            case .trailing: offset = CGPoint(x: limit.width, y: offset.y)
+            }
+        } else if let point = position.point {
+            offset = CGPoint(x: point.x * limit.width, y: point.y * limit.height)
+        } else {
+            if let x = position.x { offset.x = x }
+            if let y = position.y { offset.y = y }
+        }
+        return CGPoint(x: min(max(0, offset.x), limit.width), y: min(max(0, offset.y), limit.height))
+    }
+
+    private func applyAnchors(_ anchors: ScrollAnchors) {
+        let view = scrollView
+        let limit = CGSize(width: max(0, view.contentSize.width - view.bounds.size.width),
+                           height: max(0, view.contentSize.height - view.bounds.size.height))
+        move(to: CGPoint(x: anchors.horizontal.x * limit.width, y: anchors.vertical.y * limit.height))
+        applied = requested ?? ScrollPosition()
+    }
+
+    private func apply(_ offset: CGPoint, wanted: ScrollPosition) {
+        applied = wanted
+        move(to: offset)
+    }
+
+    // A scroll the app asked for is not the user's own scrolling, so the delegate must not report it back.
+    private func move(to offset: CGPoint) {
+        let animated = Updates.pendingAnimation != nil
+        applying = true
+        animatingTo = animated ? offset : nil
+        scrollView.setContentOffset(offset, animated: animated)
+        applying = false
+    }
+
+    // What the user did to the scroller itself goes back into the binding, as SwiftUI reports it.
+    func userScrolled(to offset: CGPoint) {
+        guard !applying, animatingTo == nil, let request else { return }
+        var position = request.binding.wrappedValue
+        position.placed(at: offset, in: scrollView.contentSize, viewport: scrollView.bounds.size)
+        guard position != applied else { return }
+        applied = position
+        requested = position
+        request.binding.wrappedValue = position
+    }
+
+    func animationSettled() { animatingTo = nil }
+
+    func settleOnTarget() {
+        guard let target, !restingOffsets.isEmpty else { return }
+        var context = ScrollTargetContext()
+        context.scroller = scrollView
+        context.targetOffsets = restingOffsets
+        target.updateTarget(&context)
+        if let offset = context.contentOffset, offset != scrollView.contentOffset { userScrolled(to: offset) }
+    }
+}
+
+final class ScrollNodeDelegate: NSObject, UIScrollViewDelegate {
+    weak var node: ScrollNode?
+    func scrollViewDidScroll(_ scrollView: UIScrollView) { node?.userScrolled(to: scrollView.contentOffset) }
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { node?.settleOnTarget() }
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        node?.animationSettled()
+        node?.settleOnTarget()
     }
 }
 

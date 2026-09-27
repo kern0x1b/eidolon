@@ -24,8 +24,8 @@
 ### Что поддержано, что игнорируется, чего нет
 
 Счёт ведётся скриптом `coverage.py` по интерфейсу SwiftUI из SDK 16.4 (592 публичных типа, 311 модификаторов `View`).
-На сегодня: **504 типов** и **311 модификаторов**, из них **189 действуют**, 0 заглушки (пишут в журнал), 122 объявлены и игнорируются.
-Из того, что Apple объявляет доступным на iOS: **491 из 520 типов** и **289 из 289 модификаторов**, из них **188 действуют**, 0 заглушки, 101 игнорируются
+На сегодня: **505 типов** и **311 модификаторов**, из них **189 действуют**, 0 заглушки (пишут в журнал), 122 объявлены и игнорируются.
+Из того, что Apple объявляет доступным на iOS: **492 из 520 типов** и **289 из 289 модификаторов**, из них **188 действуют**, 0 заглушки, 101 игнорируются
 (остальное в интерфейсе помечено `@available(iOS, unavailable)` — это macOS, tvOS и watchOS; списки строит `../bridge/ios-surface.py`).
 
 **Что эти числа не говорят.** Счёт выше — по *именам* типов и модификаторов. По декларациям картина строже:
@@ -105,6 +105,8 @@ ease-out той же длительности, затухание не моде�
 отличается от `gesture`. `Layout.spacing` не читается родительским стеком: расстояния между видами задаёт
 сам стек. Анимация `Animatable`-данных идёт по времени, кривой и повторам `Animation`; пружина заменена кривой
 ease-out (см. выше). `coverage.py --check` требует, чтобы каждая такая запись в коде была названа здесь.
+
+`GeometryProxy.containerCornerInsets` отдаёт нулевые отступы: на iOS 6 ни один контейнер не рисуется со скруглёнными углами, скруглять нечего. У `LayoutSubview` и `LayoutSubviews` `==` объявлены явно, а у `GridItem`, `GridItem.Size`, `ScrollPosition` и `ScrollDismissesKeyboardMode` — через синтез компилятора: в отличие от `@frozen` типов Apple, наш модуль не печатает выведенные равенства в своём интерфейсе, и `bridge/api-diff.py` видит их как `__derived_struct_equals`.
 
 Значения окружения, которых у iOS 6 нет как настройки (`accessibilityReduceMotion`, `accessibilityReduceTransparency`, `accessibilityDifferentiateWithoutColor`, `accessibilityShowButtonShapes`, `accessibilitySwitchControlEnabled`, `accessibilityQuickActionsEnabled`, `accessibilityLargeContentViewerEnabled`, `isLuminanceReduced`, `supportsMultipleWindows`), читаются как «выключено»: человек не мог их включить. `dynamicTypeSize` всегда `.large`. `monospacedDigit()` ничего не меняет: цифры системного шрифта iOS 6 и так одной ширины.
 
