@@ -81,13 +81,24 @@ final class ValueAnimator {
     }
 
     let animation: Animation
-    private let apply: (Double) -> Void
+    var apply: (Double) -> Void
     var finished: (() -> Void)?
-    private var started: CFTimeInterval = 0
+    private(set) var started: CFTimeInterval = 0
+    /// Where the animation stands a number of seconds after it began: the value to apply, and
+    /// whether it is over. An animation of its own curve — a keyframe track, a phase — says so itself.
+    private let elapsed: (Double) -> (value: Double, done: Bool)
 
     init(animation: Animation, apply: @escaping (Double) -> Void) {
         self.animation = animation
         self.apply = apply
+        let clock = ValueAnimator.clock
+        self.elapsed = { ValueAnimator.position(of: animation, elapsed: $0 - animation.delay) }
+    }
+
+    init(delay: Double, total: Double, at: @escaping (CFTimeInterval) -> (value: Double, done: Bool), apply: @escaping (Double) -> Void = { _ in }) {
+        self.animation = Animation(curve: .linear, duration: total, delay: delay)
+        self.apply = apply
+        self.elapsed = { at($0 - delay) }
     }
 
     func start() {
@@ -115,17 +126,18 @@ final class ValueAnimator {
         }
     }
 
-    // Where the animation stands at a moment: the eased value, and whether it is over.
-    func progress(at now: CFTimeInterval) -> (value: Double, done: Bool) {
-        let elapsed = now - started - animation.delay
+    func progress(at now: CFTimeInterval) -> (value: Double, done: Bool) { elapsed(now - started) }
+
+    /// Where an animation of its own curve and duration stands a number of seconds after it began.
+    static func position(of animation: Animation, elapsed: Double) -> (value: Double, done: Bool) {
         guard elapsed >= 0 else { return (0, false) }
         let length = max(animation.duration, 0.001)
-        let passes = elapsed / length
         let legs = Double(animation.legs)
-        if legs.isFinite && passes >= legs {
+        if legs.isFinite && elapsed / length >= legs {
             let backAtStart = animation.autoreverses && Int(legs) % 2 == 0
             return (backAtStart ? 0 : 1, true)
         }
+        let passes = elapsed / length
         let whole = floor(passes)
         let fraction = passes - whole
         let raw = animation.autoreverses ? (Int(whole) % 2 == 0 ? fraction : 1 - fraction) : fraction

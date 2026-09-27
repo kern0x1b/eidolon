@@ -132,12 +132,19 @@ public struct Transaction {
     public var animation: Animation?
     public var disablesAnimations: Bool = false
     public var isContinuous: Bool = false
+    /// Whether an interactive dismissal follows the finger's speed when it ends.
+    public var tracksVelocity: Bool = false
+    /// The closures added by `addAnimationCompletion(criteria:_:)`, in the order they were added.
+    var completions: [(criteria: AnimationCompletionCriteria, run: () -> Void)] = []
     public init() {}
     public init(animation: Animation?) { self.animation = animation }
 }
 
 public func withTransaction<Result>(_ transaction: Transaction, _ body: () throws -> Result) rethrows -> Result {
-    try withAnimation(transaction.disablesAnimations ? nil : transaction.animation, body)
+    let previous = Updates.pendingCompletions
+    Updates.pendingCompletions = transaction.completions
+    defer { Updates.pendingCompletions = previous }
+    return try withAnimation(transaction.disablesAnimations ? nil : transaction.animation, body)
 }
 
 extension Binding {

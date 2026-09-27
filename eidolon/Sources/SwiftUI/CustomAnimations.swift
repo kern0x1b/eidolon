@@ -1,0 +1,121 @@
+import UIKit
+import CoreGraphics
+
+// MARK: what a custom animation is given to work with
+
+public protocol AnimationStateKey {
+    associatedtype Value
+    static var defaultValue: Value { get }
+}
+
+/// The scratch pad a custom animation may keep values in while it runs.
+public struct AnimationState<Value> {
+    private var storage: [ObjectIdentifier: Any] = [:]
+
+    public init() {}
+
+    public subscript<K: AnimationStateKey>(key: K.Type) -> K.Value where K.Value == Value {
+        get { storage[ObjectIdentifier(key)] as? K.Value ?? K.defaultValue }
+        set { storage[ObjectIdentifier(key)] = newValue }
+    }
+}
+
+/// What a custom animation is told: where it stands, whether it is over, and the environment.
+public struct AnimationContext<Value> where Value: VectorArithmetic {
+    public var state: AnimationState<Value>
+    public var isLogicallyComplete: Bool
+    public private(set) var environment: EnvironmentValues
+
+    public init() {
+        self.state = AnimationState()
+        self.isLogicallyComplete = false
+        self.environment = EnvironmentValues()
+    }
+
+    public init(environment: EnvironmentValues) {
+        self.state = AnimationState()
+        self.isLogicallyComplete = false
+        self.environment = environment
+    }
+
+    public func withState<T>(_ state: AnimationState<T>) -> AnimationContext<T> where T: VectorArithmetic {
+        var copy = AnimationContext<T>(environment: environment)
+        copy.isLogicallyComplete = isLogicallyComplete
+        return copy
+    }
+}
+
+/// An animation of one's own: the three questions SwiftUI asks of it.
+public protocol CustomAnimation: Hashable {
+    /// Where the value is at a moment, or nil to leave it to SwiftUI.
+    func animate<V: VectorArithmetic>(value: V, time: Double, context: inout AnimationContext<V>) -> V?
+    /// How fast the value is moving there, or nil when it is not moving.
+    func velocity<V: VectorArithmetic>(value: V, time: Double, context: AnimationContext<V>) -> V?
+    /// Whether this animation may take over from another one that is already running.
+    func shouldMerge<V: VectorArithmetic>(previous: Animation, value: V, time: Double, context: inout AnimationContext<V>) -> Bool
+}
+
+/// A custom animation held in a value of its own: an `Animation` compares and hashes by it, and an
+/// existential does neither by itself.
+public struct CustomAnimationBox: Hashable {
+    let base: any CustomAnimation
+
+    public init(_ base: any CustomAnimation) { self.base = base }
+
+    public static func == (a: CustomAnimationBox, b: CustomAnimationBox) -> Bool { equatableEqual(a.base, b.base) }
+    public func hash(into hasher: inout Hasher) { withUnsafeBytes(of: base) { hasher.combine(bytes: $0) } }
+}
+
+extension Animation {
+    /// An animation that computes its own values, rather than naming a curve or a spring.
+    public init<A: CustomAnimation>(_ base: A) {
+        curve = .linear
+        duration = 0
+        delay = 0
+        custom = CustomAnimationBox(base)
+    }
+
+    public var base: (any CustomAnimation)? { custom?.base }
+
+    public func animate<V: VectorArithmetic>(value: V, time: Double, context: inout AnimationContext<V>) -> V? {
+        custom?.base.animate(value: value, time: time, context: &context)
+    }
+
+    public func velocity<V: VectorArithmetic>(value: V, time: Double, context: AnimationContext<V>) -> V? {
+        custom?.base.velocity(value: value, time: time, context: context)
+    }
+
+    public func shouldMerge<V: VectorArithmetic>(previous: Animation, value: V, time: Double, context: inout AnimationContext<V>) -> Bool {
+        custom?.base.shouldMerge(previous: previous, value: value, time: time, context: &context) ?? false
+    }
+}
+
+extension Animation: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String { custom.map { "custom(\($0))" } ?? "Animation(curve: \(curve), duration: \(duration), delay: \(delay))" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: [
+            "curve": curve,
+            "duration": duration,
+            "delay": delay,
+            "timing": String(describing: timing),
+            "custom": String(describing: custom),
+        ])
+    }
+}
+
+// MARK: when an animation counts as finished
+
+public struct AnimationCompletionCriteria: Hashable {
+    var isRemoved: Bool
+    public static let logicallyComplete = AnimationCompletionCriteria(isRemoved: false)
+    public static let removed = AnimationCompletionCriteria(isRemoved: true)
+}
+
+extension Transaction {
+    /// A closure to run when the animations of this transaction are over. SwiftUI calls it once the
+    /// animation has logically finished, or once the view is gone, whichever the criteria ask for.
+    public mutating func addAnimationCompletion(criteria: AnimationCompletionCriteria = .logicallyComplete, _ completion: @escaping () -> Void) {
+        completions.append((criteria, completion))
+    }
+}

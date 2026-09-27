@@ -16,6 +16,20 @@ extension Double: VectorArithmetic {
     public var magnitudeSquared: Double { self * self }
 }
 
+extension Double: Animatable {
+    public var animatableData: Double {
+        get { self }
+        set { self = newValue }
+    }
+}
+
+extension Float: Animatable {
+    public var animatableData: Double {
+        get { Double(self) }
+        set { self = Float(newValue) }
+    }
+}
+
 public struct EmptyAnimatableData: VectorArithmetic {
     public init() {}
     public static let zero = EmptyAnimatableData()

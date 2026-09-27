@@ -398,6 +398,8 @@ enum Updates {
     static var scheduled = false
     static var pendingAnimation: Animation?
     static var animationForFlush: Animation?
+    /// The closures `Transaction.addAnimationCompletion` left for the animation now starting.
+    static var pendingCompletions: [(criteria: AnimationCompletionCriteria, run: () -> Void)] = []
     static var hosts: [WeakHost] = []
     static var flushCount = 0
 
@@ -412,6 +414,8 @@ enum Updates {
     static func flush() {
         scheduled = false
         flushCount += 1
+        let completions = pendingCompletions
+        pendingCompletions = []
         let nodes = dirty.sorted { $0.depth < $1.depth }
         dirty = []
         var rendered: [CompositeNode] = []
@@ -430,7 +434,13 @@ enum Updates {
         if let animation {
             // Only the screens that changed animate their layout; the others are none of this animation's business.
             let changed = hosts.compactMap { $0.host }.filter { host in rendered.contains { $0.env.host === host } }
-            animation.run { for host in changed { host.view.layoutIfNeeded() } }
+            // Nothing here is interactive, so a view that is removed is over at the same moment its
+            // animation is: both criteria of a completion are called when the animation finishes.
+            animation.run({ for host in changed { host.view.layoutIfNeeded() } }, completion: { _ in
+                for completion in completions { completion.run() }
+            })
+        } else {
+            for completion in completions { completion.run() }
         }
         var lists: [ListNode] = []
         for node in rendered {

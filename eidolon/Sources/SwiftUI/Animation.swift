@@ -12,10 +12,19 @@ public struct Animation: Equatable, Hashable {
     var timing: Timing?
     /// The moment the animation counts as over, when that is not its duration: a spring's own settling.
     var logicalEnd: Double?
+    /// Set when the animation computes its own values.
+    var custom: CustomAnimationBox?
 
     enum Timing: Equatable, Hashable {
         case curve(UnitCurve)
         case spring(Spring)
+    }
+
+    init(curve: Curve, duration: Double, delay: Double, timing: Timing? = nil) {
+        self.curve = curve
+        self.duration = duration
+        self.delay = delay
+        self.timing = timing
     }
 
     public static let `default` = Animation(curve: .easeInOut, duration: 0.25, delay: 0)

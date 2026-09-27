@@ -2564,6 +2564,108 @@ check(Animation.spring(duration: 0.5).delay(0.2) != Animation.spring(duration: 0
 check(Animation.timingCurve(.circularEaseIn, duration: 2) != Animation.linear(duration: 2), "and so does a timing curve")
 check(Animation.timingCurve(0.42, 0, 1, 1, duration: 1) == Animation.timingCurve(.easeIn, duration: 1), "the four points of a timingCurve are the control points of the Bezier")
 
+// keyframes, phases and a custom animation: the track is the one that is written, and the views
+// follow it frame by frame
+let keyframeTrack = KeyframeTrack {
+    LinearKeyframe(0.2, duration: 0.5)
+    LinearKeyframe(0.8, duration: 0.5)
+}
+var resolvedTrack = _ResolvedKeyframes<Double>(initialValue: 0)
+keyframeTrack._resolve(into: &resolvedTrack, initialValue: 0, initialVelocity: nil)
+equal(resolvedTrack.keyframes.count, 2, "a keyframe track is the keyframes written in it")
+closeTo(resolvedTrack.duration, 1.0, "and lasts as long as they do")
+closeTo(resolvedTrack.progress(at: 0.25), 0.25, "halfway through the first keyframe the track is a quarter along")
+closeTo(resolvedTrack.progress(at: 0.75), 0.75, "and halfway through the second, three quarters")
+closeTo(resolvedTrack.value(at: 0.75), 0.65, "each keyframe travels from the value before it to its own")
+closeTo(resolvedTrack.value(at: 0.0), 0.0, "at the start of the track the value is where it started")
+closeTo(resolvedTrack.value(at: 2), 0.8, "and after the last keyframe it is where that one wrote it")
+var springTrack = _ResolvedKeyframes<Double>(initialValue: 0)
+let springKeyframes = KeyframeTrack { SpringKeyframe(1.0) }
+springKeyframes._resolve(into: &springTrack, initialValue: 0, initialVelocity: nil)
+closeTo(springTrack.duration, Spring().settlingDuration, "a spring keyframe lasts until the spring settles")
+var moveTrack = _ResolvedKeyframes<Double>(initialValue: 0)
+let moveKeyframes = KeyframeTrack { MoveKeyframe(1.0) }
+moveKeyframes._resolve(into: &moveTrack, initialValue: 0, initialVelocity: nil)
+equal(moveTrack.keyframes.count, 1, "a move keyframe is one step")
+closeTo(moveTrack.duration, 0, "and takes no time")
+var cubicTrack = _ResolvedKeyframes<Double>(initialValue: 0)
+let cubicKeyframes = KeyframeTrack { CubicKeyframe(1.0, duration: 1) }
+cubicKeyframes._resolve(into: &cubicTrack, initialValue: 0, initialVelocity: nil)
+closeTo(cubicTrack.progress(at: 0.5), 0.5, "a cubic keyframe is halfway at halfway")
+check(cubicTrack.progress(at: 0.25) < 0.25, "and slower than linear at the start")
+
+struct HeightKey: AnimationStateKey {
+    static var defaultValue: Double { 1 }
+}
+var animationState = AnimationState<Double>()
+animationState[HeightKey.self] = 3
+equal(animationState[HeightKey.self], 3, "an animation state keeps what a custom animation puts in it")
+equal(AnimationState<Double>()[HeightKey.self], HeightKey.defaultValue, "and falls back to the key's own value")
+
+struct Bounce: CustomAnimation {
+    func animate<V: VectorArithmetic>(value: V, time: Double, context: inout AnimationContext<V>) -> V? { nil }
+    func velocity<V: VectorArithmetic>(value: V, time: Double, context: AnimationContext<V>) -> V? { nil }
+    func shouldMerge<V: VectorArithmetic>(previous: Animation, value: V, time: Double, context: inout AnimationContext<V>) -> Bool { true }
+}
+let customAnimation = Animation(Bounce())
+check(customAnimation.base is Bounce, "a custom animation keeps the animation it was made from")
+check(customAnimation.description.contains("custom"), "and says so when asked what it is")
+var mergeContext = AnimationContext<Double>()
+check(customAnimation.shouldMerge(previous: .linear(), value: 0.0, time: 0, context: &mergeContext),
+      "and is asked whether it may take over from another one")
+equal(AnimationCompletionCriteria.logicallyComplete, .logicallyComplete, "the two completion criteria are values")
+check(AnimationCompletionCriteria.logicallyComplete != .removed, "and are told apart")
+
+struct Phases: View {
+    var body: some View {
+        PhaseAnimator([1, 2, 3], content: { phase in
+            Color.red.frame(width: CGFloat(phase) * 10, height: 10)
+        }, animation: { _ in .linear(duration: 1) })
+    }
+}
+_Probe.useVirtualClock()
+let phased = _Probe(Phases(), width: 100, height: 20)
+check(!frames(phased).isEmpty, "a phase animator shows a phase")
+check(_Probe.runningAnimations > 0, "and is running its phase's animation")
+_Probe.advanceAnimations(to: 1.5)
+check(!frames(phased).isEmpty, "and still shows one after the first phase is over")
+
+struct KeyframedBar: View {
+    var body: some View {
+        KeyframeAnimator(initialValue: 0.0, repeating: false) { value in
+            Color.red.frame(width: CGFloat(value) * 100, height: 10)
+        } keyframes: { _ in
+            KeyframeTrack {
+                LinearKeyframe(0.0, duration: 0.5)
+                LinearKeyframe(1.0, duration: 0.5)
+            }
+        }
+    }
+}
+let keyframed = _Probe(KeyframedBar(), width: 120, height: 20)
+check(!frames(keyframed).isEmpty, "a keyframe animator shows its value")
+_Probe.advanceAnimations(to: 1.2)
+check(!frames(keyframed).isEmpty, "and one at the end of the keyframes too")
+
+final class CompletionStore: ObservableObject {
+    @Published var width: CGFloat = 10
+}
+struct CompletionCase: View {
+    @ObservedObject var store: CompletionStore
+    var body: some View { Color.red.frame(width: store.width, height: 10) }
+}
+let completionStore = CompletionStore()
+var completed = 0
+var completionTransaction = Transaction(animation: .linear(duration: 0.2))
+completionTransaction.addAnimationCompletion { completed += 1 }
+let completionProbe = _Probe(CompletionCase(store: completionStore), width: 100, height: 20)
+_ = frames(completionProbe)
+withTransaction(completionTransaction) { completionStore.width = 40 }
+completionProbe.flush()
+check(completed == 0, "a transaction's completion does not run before the animation is over")
+_Probe.advanceAnimations(to: 0.6)
+check(completed > 0, "and does when it is")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
