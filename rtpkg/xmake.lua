@@ -4,6 +4,7 @@ add_repositories("charon " .. (os.getenv("CHARON_REPO") or "https://github.com/k
 add_addons("charon latest")
 set_config("apple_minimum", "6.0")
 includes("@addon/charon/apple-ios")
+includes("@addon/charon/emulate")  -- after apple-ios: the emulator is shade, and this project is what `xmake emulate` installs into its image
 set_allowedplats("iphoneos")
 set_allowedarchs("iphoneos|armv7")
 set_defaultplat("iphoneos")
