@@ -219,8 +219,9 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   `listSectionSpacing` и `description`. `Anchor.Source` умеет собирать массив якорей и якорь необязательного значения, а
   `Anchor` сравнивается и хешируется по виду, на который указывает, и по значению, которое читает из единичного
   прямоугольника. `verticalScrollIndicatorVisibility`, `horizontalScrollIndicatorVisibility`,
-  `verticalScrollBounceBehavior` и `horizontalScrollBounceBehavior` объявлены не будут, пока ими не научится
-  пользоваться полоса прокрутки: это файл раскладки, он не мой.
+  `verticalScrollBounceBehavior` и `horizontalScrollBounceBehavior` читает полоса прокрутки (`ScrollNode.update`):
+  видимость индикатора берётся из окружения, а `.automatic` оставляет решение флагу вида (`scrollIndicators(_:axes:)`);
+  отдача — `alwaysBounceVertical`/`alwaysBounceHorizontal` `UIScrollView`, `.automatic` оставляет её как есть.
 - `Double` и `Float` отвечают `Animatable` сами собой (`animatableData` — сам тип), как у Apple: без этого дорожку
   ключевых кадров нельзя построить над числом.
 
