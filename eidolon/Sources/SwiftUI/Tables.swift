@@ -191,42 +191,38 @@ extension View {
     public func tableStyle<S: TableStyle>(_ style: S) -> some View { self }
 }
 
-// What a view contributes to a Table's rows and columns. A view that is not part of that plumbing
-// says so with Never, which is what the builders are then left with.
-extension Group: TableRowContent, TableColumnContent {
+// What a view contributes to a table's rows and columns, as Apple's interface declares it: a view that
+// is itself table content passes its own row value through, and only the body it has no content for is
+// Never. A view that is not table content does not conform at all, so a Text can never reach a table.
+extension Never: TableRowContent {
     public typealias TableRowValue = Never
     public typealias TableRowBody = Never
-    public typealias TableColumnSortComparator = Never
-    public typealias TableColumnBody = Never
-    public typealias TabValue = Never
     public var _rows: [Never] { [] }
-    public var _columns: [_AnyTableColumn<Never>] { [] }
 }
 
-extension Section: TableRowContent, TableColumnContent {
-    public typealias TableRowValue = Never
+extension Group: TableRowContent where Content: TableRowContent {
+    public typealias TableRowValue = Content.TableRowValue
     public typealias TableRowBody = Never
-    public typealias TableColumnSortComparator = Never
-    public typealias TableColumnBody = Never
-    public var _rows: [Never] { [] }
-    public var _columns: [_AnyTableColumn<Never>] { [] }
+    public var _rows: [Content.TableRowValue] { content._rows }
 }
 
-extension OutlineGroup: TableRowContent, TableColumnContent {
-    public typealias TableRowValue = Never
+extension Section: TableRowContent where Content: TableRowContent {
+    public typealias TableRowValue = Content.TableRowValue
     public typealias TableRowBody = Never
-    public typealias TableColumnSortComparator = Never
-    public typealias TableColumnBody = Never
-    public var _rows: [Never] { [] }
-    public var _columns: [_AnyTableColumn<Never>] { [] }
+    public var _rows: [Content.TableRowValue] { content._rows }
 }
 
-extension ForEach: TableRowContent, TableColumnContent {
-    public typealias TableRowValue = Never
+extension ForEach: TableRowContent where Content: TableRowContent {
+    public typealias TableRowValue = Content.TableRowValue
     public typealias TableRowBody = Never
-    public typealias TableColumnSortComparator = Never
+    public var _rows: [Content.TableRowValue] {
+        data.map { content($0)._rows }.flatMap { $0 }
+    }
+}
+
+extension Group: TableColumnContent where Content: TableColumnContent {
+    public typealias TableRowValue = Content.TableRowValue
+    public typealias TableColumnSortComparator = Content.TableColumnSortComparator
     public typealias TableColumnBody = Never
-    public typealias TabValue = Never
-    public var _rows: [Never] { [] }
-    public var _columns: [_AnyTableColumn<Never>] { [] }
+    public var _columns: [_AnyTableColumn<Content.TableRowValue>] { content._columns }
 }
