@@ -2695,6 +2695,29 @@ equal(corners.measuring(CGRect(x: 2, y: 3, width: 20, height: 40))[0], CGRect(x:
 equal(maybe.measuring(CGRect(x: 2, y: 3, width: 20, height: 40)), CGRect(x: 2, y: 3, width: 20, height: 40), "an anchor of an optional measures what is there")
 equal(nothing.measuring(CGRect(x: 2, y: 3, width: 20, height: 40)), nil, "and an anchor of nothing measures nothing")
 
+// the scroll indicator and bounce values of the environment, read where the scroller is set up
+struct ScrolledBars: View {
+    var body: some View {
+        ScrollView { Color.red.frame(width: 10, height: 400) }
+            .environment(\.verticalScrollIndicatorVisibility, .hidden)
+            .environment(\.horizontalScrollBounceBehavior, .always)
+    }
+}
+func scrollerOf(_ probe: _Probe) -> UIScrollView? {
+    var found: UIScrollView?
+    func walk(_ v: UIView) { if let s = v as? UIScrollView { found = found ?? s }; v.subviews.forEach(walk) }
+    walk(probe.hostView)
+    return found
+}
+let scrolled = _Probe(ScrolledBars(), width: 50, height: 50)
+_ = frames(scrolled)
+if let scroller = scrollerOf(scrolled) {
+    check(!scroller.showsVerticalScrollIndicator, "the environment hides an indicator the view would have drawn")
+    check(scroller.alwaysBounceHorizontal, "and the environment makes a scroller bounce on its own axis")
+} else { check(false, "the scroll view has no scroller") }
+let plainScroller = scrollerOf(_Probe(ScrollView { Color.red }.scrollIndicators(.hidden), width: 50, height: 50))
+check(plainScroller?.showsVerticalScrollIndicator == false, "and the view's own flag still decides when the environment says nothing")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

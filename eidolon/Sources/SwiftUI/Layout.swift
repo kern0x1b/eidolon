@@ -425,6 +425,25 @@ extension ScrollView: ScrollViewLike {
     var scrollContent: any View { content }
 }
 
+// The environment says whether an indicator is drawn; the view's own flag says so when the
+// environment has nothing to say, and an axis the scroll view does not have draws nothing at all.
+private func shown(_ visibility: Visibility, _ flag: Bool, _ axis: Axis.Set, _ axes: Axis.Set) -> Bool {
+    guard axes.contains(axis) else { return false }
+    switch visibility {
+    case .visible: return true
+    case .hidden: return false
+    case .automatic: return flag
+    }
+}
+
+private func bounces(_ behavior: ScrollBounceBehavior, _ was: Bool) -> Bool {
+    switch behavior {
+    case .automatic: return was
+    case .always: return true
+    case .basedOnSize: return false
+    }
+}
+
 final class ScrollNode: ContainerNode {
     func scrollToTop() { scrollView.setContentOffset(.zero, animated: true) }
 
@@ -455,8 +474,11 @@ final class ScrollNode: ContainerNode {
         super.update(view, env)
         guard let s = view as? ScrollViewLike else { return }
         axes = s.scrollAxes
-        scrollView.showsVerticalScrollIndicator = s.scrollIndicators && axes.contains(.vertical)
-        scrollView.showsHorizontalScrollIndicator = s.scrollIndicators && axes.contains(.horizontal)
+        scrollView.showsVerticalScrollIndicator = shown(env.verticalScrollIndicatorVisibility, s.scrollIndicators, .vertical, axes)
+        scrollView.showsHorizontalScrollIndicator = shown(env.horizontalScrollIndicatorVisibility, s.scrollIndicators, .horizontal, axes)
+        scrollView.alwaysBounceVertical = bounces(env.verticalScrollBounceBehavior, scrollView.alwaysBounceVertical)
+        scrollView.alwaysBounceHorizontal = bounces(env.horizontalScrollBounceBehavior, scrollView.alwaysBounceHorizontal)
+
         scrollView.clipsToBounds = !env.scrollClipDisabled
         request = env.scrollPosition
         target = env.scrollTarget

@@ -25,6 +25,10 @@ struct DisplayScaleKey: EnvironmentKey { static var defaultValue: CGFloat { UISc
 struct OpenURLKey: EnvironmentKey { static var defaultValue: OpenURLAction { OpenURLAction() } }
 struct SymbolRenderingModeKey: EnvironmentKey { static var defaultValue: SymbolRenderingMode { .monochrome } }
 struct SymbolVariantsKey: EnvironmentKey { static var defaultValue: SymbolVariants { .none } }
+struct VerticalScrollIndicatorKey: EnvironmentKey { static var defaultValue: Visibility { .automatic } }
+struct HorizontalScrollIndicatorKey: EnvironmentKey { static var defaultValue: Visibility { .automatic } }
+struct VerticalScrollBounceKey: EnvironmentKey { static var defaultValue: ScrollBounceBehavior { .automatic } }
+struct HorizontalScrollBounceKey: EnvironmentKey { static var defaultValue: ScrollBounceBehavior { .automatic } }
 struct TextContentTypeKey: EnvironmentKey { static var defaultValue: UITextContentType? { nil } }
 struct IsFocusedKey: EnvironmentKey { static var defaultValue: Bool { false } }
 struct IsHoverEffectEnabledKey: EnvironmentKey { static var defaultValue: Bool { false } }
@@ -94,6 +98,26 @@ extension EnvironmentValues {
         set { self[SymbolVariantsKey.self] = newValue }
     }
     /// iOS 6 has no text content types, so the field never gets one.
+    /// Whether the scroll view of a vertical axis draws its indicator. `.automatic` leaves the
+    /// decision to `scrollIndicators(_:axes:)`, which is what the view's own flag says.
+    public var verticalScrollIndicatorVisibility: Visibility {
+        get { self[VerticalScrollIndicatorKey.self] }
+        set { self[VerticalScrollIndicatorKey.self] = newValue }
+    }
+    public var horizontalScrollIndicatorVisibility: Visibility {
+        get { self[HorizontalScrollIndicatorKey.self] }
+        set { self[HorizontalScrollIndicatorKey.self] = newValue }
+    }
+    /// Whether a scroll view of that axis bounces past its content. `.automatic` leaves the
+    /// scroller's own rule; `.always` and `.basedOnSize` are UIScrollView's two.
+    public var verticalScrollBounceBehavior: ScrollBounceBehavior {
+        get { self[VerticalScrollBounceKey.self] }
+        set { self[VerticalScrollBounceKey.self] = newValue }
+    }
+    public var horizontalScrollBounceBehavior: ScrollBounceBehavior {
+        get { self[HorizontalScrollBounceKey.self] }
+        set { self[HorizontalScrollBounceKey.self] = newValue }
+    }
     public var textContentType: UITextContentType? {
         get { self[TextContentTypeKey.self] }
         set { self[TextContentTypeKey.self] = newValue }
