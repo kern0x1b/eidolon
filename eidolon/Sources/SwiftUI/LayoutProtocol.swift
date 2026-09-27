@@ -43,6 +43,12 @@ public struct LayoutSubviews: RandomAccessCollection {
     public var startIndex: Int { items.startIndex }
     public var endIndex: Int { items.endIndex }
     public subscript(index: Int) -> LayoutSubview { items[index] }
+    public subscript(bounds: Range<Int>) -> LayoutSubviews {
+        LayoutSubviews(items: Array(items[bounds]), direction: direction)
+    }
+    public subscript<S: Sequence>(indices: S) -> LayoutSubviews where S.Element == Int {
+        LayoutSubviews(items: indices.map { items[$0] }, direction: direction)
+    }
     public static func == (lhs: LayoutSubviews, rhs: LayoutSubviews) -> Bool { lhs.items == rhs.items }
 }
 
