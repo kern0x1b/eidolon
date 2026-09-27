@@ -121,7 +121,7 @@
 читает из вызова; вызов, имени которого он прочесть не может, валит сборку — так заглушка не спрячется от счёта.
 
 **Нет вовсе** — таких API в модуле нет, приложение с ними не соберётся: лучше ошибка компиляции, чем тихо
-неправильный экран. Это `@Observable` и макросы Observation (нужен модуль Observation), `NavigationStack(path:)`
+неправильный экран. Это `NavigationStack(path:)`
 (`NavigationStack` есть как стек без пути), и типы из списка `coverage.py --missing`, не попавшие ни в одну из групп выше.
 
 ## Две сборки модуля
@@ -236,6 +236,16 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   `isSceneCaptured`, `fontResolutionContext` (`Font.Context` — тип SwiftUI iOS 18, вложенного `Context` у нашего
   `Font` нет), `lineHeight` и `_lineHeightMultiple` (это свойства `AttributedString`, которого в этом заходе
   ещё нет). Для них — `bridge/not-applicable.txt`.
+
+- Настройки текста, которые добавил SDK 26.2: `typesettingLanguage` (одним шрифтом iOS 6 настройки нет),
+  `textScale` и `textVariant` (вариантов размера и ширины у текста iOS 6 нет) и четыре речи
+  VoiceOver — `speechAlwaysIncludesPunctuation`, `speechSpellsOutCharacters`, `speechAdjustedPitch`,
+  `speechAnnouncementsQueued` (`UIAccessibility` iOS 6 таких атрибутов не имеет). Каждый пишет в журнал.
+  `TypesettingLanguage` назван по идентификатору языка: в Foundation этой поры нет `Locale.Language`.
+- `PlainButtonStyle`, `BorderedButtonStyle`, `BorderedProminentButtonStyle`, `DefaultButtonStyle` и
+  `BorderlessButtonStyle` — это `PrimitiveButtonStyle`, а не `ButtonStyle`, как в обоих SDK, которые у нас
+  есть (в 16.4 и в 26.2 у `ButtonStyle` нет ни одного `where Self ==`-расширения, а эти шесть стилей объявлены
+  как `PrimitiveButtonStyle`); наши пять имён `ButtonStyle.plain` и подобных выдуманы и убраны.
 
 - Стили кнопки, которых у SwiftUI 26.2 больше, чем было в 16.4: `PrimitiveButtonStyle.link` (синее подчёркнутое слово,
   как ссылка в `UITableViewCell` iOS 6), `.card` (скруглённая кнопка релиза без градиентной заливки),

@@ -121,7 +121,7 @@ extension LabelStyle where Self == IconOnlyLabelStyle {
     public static var iconOnly: IconOnlyLabelStyle { IconOnlyLabelStyle() }
 }
 
-public struct BorderlessButtonStyle: ButtonStyle {
+public struct BorderlessButtonStyle: PrimitiveButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -130,7 +130,7 @@ public struct BorderlessButtonStyle: ButtonStyle {
     }
 }
 
-extension ButtonStyle where Self == BorderlessButtonStyle {
+extension PrimitiveButtonStyle where Self == BorderlessButtonStyle {
     public static var borderless: BorderlessButtonStyle { BorderlessButtonStyle() }
 }
 

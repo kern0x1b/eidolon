@@ -64,7 +64,7 @@ public struct Glass: Hashable {
     public static let thick = Glass(thickness: .thick)
 }
 
-public struct DefaultButtonStyle: ButtonStyle {
+public struct DefaultButtonStyle: PrimitiveButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -74,21 +74,21 @@ public struct DefaultButtonStyle: ButtonStyle {
     }
 }
 
-public struct PlainButtonStyle: ButtonStyle {
+public struct PlainButtonStyle: PrimitiveButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label.opacity(configuration.isPressed ? 0.4 : 1)
     }
 }
 
-public struct BorderedButtonStyle: ButtonStyle {
+public struct BorderedButtonStyle: PrimitiveButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: configuration.isPressed)
     }
 }
 
-public struct BorderedProminentButtonStyle: ButtonStyle {
+public struct BorderedProminentButtonStyle: PrimitiveButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         _BorderedChrome(label: AnyView(configuration.label), prominent: true, pressed: configuration.isPressed)
@@ -113,6 +113,26 @@ public struct CardButtonStyle: PrimitiveButtonStyle {
     public func makeBody(configuration: Configuration) -> some View {
         _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: configuration.isPressed)
     }
+}
+
+extension PrimitiveButtonStyle where Self == DefaultButtonStyle {
+    public static var automatic: DefaultButtonStyle { DefaultButtonStyle() }
+}
+
+extension PrimitiveButtonStyle where Self == PlainButtonStyle {
+    public static var plain: PlainButtonStyle { PlainButtonStyle() }
+}
+
+extension PrimitiveButtonStyle where Self == BorderedButtonStyle {
+    public static var bordered: BorderedButtonStyle { BorderedButtonStyle() }
+}
+
+extension PrimitiveButtonStyle where Self == BorderedProminentButtonStyle {
+    public static var borderedProminent: BorderedProminentButtonStyle { BorderedProminentButtonStyle() }
+}
+
+extension PrimitiveButtonStyle where Self == LinkButtonStyle {
+    public static var link: LinkButtonStyle { LinkButtonStyle() }
 }
 
 public struct GlassButtonStyle: PrimitiveButtonStyle {
@@ -157,10 +177,6 @@ public struct AccessoryBarActionButtonStyle: PrimitiveButtonStyle {
             .foregroundColor(Color(red: 0.11, green: 0.37, blue: 0.80))
             .opacity(configuration.isPressed ? 0.4 : 1))
     }
-}
-
-extension PrimitiveButtonStyle where Self == LinkButtonStyle {
-    public static var link: LinkButtonStyle { LinkButtonStyle() }
 }
 
 extension PrimitiveButtonStyle where Self == CardButtonStyle {
@@ -234,21 +250,9 @@ struct _Gloss: Shape {
     }
 }
 
-extension ButtonStyle where Self == DefaultButtonStyle {
-    public static var automatic: DefaultButtonStyle { DefaultButtonStyle() }
-}
 
-extension ButtonStyle where Self == PlainButtonStyle {
-    public static var plain: PlainButtonStyle { PlainButtonStyle() }
-}
 
-extension ButtonStyle where Self == BorderedButtonStyle {
-    public static var bordered: BorderedButtonStyle { BorderedButtonStyle() }
-}
 
-extension ButtonStyle where Self == BorderedProminentButtonStyle {
-    public static var borderedProminent: BorderedProminentButtonStyle { BorderedProminentButtonStyle() }
-}
 
 public struct DefaultToggleStyle: ToggleStyle {
     public init() {}
