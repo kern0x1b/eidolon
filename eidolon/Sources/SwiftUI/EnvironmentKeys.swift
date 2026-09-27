@@ -23,6 +23,13 @@ struct HorizontalSizeClassKey: EnvironmentKey { static var defaultValue: UserInt
 struct VerticalSizeClassKey: EnvironmentKey { static var defaultValue: UserInterfaceSizeClass? { nil } }
 struct DisplayScaleKey: EnvironmentKey { static var defaultValue: CGFloat { UIScreen.main.scale } }
 struct OpenURLKey: EnvironmentKey { static var defaultValue: OpenURLAction { OpenURLAction() } }
+struct SymbolRenderingModeKey: EnvironmentKey { static var defaultValue: SymbolRenderingMode { .monochrome } }
+struct SymbolVariantsKey: EnvironmentKey { static var defaultValue: SymbolVariants { .none } }
+struct TextContentTypeKey: EnvironmentKey { static var defaultValue: UITextContentType? { nil } }
+struct IsFocusedKey: EnvironmentKey { static var defaultValue: Bool { false } }
+struct IsHoverEffectEnabledKey: EnvironmentKey { static var defaultValue: Bool { false } }
+struct ListRowSpacingKey: EnvironmentKey { static var defaultValue: CGFloat { 0 } }
+struct ListSectionSpacingKey: EnvironmentKey { static var defaultValue: CGFloat { 0 } }
 
 public struct OpenURLAction {
     public struct Result {
@@ -66,6 +73,47 @@ extension EnvironmentValues {
     public var isEnabled: Bool {
         get { self[IsEnabledKey.self] }
         set { self[IsEnabledKey.self] = newValue }
+    }
+    /// The colour the system's controls are tinted with; iOS 6 has no tint colour of its own, so
+    /// it is nothing until an app sets one, and then the engine paints the control itself.
+    public var tintColor: Color? {
+        get { tint.map(Color.init(uiColor:)) }
+        set { tint = newValue?.uiColor }
+    }
+    public var accentColor: Color? {
+        get { tintColor }
+        set { tintColor = newValue }
+    }
+    /// How a symbol is drawn. iOS 6 has no SF Symbols, so this says nothing about the picture.
+    public var symbolRenderingMode: SymbolRenderingMode {
+        get { self[SymbolRenderingModeKey.self] }
+        set { self[SymbolRenderingModeKey.self] = newValue }
+    }
+    public var symbolVariants: SymbolVariants {
+        get { self[SymbolVariantsKey.self] }
+        set { self[SymbolVariantsKey.self] = newValue }
+    }
+    /// iOS 6 has no text content types, so the field never gets one.
+    public var textContentType: UITextContentType? {
+        get { self[TextContentTypeKey.self] }
+        set { self[TextContentTypeKey.self] = newValue }
+    }
+    public var isFocused: Bool {
+        get { self[IsFocusedKey.self] }
+        set { self[IsFocusedKey.self] = newValue }
+    }
+    /// A finger cannot hover on iOS 6, so this is always off.
+    public var isHoverEffectEnabled: Bool {
+        get { self[IsHoverEffectEnabledKey.self] }
+        set { self[IsHoverEffectEnabledKey.self] = newValue }
+    }
+    public var listRowSpacing: CGFloat {
+        get { self[ListRowSpacingKey.self] }
+        set { self[ListRowSpacingKey.self] = newValue }
+    }
+    public var listSectionSpacing: CGFloat {
+        get { self[ListSectionSpacingKey.self] }
+        set { self[ListSectionSpacingKey.self] = newValue }
     }
     public var locale: Locale {
         get { self[LocaleKey.self] }
@@ -242,3 +290,7 @@ extension EnvironmentValues {
 }
 
 struct DynamicTypeSizeKey: EnvironmentKey { static var defaultValue: DynamicTypeSize { .large } }
+
+extension EnvironmentValues: CustomStringConvertible {
+    public var description: String { "environment(controlSize: \(controlSize), colorScheme: \(colorScheme), isEnabled: \(isEnabled))" }
+}

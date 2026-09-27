@@ -2666,6 +2666,35 @@ check(completed == 0, "a transaction's completion does not run before the animat
 _Probe.advanceAnimations(to: 0.6)
 check(completed > 0, "and does when it is")
 
+// environment values that have something to correspond to on iOS 6, and the anchors of a preference
+struct TintReader: View {
+    @Environment(\.tintColor) var tint
+    @Environment(\.symbolRenderingMode) var symbols
+    @Environment(\.isHoverEffectEnabled) var hovering
+    var body: some View {
+        Color.clear.overlay(tint ?? Color.clear)
+    }
+}
+func tintOf(_ probe: _Probe) -> UIColor? {
+    var found: UIColor?
+    func walk(_ v: UIView) { if let c = v.backgroundColor, c != .clear { found = found ?? c }; v.subviews.forEach(walk) }
+    walk(probe.hostView)
+    return found
+}
+check(tintOf(_Probe(TintReader(), width: 10, height: 10)) == nil, "nothing is tinted until an app tints it")
+check(tintOf(_Probe(TintReader().accentColor(.blue), width: 10, height: 10)) != nil, "and an accent colour is the tint colour")
+
+// an anchor of a whole array and of an optional value: the two ways a preference value collects
+// more than one anchor
+let corners = Anchor<[CGRect]>.Source([Anchor<CGRect>.Source.bounds, Anchor<CGRect>.Source.rect(CGRect(x: 0, y: 0, width: 10, height: 10))])
+let single = Anchor<CGRect>.Source.bounds
+let maybe = Anchor<CGRect?>.Source(single)
+let nothing = Anchor<CGRect?>.Source(nil as Anchor<CGRect>.Source?)
+check(corners.measuring(CGRect(x: 2, y: 3, width: 20, height: 40)).count == 2, "an anchor of an array measures each of its sources")
+equal(corners.measuring(CGRect(x: 2, y: 3, width: 20, height: 40))[0], CGRect(x: 2, y: 3, width: 20, height: 40), "the bounds anchor is the view's own rectangle")
+equal(maybe.measuring(CGRect(x: 2, y: 3, width: 20, height: 40)), CGRect(x: 2, y: 3, width: 20, height: 40), "an anchor of an optional measures what is there")
+equal(nothing.measuring(CGRect(x: 2, y: 3, width: 20, height: 40)), nil, "and an anchor of nothing measures nothing")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

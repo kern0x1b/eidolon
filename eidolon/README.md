@@ -213,6 +213,14 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   ним к своему по своей кривой, — а узел перестраивает содержимое на каждом кадре. Виртуальные часы пробника
   (`_Probe.advanceAnimations`) ведут их так же, как и остальные анимации. `AnimationCompletionCriteria.removed` совпадает
   с `.logicallyComplete`: в движке нет интерактивного увода, и вид, который убирают, заканчивает анимацию в тот же момент.
+- `EnvironmentValues` читает и хранит `tintColor`/`accentColor` (движок красит им строку состояния и кнопки меню),
+  `symbolRenderingMode`, `symbolVariants`, `textContentType` (у iOS 6 типов содержимого текста нет — остаётся nil),
+  `isFocused`, `isHoverEffectEnabled` (палец не может навести, поэтому всегда выключено), `listRowSpacing`,
+  `listSectionSpacing` и `description`. `Anchor.Source` умеет собирать массив якорей и якорь необязательного значения, а
+  `Anchor` сравнивается и хешируется по виду, на который указывает, и по значению, которое читает из единичного
+  прямоугольника. `verticalScrollIndicatorVisibility`, `horizontalScrollIndicatorVisibility`,
+  `verticalScrollBounceBehavior` и `horizontalScrollBounceBehavior` объявлены не будут, пока ими не научится
+  пользоваться полоса прокрутки: это файл раскладки, он не мой.
 - `Double` и `Float` отвечают `Animatable` сами собой (`animatableData` — сам тип), как у Apple: без этого дорожку
   ключевых кадров нельзя построить над числом.
 

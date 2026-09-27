@@ -131,7 +131,39 @@ public struct Anchor<Value> {
         let measure: (CGRect) -> Value
         let convert: (Value, UIView, UIView) -> Value
     }
+
 }
+
+extension Anchor.Source {
+    /// What a source reads out of a view of that rectangle: how a geometry proxy answers an anchor.
+    public func measuring(_ bounds: CGRect) -> Value { measure(bounds) }
+
+    /// The anchor of a whole array: each element is measured the way its own source says.
+    public init<T>(_ array: [Anchor<T>.Source]) where Value == [T] {
+        self.init(measure: { bounds in array.map { $0.measure(bounds) } },
+                  convert: { value, from, to in array.indices.map { array[$0].convert(value[$0], from, to) } })
+    }
+
+    /// The anchor of an optional: nothing to measure when there is nothing there.
+    public init<T>(_ anchor: Anchor<T>.Source?) where Value == T? {
+        self.init(measure: { bounds in anchor?.measure(bounds) },
+                  convert: { value, from, to in value.map { anchor?.convert($0, from, to) ?? $0 } ?? nil })
+    }
+}
+
+extension Anchor: Equatable where Value: Equatable {
+    /// Two anchors are the same when they read the same value out of the same view: the view is
+    /// the anchor's own, and the reading is what the source measures in a unit rectangle.
+    public static func == (a: Anchor<Value>, b: Anchor<Value>) -> Bool {
+        a.view === b.view && a.measure(unitRect) == b.measure(unitRect)
+    }
+}
+
+extension Anchor: Hashable where Value: Hashable {
+    public func hash(into hasher: inout Hasher) { hasher.combine(measure(unitRect)) }
+}
+
+private let unitRect = CGRect(x: 0, y: 0, width: 1, height: 1)
 
 extension Anchor.Source where Value == CGRect {
     public static var bounds: Anchor<CGRect>.Source {
