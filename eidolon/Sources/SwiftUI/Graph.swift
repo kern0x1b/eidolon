@@ -43,6 +43,8 @@ public struct EnvironmentValues {
     var wheelRowHeight: CGFloat?
     var menuBorderless = false
     var splitStage: Int?
+    var splitStyle: (any View)?
+    var opensByPushing = true
     var contentTransition = ContentTransition.identity
     var backgroundShapeStyle: AnyShapeStyle?
     var containerShapeValue: AnyShape?
@@ -79,7 +81,7 @@ public struct EnvironmentValues {
             && styles.count == other.styles.count && kerning == other.kerning && allowsTightening == other.allowsTightening && scrollBackgroundHidden == other.scrollBackgroundHidden && redactedDrawing == other.redactedDrawing && (paging == nil) == (other.paging == nil) && buttonBorderShape == other.buttonBorderShape && (menuStyle == nil) == (other.menuStyle == nil) && (disclosureGroupStyle == nil) == (other.disclosureGroupStyle == nil)
             && (scrollPosition == nil) == (other.scrollPosition == nil) && (scrollTarget == nil) == (other.scrollTarget == nil)
             && scrollAnchors == other.scrollAnchors && isScrollEnabled == other.isScrollEnabled
-            && scrollClipDisabled == other.scrollClipDisabled && (scrollObservers == nil) == (other.scrollObservers == nil)
+            && scrollClipDisabled == other.scrollClipDisabled && (scrollObservers == nil) == (other.scrollObservers == nil) && (splitStyle == nil) == (other.splitStyle == nil) && opensByPushing == other.opensByPushing
     }
 }
 

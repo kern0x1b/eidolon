@@ -60,10 +60,6 @@ extension NavigationLink {
     }
 }
 
-extension View {
-    // the second column of a split view is where a link shows its screen; a link that is not in one shows it in the stack
-    public func isDetailLink(_ isDetailLink: Bool) -> some View { self }
-}
 
 extension Section where Parent == EmptyView, Content: View, Footer: View {
     public init(@ViewBuilder content: () -> Content, @ViewBuilder footer: () -> Footer) {

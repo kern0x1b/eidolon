@@ -1,18 +1,55 @@
 import UIKit
 
-public struct NavigationSplitViewVisibility: Equatable {
+public struct NavigationSplitViewVisibility: Equatable, Codable {
     let raw: Int
+    public init(raw: Int) { self.raw = raw }
     public static let automatic = NavigationSplitViewVisibility(raw: 0)
     public static let all = NavigationSplitViewVisibility(raw: 1)
     public static let doubleColumn = NavigationSplitViewVisibility(raw: 2)
     public static let detailOnly = NavigationSplitViewVisibility(raw: 3)
+    public init(from decoder: any Decoder) throws {
+        raw = try decoder.singleValueContainer().decode(Int.self)
+    }
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(raw)
+    }
+    public static func == (lhs: NavigationSplitViewVisibility, rhs: NavigationSplitViewVisibility) -> Bool {
+        lhs.raw == rhs.raw
+    }
 }
 
-public protocol NavigationSplitViewStyle {}
-public struct AutomaticNavigationSplitViewStyle: NavigationSplitViewStyle { public init() {} }
-public struct BalancedNavigationSplitViewStyle: NavigationSplitViewStyle { public init() {} }
-public struct ProminentDetailNavigationSplitViewStyle: NavigationSplitViewStyle { public init() {} }
-public struct NavigationSplitViewStyleConfiguration {}
+/// What a style is told about the split view it draws, and the view it draws for it. The release's own
+/// columns are the same whichever style an app asks for, so the body is the columns as they are.
+public protocol NavigationSplitViewStyle {
+    associatedtype Body: View
+    typealias Configuration = NavigationSplitViewStyleConfiguration
+    @ViewBuilder func makeBody(configuration: Self.Configuration) -> Self.Body
+}
+
+public struct NavigationSplitViewStyleConfiguration {
+    public var isExpanded: Bool
+    public var preferredCompactColumn: Binding<NavigationSplitViewVisibility>?
+    public var horizontalSizeClass: Int
+    public init() { isExpanded = true; preferredCompactColumn = nil; horizontalSizeClass = 0 }
+}
+
+extension NavigationSplitViewStyle {
+    public var columns: some View { makeBody(configuration: NavigationSplitViewStyleConfiguration()) }
+}
+
+public struct AutomaticNavigationSplitViewStyle: NavigationSplitViewStyle {
+    public init() {}
+    public func makeBody(configuration: NavigationSplitViewStyleConfiguration) -> some View { EmptyView() }
+}
+public struct BalancedNavigationSplitViewStyle: NavigationSplitViewStyle {
+    public init() {}
+    public func makeBody(configuration: NavigationSplitViewStyleConfiguration) -> some View { EmptyView() }
+}
+public struct ProminentDetailNavigationSplitViewStyle: NavigationSplitViewStyle {
+    public init() {}
+    public func makeBody(configuration: NavigationSplitViewStyleConfiguration) -> some View { EmptyView() }
+}
 
 extension NavigationSplitViewStyle where Self == AutomaticNavigationSplitViewStyle {
     public static var automatic: AutomaticNavigationSplitViewStyle { AutomaticNavigationSplitViewStyle() }
@@ -128,7 +165,7 @@ final class SplitNode: LayoutNode {
 extension View {
     public func navigationSplitViewStyle<S: NavigationSplitViewStyle>(_ style: S) -> some View {
         if UIDevice.current.userInterfaceIdiom == .pad { _Unsupported.pendingNote("navigationSplitViewStyle on iPad") }
-        return self
+        return _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.splitStyle = style.columns }, onUpdate: nil))
     }
     public func navigationSplitViewColumnWidth(_ width: CGFloat) -> some View {
         if UIDevice.current.userInterfaceIdiom == .pad { _Unsupported.pendingNote("navigationSplitViewColumnWidth on iPad") }

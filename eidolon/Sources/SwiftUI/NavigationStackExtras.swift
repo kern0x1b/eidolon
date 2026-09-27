@@ -2,15 +2,69 @@ import UIKit
 import CoreGraphics
 
 public struct NavigationPath: Equatable {
+    /// How the path's elements are written down and read back. Only a path that was given a
+    /// representation can be encoded, and one without says so by having none.
+    public struct CodableRepresentation: Codable, Equatable {
+        var items: [AnyHashable] = []
+        var read: ((any Decoder) throws -> [AnyHashable])?
+        var write: (([AnyHashable], any Encoder) throws -> Void)?
+        public init() { read = nil; write = nil }
+        public init(read: @escaping (any Decoder) throws -> [AnyHashable], write: @escaping ([AnyHashable], any Encoder) throws -> Void) {
+            self.read = read; self.write = write
+        }
+        public init(from decoder: any Decoder) throws {
+            guard let read else {
+                throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                                                         debugDescription: "no representation to read the path with"))
+            }
+            items = try read(decoder)
+        }
+        public func encode(to encoder: any Encoder) throws {
+            guard let write else {
+                throw EncodingError.invalidValue(items, .init(codingPath: encoder.codingPath,
+                                                              debugDescription: "no representation to write the path with"))
+            }
+            try write(items, encoder)
+        }
+        public static func == (lhs: CodableRepresentation, rhs: CodableRepresentation) -> Bool {
+            (lhs.read == nil) == (rhs.read == nil) && (lhs.write == nil) == (rhs.write == nil)
+        }
+    }
+
     var items: [AnyHashable] = []
+    var representation: CodableRepresentation?
     public init() {}
     public init<S: Sequence>(_ elements: S) where S.Element: Hashable {
         items = elements.map { AnyHashable($0) }
     }
+    public init(_ codable: CodableRepresentation) { representation = codable }
+    public var codable: CodableRepresentation? { representation }
     public var count: Int { items.count }
     public var isEmpty: Bool { items.isEmpty }
     public mutating func append<V: Hashable>(_ value: V) { items.append(AnyHashable(value)) }
     public mutating func removeLast(_ k: Int = 1) { items.removeLast(min(k, items.count)) }
+    public static func == (lhs: NavigationPath, rhs: NavigationPath) -> Bool {
+        lhs.items == rhs.items && lhs.representation == rhs.representation
+    }
+
+    public init(from decoder: any Decoder) throws {
+        guard let representation else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                                                     debugDescription: "a path with no codable representation"))
+        }
+        let decoded = try CodableRepresentation(from: decoder)
+        items = decoded.items
+        self.representation = representation
+    }
+    public func encode(to encoder: any Encoder) throws {
+        guard let representation else {
+            throw EncodingError.invalidValue(items, .init(codingPath: encoder.codingPath,
+                                                          debugDescription: "a path with no codable representation"))
+        }
+        var box = representation
+        box.items = items
+        try box.encode(to: encoder)
+    }
 }
 
 struct NavigationDestinationModifier: NodeModifier {
