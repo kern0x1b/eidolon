@@ -1,38 +1,33 @@
 import CoreGraphics
 
-// A damped harmonic oscillator: the spring SwiftUI's newer animations are built on. What is stored is
-// the pair the system is described by — how long it takes to oscillate and how strongly it is damped —
-// and the mass, the stiffness and the damping follow, as they do in Apple's own framework: an
-// over-damped spring's stiffness carries the factor that keeps its damping ratio the one asked for
-// (.agent-work/host/spring.out and neg.out hold the measurements).
+// A damped harmonic oscillator: the spring SwiftUI's newer animations are built on. It is kept the way
+// it was built, because that is what decides what the other numbers read back: a spring made of a
+// duration and a bounce or of a response and a ratio reports the stiffness and the damping its own pair
+// implies — an over-damped one carries the factor that keeps the ratio — while a spring made of a mass, a
+// stiffness and a damping reports those three as they were given. Every one of the numbers below is what
+// Apple's own framework answers for the same spring (.agent-work/host/*.out hold the measurements).
 public struct Spring: Hashable {
-    public var response: Double
-    public var dampingRatio: Double
+    enum Form: Hashable {
+        case duration(Double, Double)
+        case response(Double, Double)
+        case system(Double, Double, Double)
+    }
+    var form: Form
 
     /// The undamped angular frequency, `2π / response`.
     var frequency: Double { 2 * Double.pi / max(response, .leastNormalMagnitude) }
 
     public init(response: Double, dampingRatio: Double) {
-        self.response = response
-        self.dampingRatio = dampingRatio
+        form = .response(response, dampingRatio)
     }
 
     public init(duration: Double = 0.5, bounce: Double = 0) {
-        // Apple's own mapping of a bounce to a damping fraction: none below minus one, the reciprocal
-        // of one plus it while it is negative, one at rest, and one minus it while it is positive.
-        let fraction: Double
-        if bounce <= -1 { fraction = .infinity }
-        else if bounce < 0 { fraction = 1 / (bounce + 1) }
-        else if bounce == 0 { fraction = 1 }
-        else { fraction = 1 - min(bounce, 1) }
-        self.init(response: duration, dampingRatio: fraction)
+        form = .duration(duration, bounce)
     }
 
     public init(mass: Double = 1, stiffness: Double, damping: Double, allowOverDamping: Bool = false) {
         let critical = 2 * (mass * stiffness).squareRoot()
-        let ratio = damping / (critical == 0 ? .leastNormalMagnitude : critical)
-        self.init(response: 2 * Double.pi * (mass / max(stiffness, .leastNormalMagnitude)).squareRoot(),
-                  dampingRatio: allowOverDamping ? ratio : min(ratio, 1))
+        form = .system(mass, stiffness, allowOverDamping ? damping : min(damping, critical))
     }
 
     public init(settlingDuration: Double, dampingRatio: Double, epsilon: Double = 0.001) {
@@ -60,19 +55,50 @@ public struct Spring: Hashable {
 
     // MARK: the numbers the system is described with
 
+    public var response: Double {
+        switch form {
+        case .duration(let duration, _): return duration
+        case .response(let response, _): return response
+        case .system(let mass, let stiffness, _): return 2 * Double.pi * (mass / stiffness).squareRoot()
+        }
+    }
     public var duration: Double { response }
-    public var bounce: Double { dampingRatio > 1 ? 1 / dampingRatio - 1 : 1 - dampingRatio }
+    /// How strongly the system is damped: 1 stops as fast as it can without passing the target.
+    public var dampingRatio: Double {
+        switch form {
+        case .duration(_, let bounce):
+            // Apple's own mapping of a bounce to a fraction, and the same one read backwards: none at
+            // all below minus one, the reciprocal of one plus it while it is negative, one at rest, and
+            // one minus it while it is positive.
+            if bounce <= -1 { return .nan }
+            if bounce < 0 { return 1 / (bounce + 1) }
+            return 1 - min(bounce, 1)
+        case .response(_, let ratio): return ratio
+        case .system(let mass, let stiffness, let damping): return damping / (2 * (mass * stiffness).squareRoot())
+        }
+    }
+    public var bounce: Double {
+        let ratio = dampingRatio
+        return ratio > 1 ? 1 / ratio - 1 : 1 - ratio
+    }
     public var mass: Double {
-        get { 1 }
-        set { response = 2 * Double.pi * (newValue / stiffness).squareRoot() }
+        if case .system(let mass, _, _) = form { return mass }
+        return 1
     }
     public var stiffness: Double {
-        get { frequency * frequency * (dampingRatio > 1 ? 2 * dampingRatio * dampingRatio - 1 : 1) }
-        set { response = 2 * Double.pi * (mass / max(newValue, .leastNormalMagnitude)).squareRoot() }
+        let ratio = dampingRatio
+        guard ratio > 1 else {
+            if case .system(_, let stiffness, _) = form { return stiffness }
+            return frequency * frequency
+        }
+        // An over-damped system's stiffness is the one that keeps the ratio the spring was given.
+        return frequency * frequency * (2 * ratio * ratio - 1)
     }
     public var damping: Double {
-        get { 2 * frequency * dampingRatio }
-        set { dampingRatio = newValue / (2 * frequency) }
+        switch form {
+        case .system(_, _, let damping): return damping
+        default: return 2 * frequency * dampingRatio
+        }
     }
 
     // MARK: the shape of the motion, as a fraction of the distance
@@ -93,7 +119,7 @@ public struct Spring: Hashable {
     func remaining(initialVelocity: Double, time: Double) -> Double {
         if time <= 0 { return 1 }
         let w = frequency, z = dampingRatio
-        guard w.isFinite, z.isFinite else { return 0 }
+        guard w.isFinite else { return 0 }
         if z < 1 {
             let (a, b, c) = coefficients(w, z, initialVelocity)
             return exp(-a * time) * (cos(b * time) + c * sin(b * time))
@@ -108,7 +134,7 @@ public struct Spring: Hashable {
     private func remainingSlope(initialVelocity: Double, time: Double) -> Double {
         if time <= 0 { return 0 }
         let w = frequency, z = dampingRatio
-        guard w.isFinite, z.isFinite else { return 0 }
+        guard w.isFinite else { return 0 }
         if z < 1 {
             let (a, b, c) = coefficients(w, z, initialVelocity)
             return exp(-a * time) * ((-a + b * c) * cos(b * time) + (-a * c - b) * sin(b * time))
@@ -184,13 +210,13 @@ public struct Spring: Hashable {
     // epsilon, the target and the damping, .agent-work/runs/settling.txt); one that oscillates is read
     // off its last swing.
     private func settling(target: Double, initialVelocity: Double, epsilon: Double) -> Double {
-        guard epsilon > 0, mass > 0, stiffness > 0 else { return 0 }
         let z = dampingRatio
+        guard epsilon > 0, !z.isNaN, mass > 0, stiffness > 0 else { return 0 }
         let slowest = z < 1 ? z * frequency : frequency * (z - (z * z - 1).squareRoot())
         guard slowest > 0 else { return .infinity }
         let scale = max(1, target + abs(initialVelocity)) / epsilon
         let horizon = log(scale) / slowest + 8 * response
-        let stepSize = min(response / 64, horizon / 512)
+        let stepSize = min(response / 256, horizon / 2048)
         var outside = 0.0
         var t = 0.0
         while t < horizon {
