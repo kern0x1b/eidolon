@@ -1,5 +1,12 @@
 import UIKit
 
+/// The two arms of an `if` in a builder, kept apart until the builder asks which one it got. The
+/// shape and the storage enum are the ones OpenSwiftUI uses (MIT, commit b13f093dcc71).
+public struct _ConditionalTableContent<TrueContent, FalseContent> {
+    @frozen public enum Storage { case trueContent(TrueContent), falseContent(FalseContent) }
+    public let storage: Storage
+}
+
 public struct _AnyTableColumn<Row> {
     let title: String
     let cell: (Row) -> any View
@@ -60,6 +67,26 @@ public struct TableColumnBuilder<RowValue: Identifiable, Sort> {
         }
         return TupleTableColumnContent(value: (repeat each columns), _columns: all)
     }
+    // The three conditional forms below are the ones Apple's TableColumnBuilder declares, with Apple's
+    // constraints: a builder that is one column wide cannot take two, and a builder that sorts cannot
+    // be given a column that does not.
+    public static func buildEither<T, F>(first: T) -> _ConditionalContent<T, F>
+        where RowValue == T.TableRowValue, T: TableColumnContent, F: TableColumnContent,
+              T.TableColumnSortComparator == Never, T.TableRowValue == F.TableRowValue,
+              F.TableColumnSortComparator == Never { _ConditionalContent(storage: .trueContent(first)) }
+    public static func buildEither<T, F>(second: F) -> _ConditionalContent<T, F>
+        where RowValue == T.TableRowValue, Sort == T.TableColumnSortComparator, T: TableColumnContent, F: TableColumnContent,
+              T.TableColumnSortComparator == F.TableColumnSortComparator, T.TableRowValue == F.TableRowValue {
+        _ConditionalContent(storage: .falseContent(second))
+    }
+    @_disfavoredOverload
+    public static func buildEither<T, F>(second: F) -> _ConditionalContent<T, F>
+        where RowValue == T.TableRowValue, T: TableColumnContent, F: TableColumnContent,
+              T.TableColumnSortComparator == Never, T.TableRowValue == F.TableRowValue,
+              F.TableColumnSortComparator == Never { _ConditionalContent(storage: .falseContent(second)) }
+    public static func buildLimitedAvailability<C: TableColumnContent>(_ content: C) -> C where C.TableRowValue == RowValue, C.TableColumnSortComparator == Sort { content }
+    @_disfavoredOverload
+    public static func buildLimitedAvailability<C: TableColumnContent>(_ content: C) -> C where C.TableRowValue == RowValue, C.TableColumnSortComparator == Never { content }
 }
 
 public protocol TableRowContent {
@@ -108,6 +135,17 @@ public struct TableRowBuilder<Value: Identifiable> {
         }
         return TupleTableRowContent(value: (repeat each rows), _rows: all)
     }
+    // As above: Apple's TableRowBuilder conditional forms, with its constraints.
+    public static func buildIf<C>(_ content: C?) -> C? where Value == C.TableRowValue, C: TableRowContent { content }
+    public static func buildEither<T, F>(first: T) -> _ConditionalContent<T, F>
+        where Value == T.TableRowValue, T: TableRowContent, F: TableRowContent, T.TableRowValue == F.TableRowValue {
+        _ConditionalContent(storage: .trueContent(first))
+    }
+    public static func buildEither<T, F>(second: F) -> _ConditionalContent<T, F>
+        where Value == T.TableRowValue, T: TableRowContent, F: TableRowContent, T.TableRowValue == F.TableRowValue {
+        _ConditionalContent(storage: .falseContent(second))
+    }
+    public static func buildLimitedAvailability<C: TableRowContent>(_ content: C) -> C where C.TableRowValue == Value { content }
 }
 
 public protocol TableStyle {}
