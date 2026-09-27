@@ -25,6 +25,8 @@ public struct EnvironmentValues {
     public var textCase: Text.Case?
     var buttonStyle: ((ButtonStyleConfiguration) -> any View)?
     var primitiveButtonStyle: ((PrimitiveButtonStyleConfiguration) -> any View)?
+    var datePickerBody: ((DatePickerStyleConfiguration) -> AnyView)?
+    var controlGroupPalette = false
     var searchSuggestions: (() -> any View)?
     var searchComplete: ((String) -> Void)?
     var toggleStyle: ((ToggleStyleConfiguration) -> any View)?

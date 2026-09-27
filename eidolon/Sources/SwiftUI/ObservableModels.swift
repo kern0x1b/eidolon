@@ -17,6 +17,11 @@ public struct Bindable<Value: AnyObject & Observable> {
     }
 }
 
+/// A `Bindable` is the model it wraps, so a list that identifies its rows identifies on the model.
+extension Bindable: Identifiable where Value: Identifiable {
+    public var id: Value.ID { wrappedValue.id }
+}
+
 struct ObservableObjectKey<T: AnyObject & Observable>: EnvironmentKey {
     static var defaultValue: T? { nil }
 }

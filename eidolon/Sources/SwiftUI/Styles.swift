@@ -29,6 +29,7 @@ public struct PrimitiveButtonStyleConfiguration {
     }
     public let label: Label
     public let role: ButtonRole?
+    public let isPressed: Bool
     let action: () -> Void
     public func trigger() { action() }
 }
@@ -43,6 +44,24 @@ public struct ButtonRole: Equatable {
     let name: String
     public static let destructive = ButtonRole(name: "destructive")
     public static let cancel = ButtonRole(name: "cancel")
+    public static let confirm = ButtonRole(name: "confirm")
+    public static let close = ButtonRole(name: "close")
+}
+
+/// The glass of a button on iOS 26: how thick it is and how much of the background it lets through.
+/// iOS 6 has no live blur, so the thickness is what the fill is drawn with.
+public struct Glass: Hashable {
+    public enum Thickness: Hashable { case regular, thick }
+    public var thickness: Thickness
+    public var interactive: Bool
+    public var isAdaptive: Bool
+    public init(thickness: Thickness = .regular, interactive: Bool = false, isAdaptive: Bool = true) {
+        self.thickness = thickness
+        self.interactive = interactive
+        self.isAdaptive = isAdaptive
+    }
+    public static let regular = Glass()
+    public static let thick = Glass(thickness: .thick)
 }
 
 public struct DefaultButtonStyle: ButtonStyle {
@@ -65,21 +84,110 @@ public struct PlainButtonStyle: ButtonStyle {
 public struct BorderedButtonStyle: ButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: configuration.label, prominent: false, pressed: configuration.isPressed)
+        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: configuration.isPressed)
     }
 }
 
 public struct BorderedProminentButtonStyle: ButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: configuration.label, prominent: true, pressed: configuration.isPressed)
+        _BorderedChrome(label: AnyView(configuration.label), prominent: true, pressed: configuration.isPressed)
     }
+}
+
+// The rest of the styles SwiftUI names for a button, drawn with what iOS 6 has: its title bar draws a bare
+// blue word, a link is blue and underlined, and a card is the rounded button of the release without the
+// fill gradient. Glass and the accessory bar have nothing to correspond to and say so in the journal.
+public struct LinkButtonStyle: PrimitiveButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(Color(red: 0.11, green: 0.37, blue: 0.80))
+            .underline(true, color: Color(red: 0.11, green: 0.37, blue: 0.80))
+            .opacity(configuration.isPressed ? 0.4 : 1)
+    }
+}
+
+public struct CardButtonStyle: PrimitiveButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: configuration.isPressed)
+    }
+}
+
+public struct GlassButtonStyle: PrimitiveButtonStyle {
+    var glass: Glass
+    public init() { glass = .regular }
+    public init(_ glass: Glass) { self.glass = glass }
+    public func makeBody(configuration: Configuration) -> some View {
+        _Unsupported.note("PrimitiveButtonStyle.glass", "iOS 6 has no live blur, so a glass button is the release's own button drawn translucent")
+        return AnyView(configuration.label
+            .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
+            .background(Color(UIColor(white: 0.97, alpha: glass.thickness == .thick ? 0.9 : 0.75)), cornerRadius: 7)
+            .border(Color(white: 0.62), width: 1)
+            .opacity(configuration.isPressed ? 0.4 : 1))
+    }
+}
+
+public struct GlassProminentButtonStyle: PrimitiveButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        _Unsupported.note("PrimitiveButtonStyle.glassProminent", "iOS 6 has no live blur, so a glass button is the release's own button drawn translucent")
+        return AnyView(configuration.label
+            .foregroundColor(.white)
+            .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
+            .background(Color(red: 0.20, green: 0.42, blue: 0.78).opacity(0.85), cornerRadius: 7)
+            .opacity(configuration.isPressed ? 0.4 : 1))
+    }
+}
+
+public struct AccessoryBarButtonStyle: PrimitiveButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        _Unsupported.note("PrimitiveButtonStyle.accessoryBar", "iOS 6 has no accessory bar, so the button is the release's own")
+        return AnyView(_BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: configuration.isPressed))
+    }
+}
+
+public struct AccessoryBarActionButtonStyle: PrimitiveButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        _Unsupported.note("PrimitiveButtonStyle.accessoryBarAction", "iOS 6 has no accessory bar, so the button is the release's own")
+        return AnyView(configuration.label
+            .foregroundColor(Color(red: 0.11, green: 0.37, blue: 0.80))
+            .opacity(configuration.isPressed ? 0.4 : 1))
+    }
+}
+
+extension PrimitiveButtonStyle where Self == LinkButtonStyle {
+    public static var link: LinkButtonStyle { LinkButtonStyle() }
+}
+
+extension PrimitiveButtonStyle where Self == CardButtonStyle {
+    public static var card: CardButtonStyle { CardButtonStyle() }
+}
+
+extension PrimitiveButtonStyle where Self == GlassButtonStyle {
+    public static var glass: GlassButtonStyle { GlassButtonStyle() }
+    public static func glass(_ glass: Glass) -> GlassButtonStyle { GlassButtonStyle(glass) }
+}
+
+extension PrimitiveButtonStyle where Self == GlassProminentButtonStyle {
+    public static var glassProminent: GlassProminentButtonStyle { GlassProminentButtonStyle() }
+}
+
+extension PrimitiveButtonStyle where Self == AccessoryBarButtonStyle {
+    public static var accessoryBar: AccessoryBarButtonStyle { AccessoryBarButtonStyle() }
+}
+
+extension PrimitiveButtonStyle where Self == AccessoryBarActionButtonStyle {
+    public static var accessoryBarAction: AccessoryBarActionButtonStyle { AccessoryBarActionButtonStyle() }
 }
 
 // A button as iOS 6 draws one: a vertical gradient, a lighter gloss over its upper half, a dark edge and lettering with a
 // small shadow. The bordered style is the grey rounded-rect button of the system, the prominent one the blue of a Done button.
 struct _BorderedChrome: View {
-    let label: ButtonStyleConfiguration.Label
+    let label: any View
     let prominent: Bool
     let pressed: Bool
     @Environment(\.self) var environment
@@ -92,7 +200,7 @@ struct _BorderedChrome: View {
         let edge = prominent ? Color(red: 0.08, green: 0.20, blue: 0.50) : Color(white: 0.52)
         let lettering: Color? = prominent ? .white : nil
         let shadow = prominent ? Color(red: 0, green: 0, blue: 0).opacity(0.45) : Color.white
-        let padded = label.foregroundColor(lettering)
+        let padded = AnyView(label).foregroundColor(lettering)
             .shadow(color: shadow, radius: 0, x: 0, y: prominent ? -1 : 1)
             .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
         switch environment.buttonBorderShape.kind {
@@ -218,7 +326,10 @@ public struct DefaultMenuStyle: MenuStyle {
     public func makeBody(configuration: Configuration) -> some View { Menu(configuration) }
 }
 
-public struct DefaultDatePickerStyle: DatePickerStyle { public init() {} }
+public struct DefaultDatePickerStyle: DatePickerStyle {
+    public init() {}
+    public func _body(configuration: DatePickerStyleConfiguration) -> EmptyView { EmptyView() }
+}
 public struct SeparatorShapeStyle: ShapeStyle {
     public init() {}
     public var _uiColor: UIColor? { UIColor(white: 0.78, alpha: 1) }

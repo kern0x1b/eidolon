@@ -333,7 +333,8 @@ final class ButtonNode: LayoutNode {
             target.action = {}
             button.setTitle(nil, for: .normal)
             let configuration = PrimitiveButtonStyleConfiguration(label: PrimitiveButtonStyleConfiguration.Label(content: b.buttonLabel),
-                                                                  role: (view as? RoleButtonLike)?.buttonRole, action: b.buttonAction)
+                                                                  role: (view as? RoleButtonLike)?.buttonRole,
+                                                                  isPressed: pressed, action: b.buttonAction)
             var inner = env
             inner.primitiveButtonStyle = nil
             styled = adopt(reconcile(styled, primitiveBody(configuration), inner))

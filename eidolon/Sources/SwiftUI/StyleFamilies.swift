@@ -119,6 +119,19 @@ public struct NavigationControlGroupStyle: ControlGroupStyle {
     public func makeBody(configuration: Configuration) -> some View { HStack(spacing: 0) { configuration.content } }
 }
 
+/// A group drawn as a palette of its controls: on iOS 6 a control group is a segmented control, and a
+/// palette is that with the segments' own backgrounds rather than the system's.
+public struct PaletteControlGroupStyle: ControlGroupStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        _ModifiedView(content: AnyView(configuration.content), modifier: EnvironmentModifier(apply: { $0.controlGroupPalette = true }, onUpdate: nil))
+    }
+}
+
+extension ControlGroupStyle where Self == PaletteControlGroupStyle {
+    public static var palette: PaletteControlGroupStyle { PaletteControlGroupStyle() }
+}
+
 public struct MenuControlGroupStyle: ControlGroupStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {

@@ -127,11 +127,6 @@ public struct ScenePadding: Equatable {
 }
 
 
-public struct DatePickerStyleConfiguration {
-    public let label: AnyView
-    public var selection: Date
-}
-
 public enum TimelineScheduleMode { case normal, lowFrequency }
 
 public struct ExplicitTimelineSchedule<Entries: Sequence>: TimelineSchedule where Entries.Element == Date {

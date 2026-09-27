@@ -59,10 +59,8 @@ extension View {
         return self
     }
     public func datePickerStyle<S: DatePickerStyle>(_ style: S) -> some View {
-        if S.self == CompactDatePickerStyle.self || S.self == GraphicalDatePickerStyle.self {
-            _Unsupported.note("datePickerStyle(\(S.self == CompactDatePickerStyle.self ? ".compact" : ".graphical"))",
-                              "UIDatePicker on iOS 6 has only the wheel")
-        }
-        return self
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
+            environment.datePickerBody = { configuration in AnyView(style._body(configuration: configuration)) }
+        }, onUpdate: nil))
     }
 }

@@ -134,6 +134,7 @@ extension ButtonStyle where Self == BorderlessButtonStyle {
     public static var borderless: BorderlessButtonStyle { BorderlessButtonStyle() }
 }
 
+
 public struct BorderlessButtonMenuStyle: MenuStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
@@ -154,6 +155,10 @@ extension MenuStyle where Self == DefaultMenuStyle {
 extension MenuStyle where Self == BorderlessButtonMenuStyle {
     public static var borderlessButton: BorderlessButtonMenuStyle { BorderlessButtonMenuStyle() }
 }
+extension MenuStyle where Self == BorderedButtonMenuStyle {
+    public static var borderedButton: BorderedButtonMenuStyle { BorderedButtonMenuStyle() }
+}
+
 extension MenuStyle where Self == ButtonMenuStyle {
     public static var button: ButtonMenuStyle { ButtonMenuStyle() }
 }
