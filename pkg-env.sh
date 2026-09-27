@@ -6,6 +6,10 @@ ST=$(ls -td $X/s/styx/*/*/ 2>/dev/null | head -1); ST=${ST%/}
 RT=$X/s/swift-runtime/6.4.0/$(awk '/\["swift-runtime"\] = \{/ {f=1} f && /buildhash/ {gsub(/[ ",]/, ""); split($0, a, "="); print a[2]; exit}' $ST/manifest.txt)
 [ -d "$RT" ] || { echo "pkg-env: no swift-runtime install matches the one Styx names" >&2; return 1 2>/dev/null || exit 1; }
 SWIFTC=$(grep -A1 'SWIFT_EXEC' $RT/manifest.txt | tail -1 | tr -d ' "')
+# the manifest records the compiler by absolute path, which is whatever machine built the package; if that one is gone, the
+# package is still here under our own xmake root, so resolve it there (the suffix past .xmake/packages is the same layout)
+[ -x "$SWIFTC" ] || SWIFTC="$X/${SWIFTC#*".xmake/packages/"}"
+[ -x "$SWIFTC" ] || { echo "pkg-env: no swiftc for the runtime at $RT" >&2; return 1 2>/dev/null || exit 1; }
 SWIFTHOME=$(dirname $(dirname $SWIFTC))
 dep_hash() { awk -v name="$1" '$0 ~ "^        (\\[\")?"name"(\"\\])? = \\{" {found=1} found && /buildhash/ {gsub(/[ ",]/, ""); split($0, a, "="); print a[2]; exit}' $RT/manifest.txt; }
 LIBCXX=$X/l/libcxx/23.1.1/$(dep_hash libcxx)
