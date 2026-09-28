@@ -117,7 +117,9 @@ for owner, name, access in ours:
     invented.append((owner, name, access))
 
 for key in sorted(set(allowed) - used):
-    print(f'allowed\t{key}\t{allowed[key]}')
+    # to stderr, never to stdout: stdout is invented.txt, and a row that is not invented does not
+    # belong in the count api-surface.sh prints
+    print(f'allowed\t{key}\t{allowed[key]}', file=sys.stderr)
 print(f'# {len(used)} of the {len(allowed)} allow-listed names were used', file=sys.stderr)
 
 seen = set()
