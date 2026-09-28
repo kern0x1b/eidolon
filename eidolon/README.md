@@ -237,6 +237,13 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   `Font` нет), `lineHeight` и `_lineHeightMultiple` (это свойства `AttributedString`, которого в этом заходе
   ещё нет). Для них — `bridge/not-applicable.txt` (16 строк); `lineHeight` и `_lineHeightMultiple` ждут `AttributedString`.
 
+- `TypesettingLanguage.contentAware` — внутренний: вверх по потоку он за `@_spi(Private)`, а у Apple в 16.4
+  и 26.2 такого члена нет вовсе (`SwiftUICore.swiftinterface:8758-8762` — только `automatic`,
+  `explicit(_:)` и `==`).
+- `blur` и шесть цветовых фильтров получают измеренную формулировку: размытие в каноне этого порта есть
+  (`apple-backports/UIKit/UIVisualEffect.m`, `CharonBlur.m`; `facts/UIKit/UIVisualEffect.md`), но это
+  `UIView`, а у модификатора SwiftUI нет вида, в который его положить; шесть фильтров ложатся на
+  `compositingFilter` слоя, который порт уже ставит, и пока им не рисуется.
 - `SymbolVariants` взят из OpenSwiftUI (MIT, `OpenSwiftUIProject/OpenSwiftUI`,
   `Sources/OpenSwiftUICore/View/Image/SymbolVariants.swift`, коммит `efa1037`): вариант символа с его
   флагами (`none`, `fill`, `slash`, `circle`, `square`, `rectangle`), их сочетаниями, `contains(_:)` и
@@ -255,7 +262,9 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   на `Text`, и на `View` — как их и объявляет интерфейс 26.2: `typesettingLanguage` (одним шрифтом iOS 6
   настройки нет), `textScale` и `textVariant` (вариантов размера и ширины у текста iOS 6 нет;
   `textVariant` — над `TextVariantPreference`, с `FixedTextVariant` и `SizeDependentTextVariant`), плюс
-  `writingDirection(strategy:)` и `multilineTextAlignment(strategy:)` с их тремя случаями — обе
+  `textScale(.secondary)` рисует строку размером меньшей надписи самого релиза: caption 1 против body,
+  12/17 — из `apple-backports/facts/UIKit/UIFontTextStyles.md:18,20`; `writingDirection(strategy:)` и
+  `multilineTextAlignment(strategy:)` с их тремя случаями — обе
   стратегии пишут в журнал, обе названы там же. `writingDirection` и `multilineTextAlignment` —
   имена этих двух модификаторов в журнале. И четыре речи
   VoiceOver — `speechAlwaysIncludesPunctuation`, `speechSpellsOutCharacters`, `speechAdjustedPitch`,
@@ -277,9 +286,14 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   рисуется полупрозрачной, пишет в журнал), `PrimitiveButtonStyle.accessoryBar` и
   `PrimitiveButtonStyle.accessoryBarAction` (панели над клавиатурой в iOS 6 нет — рисуется кнопка релиза, пишет в журнал),
   `Glass` (толщина стекла — это то, чем заливается полупрозрачная заливка), `ButtonRole.confirm` и `.close`.
-- Нажатие кнопки — это `EnvironmentValues.isPressed`, как в SwiftUI: узел кнопки пишет его в окружение
-  содержимого, и стиль читает `@Environment(\.isPressed)`. В `PrimitiveButtonStyleConfiguration` такого
-  члена нет ни в 16.4, ни в 26.2, и мы его не добавляем.
+- Нажатие кнопки. `PrimitiveButtonStyleConfiguration` такого члена не имеет ни в 16.4, ни в 26.2, и мы его
+  не добавляем; `@Environment(\.isPressed)` в стиле тоже не сработал бы — стиль попадает в замыкание, мимо
+  которого реконсилятор не проходит. Поэтому узел кнопки хранит тело примитивного стиля рядом с телом
+  `ButtonStyle`, обработчик нажатия работает на обоих путях (раньше он выходил по `styleBody != nil`, то
+  есть ровно на примитивном), а нажатие приходит стилю аргументом: наш собственный протокол
+  `PressedButtonStyle` и `makeBody(configuration:pressed:)` у встроенных стилей, при этом запись
+  `makeBody(configuration:)` — как у Apple — тоже компилируется и даёт то же тело. Проверка в тестах
+  движка нажимает `.plain` и `.borderedProminent` и читает дерево обратно.
 - Стили `DatePicker` получили форму: `DatePickerStyle` требует `_body(configuration:)`, у конфигурации есть отметка,
   выбор, границы и показываемые компоненты. `.field` рисует дату в рамке, как ячейка сгруппированной таблицы iOS 6,
   а `.stepperField` — то же поле с двумя `UIStepper` по краям, которые идут по дате на сутки или на час.

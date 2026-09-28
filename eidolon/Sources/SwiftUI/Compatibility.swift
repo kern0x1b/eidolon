@@ -63,13 +63,13 @@ extension View {
     public func edgesIgnoringSafeArea(_ edges: Edge.Set) -> some View { ignored(self, "edgesIgnoringSafeArea", "iOS 6 has no safe area") }
     public func ignoresSafeArea(_ regions: SafeAreaRegions = .all, edges: Edge.Set = .all) -> some View { ignored(self, "ignoresSafeArea", "iOS 6 has no safe area") }
     public func blendMode(_ mode: BlendMode) -> some View { ignored(self, "blendMode", "CoreAnimation of iOS 6 has no layer blend modes") }
-    public func blur(radius: CGFloat, opaque: Bool = false) -> some View { ignored(self, "blur", "iOS 6 has no live blur") }
-    public func brightness(_ amount: Double) -> some View { ignored(self, "brightness", "iOS 6 has no layer filters") }
-    public func contrast(_ amount: Double) -> some View { ignored(self, "contrast", "iOS 6 has no layer filters") }
-    public func saturation(_ amount: Double) -> some View { ignored(self, "saturation", "iOS 6 has no layer filters") }
-    public func grayscale(_ amount: Double) -> some View { ignored(self, "grayscale", "iOS 6 has no layer filters") }
-    public func colorInvert() -> some View { ignored(self, "colorInvert", "iOS 6 has no layer filters") }
-    public func colorMultiply(_ color: Color) -> some View { ignored(self, "colorMultiply", "iOS 6 has no layer filters") }
+    public func blur(radius: CGFloat, opaque: Bool = false) -> some View { ignored(self, "blur", "the canon this port links carries the backport: UIVisualEffect mixes what is behind it with a blur (apple-backports/facts/UIKit/UIVisualEffect.md), but it is a UIView, and a SwiftUI modifier has no view to put it on") }
+    public func brightness(_ amount: Double) -> some View { ignored(self, "brightness", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
+    public func contrast(_ amount: Double) -> some View { ignored(self, "contrast", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
+    public func saturation(_ amount: Double) -> some View { ignored(self, "saturation", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
+    public func grayscale(_ amount: Double) -> some View { ignored(self, "grayscale", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
+    public func colorInvert() -> some View { ignored(self, "colorInvert", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
+    public func colorMultiply(_ color: Color) -> some View { ignored(self, "colorMultiply", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
     public func defersSystemGestures(on edges: Edge.Set) -> some View { ignored(self, "defersSystemGestures", "iOS 6 has no system edge gestures") }
     public func interactiveDismissDisabled(_ disabled: Bool = true) -> some View { ignored(self, "interactiveDismissDisabled", "iOS 6 modals are not interactively dismissible") }
     public func navigationBarTitleDisplayMode(_ mode: NavigationBarItem.TitleDisplayMode) -> some View { ignored(self, "navigationBarTitleDisplayMode", "iOS 6 navigation bars have one title style") }

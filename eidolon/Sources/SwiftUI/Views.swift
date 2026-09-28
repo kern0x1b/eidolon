@@ -39,6 +39,8 @@ final class TextNode: LayoutNode {
         let t = view as! Text
         var font = t.font?.uiFont ?? env.fontValue ?? UIFont.systemFont(ofSize: 17)
         if t.isBold || env.textBold { font = UIFont.boldSystemFont(ofSize: font.pointSize) }
+        // a secondary run is the release's own smaller label: caption 1 against body
+        if env.textScale == .secondary { font = UIFont.systemFont(ofSize: font.pointSize * Text.Scale.secondaryRatio) }
         let color = t.color?.uiColor ?? env.foregroundColor ?? .black
         let underlined = t.isUnderlined || env.textUnderline
         let struck = t.isStruck || env.textStrikethrough
@@ -297,6 +299,9 @@ final class ButtonNode: LayoutNode {
     let pressTarget = ControlTarget()
     var button: UIButton { uiView as! UIButton }
     var styleBody: ((ButtonStyleConfiguration) -> any View)?
+    /// Apple's configuration carries no `isPressed`, so a primitive style that wants the press adopts the
+    /// port's `PressedButtonStyle`; the node keeps the body either way, and hands the press to it.
+    var primitiveBody: ((PrimitiveButtonStyleConfiguration, Bool) -> any View)?
     var label: (any View)?
     var styled: Node?
     var pressed = false
@@ -317,7 +322,9 @@ final class ButtonNode: LayoutNode {
         b.addTarget(pressTarget, action: #selector(ControlTarget.changed(_:)), for: .touchUpOutside)
         b.addTarget(pressTarget, action: #selector(ControlTarget.changed(_:)), for: .touchCancel)
         pressTarget.valueChanged = { [weak self] control in
-            guard let self, self.styleBody != nil else { return }
+            // the primitive path keeps its body in `primitiveBody`, so a press is worth following on
+            // either path: a guard on `styleBody` alone would skip every primitive style
+            guard let self, self.styleBody != nil || self.primitiveBody != nil else { return }
             self.pressed = (control as! UIButton).isHighlighted
             self.rebuildStyled()
         }
@@ -327,21 +334,17 @@ final class ButtonNode: LayoutNode {
         super.update(view, env)
         let b = view as! ButtonLike
         label = b.buttonLabel
-        if let primitiveBody = env.primitiveButtonStyle {
+        if let style = env.primitiveButtonStyle {
             primitive = true
             styleBody = nil
             target.action = {}
             button.setTitle(nil, for: .normal)
-            let configuration = PrimitiveButtonStyleConfiguration(label: PrimitiveButtonStyleConfiguration.Label(content: b.buttonLabel),
-                                                                  role: (view as? RoleButtonLike)?.buttonRole, action: b.buttonAction)
-            var inner = env
-            inner.primitiveButtonStyle = nil
-            inner.isPressed = pressed
-            styled = adopt(reconcile(styled, primitiveBody(configuration), inner))
-            mount()
+            primitiveBody = env.primitiveButtonStyle
+            rebuildStyled()
             return
         }
         primitive = false
+        primitiveBody = nil
         target.action = b.buttonAction
         styleBody = env.buttonStyle
         if styleBody == nil && !plainText {
@@ -362,11 +365,23 @@ final class ButtonNode: LayoutNode {
     }
 
     func rebuildStyled() {
-        guard let styleBody, let label else { return }
-        let configuration = ButtonStyleConfiguration(label: ButtonStyleConfiguration.Label(content: label), isPressed: pressed)
+        guard let label else { return }
         var inner = env
-        inner.buttonStyle = nil
-        styled = adopt(reconcile(styled, styleBody(configuration), inner))
+        let body: any View
+        if let primitiveBody {
+            let configuration = PrimitiveButtonStyleConfiguration(label: PrimitiveButtonStyleConfiguration.Label(content: label),
+                                                                  role: nil, action: {})
+            inner.primitiveButtonStyle = nil
+            inner.isPressed = pressed
+            body = primitiveBody(configuration, pressed)
+        } else if let styleBody {
+            let configuration = ButtonStyleConfiguration(label: ButtonStyleConfiguration.Label(content: label), isPressed: pressed)
+            inner.buttonStyle = nil
+            body = styleBody(configuration)
+        } else {
+            return
+        }
+        styled = adopt(reconcile(styled, body, inner))
         mount()
         if let root = styled?.flattened.first {
             let size = root.sizeThatFits(ProposedSize(width: uiView.bounds.size.width, height: uiView.bounds.size.height))

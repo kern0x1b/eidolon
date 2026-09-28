@@ -76,7 +76,10 @@ public struct TypesettingLanguage: Sendable, Equatable {
 }
 
 extension TypesettingLanguage {
-            public static let contentAware: TypesettingLanguage = .init(storage: .contentAware)
+    /// Upstream keeps this behind `@_spi(Private)`, and Apple declares no such member in 16.4 or 26.2
+    /// (`SwiftUICore.swiftinterface:8758-8762` has `automatic`, `explicit(_:)` and `==` only), so it is
+    /// internal here: a form the content itself chooses the language of, which nothing in this port uses.
+    static let contentAware: TypesettingLanguage = .init(storage: .contentAware)
 }
 
 extension Text {
@@ -110,12 +113,11 @@ extension Text {
 }
 
 extension Text.Scale {
-    internal init?(_ string: String) {
-        guard string == _kCTTextScaleSecondary else {
-            return nil
-        }
-        self = .secondary
-    }
+    /// iOS 6 has no `NSTextScaleSecondary`, and what the attribute is for is the smaller text beside a
+    /// larger one — the unit of a price. The release's own smaller label is caption 1 at 12 points
+    /// against body's 17 (`apple-backports/facts/UIKit/UIFontTextStyles.md:18,20`), so that ratio is what
+    /// a secondary run is drawn at.
+    static let secondaryRatio: Double = 12.0 / 17.0
 }
 
 // MARK: - View + textScale
@@ -192,8 +194,12 @@ extension View {
         ignored(self, "typesettingLanguage", "iOS 6 typesets in the system language and has no setting for it")
     }
 
+    /// The size a run is drawn at: `.secondary` is the release's own smaller label, caption 1 against
+    /// body — 12/17, from `apple-backports/facts/UIKit/UIFontTextStyles.md:18,20`.
     public func textScale(_ scale: Text.Scale, isEnabled: Bool = true) -> some View {
-        ignored(self, "textScale", "iOS 6 has no size variants of a text")
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
+            if isEnabled { environment.textScale = scale }
+        }, onUpdate: nil))
     }
 
     public func textVariant<V: TextVariantPreference>(_ preference: V) -> some View {

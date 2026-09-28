@@ -24,7 +24,7 @@ public struct EnvironmentValues {
     var labelsHidden = false
     public var textCase: Text.Case?
     var buttonStyle: ((ButtonStyleConfiguration) -> any View)?
-    var primitiveButtonStyle: ((PrimitiveButtonStyleConfiguration) -> any View)?
+    var primitiveButtonStyle: ((PrimitiveButtonStyleConfiguration, Bool) -> any View)?
     var datePickerBody: ((DatePickerStyleConfiguration) -> AnyView)?
     var controlGroupPalette = false
     var searchSuggestions: (() -> any View)?

@@ -1,6 +1,13 @@
 # Third-party components
 
-Nothing third-party is vendored in this repository. The following are used at build or test time and come from
+Two files of a third-party project are vendored, under its own licence:
+
+| From | What | Licence | Upstream commit |
+| --- | --- | --- | --- |
+| [OpenSwiftUI](https://github.com/OpenSwiftUIProject/OpenSwiftUI) (`Sources/OpenSwiftUICore`) | `View/Image/SymbolVariants.swift` → `eidolon/Sources/SwiftUI/SymbolVariants.swift`; `View/Text/Typesetting/TypesettingLanguage.swift` and `View/Text/Text/Text+Scale.swift` → the declarations in `eidolon/Sources/SwiftUI/TextSettings.swift` | MIT, Copyright (c) 2023-2025 Kyle-Ye | `efa103755b95bd5a6ab42681a261c7cc66be6f75` |
+
+Each vendored file carries a header naming the upstream, the path, the commit, the licence and what was
+changed for this port. The following are used at build or test time and come from
 [Charon](https://github.com/kern0x1b/charon) packages or from their own upstreams.
 
 | Component | Version | Licence | Where it comes from |

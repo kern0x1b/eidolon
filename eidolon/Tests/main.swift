@@ -2730,6 +2730,43 @@ check(SymbolVariants.fill.circle.contains(.fill) && SymbolVariants.fill.circle.c
 check(SymbolVariants.fill != SymbolVariants.circle, "and the two are told apart")
 check(SymbolVariants.fill.square == SymbolVariants.square.fill, "the two orders of the flags agree")
 
+struct PlainPressCase: View {
+    var body: some View { Button(action: {}) { Text(verbatim: "Tap").padding(4) }.buttonStyle(.plain) }
+}
+struct BorderedPressCase: View {
+    var body: some View { Button(action: {}) { Text(verbatim: "Tap").padding(4) }.buttonStyle(.borderedProminent) }
+}
+func albedosOf(_ probe: _Probe) -> [CGFloat] {
+    var found: [CGFloat] = []
+    func walk(_ v: UIView) { found.append(v.alpha); v.subviews.forEach(walk) }
+    walk(probe.hostView)
+    return found
+}
+func pressAndRelease(_ probe: _Probe) {
+    guard let button = firstButton(probe.hostView) else { return }
+    button.isHighlighted = true
+    probe.hostView.layoutIfNeeded()
+    probe.flush()
+    button.isHighlighted = false
+}
+func firstButton(_ v: UIView) -> UIButton? {
+    if let b = v as? UIButton { return b }
+    for sub in v.subviews { if let b = firstButton(sub) { return b } }
+    return nil
+}
+let plainPress = _Probe(PlainPressCase(), width: 120, height: 40)
+_ = frames(plainPress)
+let plainBefore = albedosOf(plainPress)
+pressAndRelease(plainPress)
+let plainAfter = albedosOf(plainPress)
+check(plainBefore != plainAfter, "a pressed .plain button redraws its body, so the style saw the press")
+let borderedPress = _Probe(BorderedPressCase(), width: 120, height: 40)
+_ = frames(borderedPress)
+let borderedBefore = albedosOf(borderedPress)
+pressAndRelease(borderedPress)
+let borderedAfter = albedosOf(borderedPress)
+check(borderedBefore != borderedAfter, "and so does a pressed .borderedProminent one")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

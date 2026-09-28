@@ -121,14 +121,18 @@ extension LabelStyle where Self == IconOnlyLabelStyle {
     public static var iconOnly: IconOnlyLabelStyle { IconOnlyLabelStyle() }
 }
 
-public struct BorderlessButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct BorderlessButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
         configuration.label
             .foregroundColor(Color(red: 0.2, green: 0.45, blue: 0.85))
-            .opacity(isPressed ? 0.4 : 1)
+            .opacity(pressed ? 0.4 : 1)
     }
+}
+
+extension BorderlessButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
 }
 
 extension PrimitiveButtonStyle where Self == BorderlessButtonStyle {

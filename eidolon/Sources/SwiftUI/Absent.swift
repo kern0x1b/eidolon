@@ -91,7 +91,7 @@ extension View {
     }
     @available(iOS 8.0, *)
     public func onCopyCommand(perform payloadAction: (() -> [NSItemProvider])?) -> some View {
-        ignored(self, "onCopyCommand", "the copy command is a desktop feature")
+        ignored(self, "onCopyCommand", "iOS 6 has the cut, copy and paste menu of a UITextView, and no command an app can attach it to: the command plumbing is what SwiftUI adds and iOS 6 has not")
     }
     @available(iOS 8.0, *)
     public func onCutCommand(perform action: (() -> [NSItemProvider])?) -> some View {

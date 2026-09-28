@@ -234,7 +234,10 @@ public struct EmptyModifier: ViewModifier {
 extension View {
     public func buttonStyle<S: PrimitiveButtonStyle>(_ style: S) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
-            environment.primitiveButtonStyle = { configuration in style.makeBody(configuration: configuration) }
+            environment.primitiveButtonStyle = { configuration, pressed in
+                if let aware = style as? any PressedButtonStyle { return aware.pressedBody(configuration: configuration, pressed: pressed) }
+                return style.makeBody(configuration: configuration)
+            }
         }, onUpdate: nil))
     }
 }

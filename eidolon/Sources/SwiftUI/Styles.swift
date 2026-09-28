@@ -39,6 +39,14 @@ public protocol PrimitiveButtonStyle {
     @ViewBuilder func makeBody(configuration: Configuration) -> Body
 }
 
+/// The port's own protocol for a primitive button style that wants to see the press. Apple's
+/// `PrimitiveButtonStyle` cannot ask for it — its configuration carries no `isPressed`, and a property
+/// wrapper on a style never resolves here, because the style is captured in a closure the reconciler does
+/// not walk — so the built-in styles adopt this and the node calls it when a style has it.
+protocol PressedButtonStyle {
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View
+}
+
 public struct ButtonRole: Equatable {
     let name: String
     public static let destructive = ButtonRole(name: "destructive")
@@ -63,61 +71,55 @@ public struct Glass: Hashable {
     public static let thick = Glass(thickness: .thick)
 }
 
-public struct DefaultButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct DefaultButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
         configuration.label
             .padding(EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 14))
-            .background(isPressed ? Color(white: 0.85) : Color.white, cornerRadius: 8)
+            .background(pressed ? Color(white: 0.85) : Color.white, cornerRadius: 8)
             .border(Color(white: 0.7), width: 1)
     }
 }
 
-public struct PlainButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct PlainButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(isPressed ? 0.4 : 1)
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
+        configuration.label.opacity(pressed ? 0.4 : 1)
     }
 }
 
-public struct BorderedButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct BorderedButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: isPressed)
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
+        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: pressed)
     }
 }
 
-public struct BorderedProminentButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct BorderedProminentButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: AnyView(configuration.label), prominent: true, pressed: isPressed)
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
+        _BorderedChrome(label: AnyView(configuration.label), prominent: true, pressed: pressed)
     }
 }
 
 // The rest of the styles SwiftUI names for a button, drawn with what iOS 6 has: its title bar draws a bare
 // blue word, a link is blue and underlined, and a card is the rounded button of the release without the
 // fill gradient. Glass and the accessory bar have nothing to correspond to and say so in the journal.
-public struct LinkButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct LinkButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
 
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
         configuration.label
             .foregroundColor(Color(red: 0.11, green: 0.37, blue: 0.80))
             .underline(true, color: Color(red: 0.11, green: 0.37, blue: 0.80))
-            .opacity(isPressed ? 0.4 : 1)
+            .opacity(pressed ? 0.4 : 1)
     }
 }
 
-public struct CardButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct CardButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: isPressed)
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
+        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: pressed)
     }
 }
 
@@ -141,54 +143,50 @@ extension PrimitiveButtonStyle where Self == LinkButtonStyle {
     public static var link: LinkButtonStyle { LinkButtonStyle() }
 }
 
-public struct GlassButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct GlassButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
 
     var glass: Glass
     public init() { glass = .regular }
     public init(_ glass: Glass) { self.glass = glass }
-    public func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
         _Unsupported.note("PrimitiveButtonStyle.glass", "iOS 6 has no live blur, so a glass button is the release's own button drawn translucent")
         return AnyView(configuration.label
             .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
             .background(Color(UIColor(white: 0.97, alpha: glass.thickness == .thick ? 0.9 : 0.75)), cornerRadius: 7)
             .border(Color(white: 0.62), width: 1)
-            .opacity(isPressed ? 0.4 : 1))
+            .opacity(pressed ? 0.4 : 1))
     }
 }
 
-public struct GlassProminentButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct GlassProminentButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
 
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
         _Unsupported.note("PrimitiveButtonStyle.glassProminent", "iOS 6 has no live blur, so a glass button is the release's own button drawn translucent")
         return AnyView(configuration.label
             .foregroundColor(.white)
             .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
             .background(Color(red: 0.20, green: 0.42, blue: 0.78).opacity(0.85), cornerRadius: 7)
-            .opacity(isPressed ? 0.4 : 1))
+            .opacity(pressed ? 0.4 : 1))
     }
 }
 
-public struct AccessoryBarButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct AccessoryBarButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
         _Unsupported.note("PrimitiveButtonStyle.accessoryBar", "iOS 6 has no accessory bar, so the button is the release's own")
-        return AnyView(_BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: isPressed))
+        return AnyView(_BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: pressed))
     }
 }
 
-public struct AccessoryBarActionButtonStyle: PrimitiveButtonStyle {
-    @Environment(\.isPressed) var isPressed
+public struct AccessoryBarActionButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
 
     public init() {}
-    public func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
         _Unsupported.note("PrimitiveButtonStyle.accessoryBarAction", "iOS 6 has no accessory bar, so the button is the release's own")
         return AnyView(configuration.label
             .foregroundColor(Color(red: 0.11, green: 0.37, blue: 0.80))
-            .opacity(isPressed ? 0.4 : 1))
+            .opacity(pressed ? 0.4 : 1))
     }
 }
 
@@ -385,3 +383,46 @@ public struct ProjectionTransform: Equatable {
     }
 }
 
+
+// Apple's spelling of makeBody for the styles that also take the press, and the forwarding the node
+// calls: a style written the Apple way still gets its body, with the press the node has.
+extension DefaultButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension PlainButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension BorderedButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension BorderedProminentButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension LinkButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension CardButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension GlassButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension GlassProminentButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension AccessoryBarButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
+extension AccessoryBarActionButtonStyle {
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View { makeBody(configuration: configuration, pressed: false) }
+    func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration, pressed: pressed)) }
+}
