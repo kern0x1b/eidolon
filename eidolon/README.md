@@ -322,7 +322,9 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   инициализатора и `isInsertion`. `EnvironmentValues.textSelection` читает и пишет выбор, а узел
   `TextEditor` отдаёт его своему `UITextView`: iOS 6 несёт ровно один выделенный диапазон, поэтому
   набор диапазонов читается и записывается как самый нижний из них, и об этом сказано в коде.
-  `nsRange(in:)` и `init(nsRange:in:)` — наш мост к `UITextView`, внутренние: это не API 26.2.
+  `nsRange(in:)` и `init(nsRange:in:)` — наш мост к `UITextView`, внутренние: это не API 26.2. Замер —
+  в `docs/facts/TextSelection.md`: сам заголовок UIKit 26.2 говорит, что `selectedRange` — это весь
+  выбор начиная с iOS 2, а первый `NSArray` выделенных диапазонов — `selectedRanges` в iOS 26.0.
 
 - Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
   `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
