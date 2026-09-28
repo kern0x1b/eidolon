@@ -25,6 +25,9 @@ public struct _ResolvedKeyframe<Value> {
 
 /// A whole keyframe track, resolved: the steps, where the animation starts and how fast.
 public struct _ResolvedKeyframes<Value> {
+    // Apple's _ResolvedKeyframes is an empty struct: the track the port resolves into it is its own
+    // reading, and the test that measures a track reads it, so the four names it answers stay public
+    // and are the port's own — named in the ledger.
     public var keyframes: [_ResolvedKeyframe<Value>]
     public var initialValue: Value
     public var initialVelocity: Value?
@@ -69,6 +72,7 @@ public struct _ResolvedKeyframes<Value> {
 
 /// One keyframe's own data, resolved: how far the value has to go and how long it takes.
 public struct _ResolvedKeyframeTrackContent<Value> {
+    // as on _ResolvedKeyframes: the port's own reading of one keyframe, named in the ledger
     public var to: Value
     public var duration: Double
     public var timing: _ResolvedKeyframe<Value>.Timing
@@ -140,10 +144,13 @@ extension KeyframeTrackContent {
 // MARK: the four kinds of keyframe
 
 public struct CubicKeyframe<Value>: KeyframeTrackContent where Value: Animatable {
-    public var to: Value
-    public var duration: Double
-    public var startVelocity: Value?
-    public var endVelocity: Value?
+    // Apple's CubicKeyframe carries an initialiser and `_resolve` and nothing else: the values a
+    // keyframe holds are the port's own, and are internal so that no member of an Apple type carries a
+    // name Apple's 26.2 interface does not use.
+    var to: Value
+    var duration: Double
+    var startVelocity: Value?
+    var endVelocity: Value?
 
     public init(_ to: Value, duration: Double, startVelocity: Value? = nil, endVelocity: Value? = nil) {
         self.to = to
@@ -168,9 +175,9 @@ extension CubicKeyframe {
 }
 
 public struct LinearKeyframe<Value>: KeyframeTrackContent where Value: Animatable {
-    public var to: Value
-    public var duration: Double
-    public var timingCurve: UnitCurve
+    var to: Value
+    var duration: Double
+    var timingCurve: UnitCurve
 
     public init(_ to: Value, duration: Double, timingCurve: UnitCurve = .linear) {
         self.to = to
@@ -192,10 +199,10 @@ extension LinearKeyframe {
 }
 
 public struct SpringKeyframe<Value>: KeyframeTrackContent where Value: Animatable {
-    public var to: Value
-    public var duration: Double?
-    public var spring: Spring
-    public var startVelocity: Value?
+    var to: Value
+    var duration: Double?
+    var spring: Spring
+    var startVelocity: Value?
 
     public init(_ to: Value, duration: Double? = nil, spring: Spring = Spring(), startVelocity: Value? = nil) {
         self.to = to
@@ -220,7 +227,7 @@ extension SpringKeyframe {
 
 /// A keyframe with no duration of its own: the value is there from the moment it is reached.
 public struct MoveKeyframe<Value>: KeyframeTrackContent where Value: Animatable {
-    public var to: Value
+    var to: Value
 
     public init(_ to: Value) { self.to = to }
 

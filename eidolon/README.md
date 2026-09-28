@@ -307,6 +307,19 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   `.wheel`, рядом с полем у `.field` и между полем и степперами у `.stepperField` (сценарий
   `date-picker-styles`). `DatePickerStyle.compact` и `DatePickerStyle.graphical` пишут в журнал: `UIDatePicker` в iOS 6 умеет только колесо, поэтому колесо и остаётся.
 
+- Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
+  `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
+  (там только `Sendable`). Поэтому имена, которые несут нашу дорожку, — наши: `keyframes`,
+  `initialValue`, `initialVelocity`, `progress(at:)`, `duration`, `value(at:)` у `_ResolvedKeyframes`
+  и `_ResolvedKeyframe`, `to`/`duration`/`timing`/`startVelocity`/`endVelocity` у
+  `_ResolvedKeyframeTrackContent`, и `Timing`. Они и должны быть видны: их читает проверка дорожки в
+  тестах движка. Хранилища самих ключевых кадров (`CubicKeyframe.to`, `LinearKeyframe.to`,
+  `SpringKeyframe.to`, `MoveKeyframe.to` и их `duration`/`spring`/`startVelocity`/`endVelocity`)
+  внутренние — Apple объявляет у ключевого кадра только `init` и `_resolve`, и лишнего публичного
+  имени на типе Apple быть не должно. `GlassEffect` — наш, внутренний: толщина стекла на iOS 6 это
+  альфа заливки, а не свойство `Glass`. Сам `Glass` теперь как у Apple: `regular`, `clear`,
+  `identity`, `Equatable`, без хранимых свойств и без `init`.
+
 - `Double` и `Float` отвечают `Animatable` сами собой (`animatableData` — сам тип), как у Apple: без этого дорожку
   ключевых кадров нельзя построить над числом.
 
