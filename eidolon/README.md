@@ -317,6 +317,13 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   восемь строк, которые добавил этот диапазон, убраны: четыре имени из ревью плюс хранилища ключевых
   кадров.
 
+- `TextSelection` — по форме 26.2 (`SwiftUI.swiftinterface:20146`): `Indices` с двумя случаями
+  `selection(Range<String.Index>)` и `multiSelection(RangeSet<String.Index>)`, `affinity`, три
+  инициализатора и `isInsertion`. `EnvironmentValues.textSelection` читает и пишет выбор, а узел
+  `TextEditor` отдаёт его своему `UITextView`: iOS 6 несёт ровно один выделенный диапазон, поэтому
+  набор диапазонов читается и записывается как самый нижний из них, и об этом сказано в коде.
+  `nsRange(in:)` и `init(nsRange:in:)` — наш мост к `UITextView`, внутренние: это не API 26.2.
+
 - Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
   `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
   (там только `Sendable`). Поэтому имена, которые несут нашу дорожку, — наши: `keyframes`,

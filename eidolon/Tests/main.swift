@@ -2806,6 +2806,26 @@ if let custom = downButton(appleStyle) {
     check(!frames(appleStyle).isEmpty, "and keeps drawing it while the button is down")
 }
 
+// a selection in a string: one range, several, or a caret, in Apple's shape
+let selectedText = "hello world"
+let whole = selectedText.startIndex..<selectedText.index(selectedText.startIndex, offsetBy: 5)
+let one = TextSelection(range: whole)
+check(!one.isInsertion, "a range is a selection, not a caret")
+check(TextSelection(insertionPoint: selectedText.startIndex).isInsertion, "an empty range is a caret")
+check(one.affinity == .automatic, "a selection's affinity is automatic until it is set")
+var two = TextSelection(range: whole)
+two.affinity = .upstream
+check(two.affinity == .upstream, "and can be given one")
+check(two != one, "a selection with an affinity is not the same one without it")
+var rangeSet = RangeSet<String.Index>()
+rangeSet.insert(contentsOf: whole)
+let second = selectedText.index(selectedText.startIndex, offsetBy: 6)..<selectedText.index(selectedText.startIndex, offsetBy: 8)
+rangeSet.insert(contentsOf: second)
+let multi = TextSelection(ranges: rangeSet)
+check(multi.indices != one.indices, "a set of ranges is not one range, in the names Apple gives them")
+if case .multiSelection = multi.indices {} else { check(false, "and it is the multiSelection of those two names") }
+if case .selection = one.indices {} else { check(false, "and one range is the selection of the same enum") }
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

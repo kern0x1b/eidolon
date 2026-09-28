@@ -183,7 +183,12 @@ public struct TextEditor: View, PrimitiveView {
 
 final class TextEditorDelegate: NSObject, UITextViewDelegate {
     var changed: (String) -> Void = { _ in }
+    /// What the text view's own selection changed to, for the environment's `textSelection` to read.
+    var selectionChanged: (TextSelection) -> Void = { _ in }
     func textViewDidChange(_ textView: UITextView) { changed(textView.text ?? "") }
+    func textViewDidChangeSelection(_ textView: UITextView) {
+        selectionChanged(TextSelection(nsRange: textView.selectedRange, in: textView.text ?? ""))
+    }
 }
 
 final class TextEditorNode: LayoutNode {
@@ -195,6 +200,10 @@ final class TextEditorNode: LayoutNode {
         super.init(view: view)
         view.delegate = delegate
     }
+    /// The environment's selection, when a `textSelection` is in the environment: what the text view is
+    /// told to show, and what its own selection is published back into.
+    var selection: Binding<TextSelection>?
+
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)
         guard let editor = view as? TextEditor else { return }
@@ -203,6 +212,13 @@ final class TextEditorNode: LayoutNode {
         if textView.text != binding.wrappedValue { textView.text = binding.wrappedValue }
         textView.font = env.fontValue ?? UIFont.systemFont(ofSize: 17)
         textView.textColor = env.foregroundColor ?? .black
+        // iOS 6 carries exactly one selected range, which is what a `TextSelection` reads back
+        selection = env.textSelection.flatMap { value in Binding(get: { value }, set: { _ in }) }
+        if let value = env.textSelection {
+            let range = value.nsRange(in: textView.text ?? "")
+            if textView.selectedRange != range { textView.selectedRange = range }
+        }
+        delegate.selectionChanged = { [weak self] new in self?.selection?.wrappedValue = new }
     }
     override func computeSize(_ p: ProposedSize) -> CGSize {
         CGSize(width: p.width ?? 200, height: p.height ?? 120)
