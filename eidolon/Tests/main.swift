@@ -2424,6 +2424,55 @@ func sortedTableShowsTheOrderTheBindingNames() {
 final class SortOrderBox { var order: [KeyPathComparator<SortRow>]
     init(order: [KeyPathComparator<SortRow>]) { self.order = order } }
 
+// The header of a sorted table: its titles, the tap that writes the order, and the arrow that turns.
+func buttonTitled(_ title: String, in view: UIView) -> UIButton? {
+    var found: UIButton?
+    var stack: [UIView] = [view]
+    while let current = stack.popLast() {
+        if let button = current as? UIButton, button.titleLabel?.text == title { found = button; break }
+        stack.append(contentsOf: current.subviews)
+    }
+    return found
+}
+
+func headerArrowRotation(in view: UIView) -> CGFloat? {
+    var found: CGFloat?
+    var stack: [UIView] = [view]
+    while let current = stack.popLast() {
+        let layer = current.layer
+        if let shape = layer.sublayers?.first, let path = (shape as? CAShapeLayer)?.path, path.isEmpty == false,
+           abs(current.transform.b) > 0.001 || abs(current.transform.c) > 0.001 {
+            found = atan2(current.transform.b, current.transform.a)
+        }
+        stack.append(contentsOf: current.subviews)
+    }
+    return found
+}
+
+func tableHeaderTapsWriteTheOrderAndTurnTheArrow() {
+    let rows = [SortRow(id: 0, name: "b"), SortRow(id: 1, name: "a")]
+    let box = SortOrderBox(order: [])
+    let probe = _Probe(SortTableCase(rows: rows, order: Binding(get: { box.order }, set: { box.order = $0 })),
+                      width: 200, height: 200)
+    _ = frames(probe)
+    check(labels(of: probe.hostView).contains("name"), "a sorted table shows the column's title above the rows")
+    guard let tap = buttonTitled("name", in: probe.hostView) else {
+        check(false, "the title of a sortable column is a button")
+        return
+    }
+    tap.sendActions(for: .touchUpInside)
+    probe.flush()
+    equal(box.order.count, 1, "a tap on a sortable title writes one comparator")
+    check(box.order.first?.ascending == true, "a new column goes first and forward")
+    let forward = headerArrowRotation(in: probe.hostView)
+    check(forward == nil || abs(forward!) < 0.001, "and the arrow points up while the order is forward")
+    tap.sendActions(for: .touchUpInside)
+    probe.flush()
+    check(box.order.first?.ascending == false, "the same column again turns the order")
+    let turned = headerArrowRotation(in: probe.hostView)
+    check(turned == nil || abs(abs(turned!) - .pi) < 0.01, "and the arrow turns with it")
+}
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
