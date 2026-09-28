@@ -516,3 +516,83 @@ extension ListController {
         if resized { table.beginUpdates(); table.endUpdates() }
     }
 }
+
+// The editable forms: a row is written against the element's own binding, so an edit, a delete and a
+// move reach the collection the app holds. Apple's shapes and constraints, from the 26.2 interface.
+extension List {
+    private static func setBox<V: Hashable>(_ binding: Binding<Set<V>?>) -> SelectionBox {
+        SelectionBox(current: { binding.wrappedValue.map { Set($0.map { AnyHashable($0) }) } ?? [] },
+                     choose: { value in
+                         guard var current = binding.wrappedValue, let typed = value.base as? V else { return }
+                         if current.contains(typed) { current.remove(typed) } else { current.insert(typed) }
+                         binding.wrappedValue = current
+                     },
+                     clear: { binding.wrappedValue = [] })
+    }
+    private static func setBox<V: Hashable>(_ binding: Binding<Set<V>>) -> SelectionBox {
+        SelectionBox(current: { Set(binding.wrappedValue.map { AnyHashable($0) }) },
+                     choose: { value in
+                         guard let typed = value.base as? V else { return }
+                         if binding.wrappedValue.contains(typed) { binding.wrappedValue.remove(typed) } else { binding.wrappedValue.insert(typed) }
+                     },
+                     clear: { binding.wrappedValue = [] })
+    }
+    private static func optionalBox<V: Hashable>(_ binding: Binding<V?>) -> SelectionBox {
+        SelectionBox(current: { binding.wrappedValue.map { [AnyHashable($0)] } ?? [] },
+                     choose: { if let value = $0.base as? V { binding.wrappedValue = value } },
+                     clear: { binding.wrappedValue = nil })
+    }
+}
+
+extension List {
+    public init<C, R>(_ data: Binding<C>, selection: Binding<Set<SelectionValue>?>, @ViewBuilder rowContent: @escaping (Binding<C.Element>) -> R)
+        where Content == ForEach<IndexedIdentifierCollection<C, C.Element.ID>, C.Element.ID, EditableCollectionContent<R, C>>,
+              C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, R: View {
+        var collection = IndexedIdentifierCollection<C, C.Element.ID>(items: indexed(data.wrappedValue, id: \.id))
+        
+        self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
+        if selection != nil { self.selection = List.setBox(selection) }
+    }
+    public init<C, ID, R>(_ data: Binding<C>, selection: Binding<Set<SelectionValue>?>, id: KeyPath<C.Element, ID>, @ViewBuilder rowContent: @escaping (Binding<C.Element>) -> R)
+        where Content == ForEach<IndexedIdentifierCollection<C, ID>, ID, EditableCollectionContent<R, C>>,
+              C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, ID: Hashable, R: View {
+        var collection = IndexedIdentifierCollection<C, ID>(items: indexed(data.wrappedValue, id: id))
+        
+        self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
+        if selection != nil { self.selection = List.setBox(selection) }
+    }
+    public init<C, R>(_ data: Binding<C>, selection: Binding<SelectionValue?>, @ViewBuilder rowContent: @escaping (Binding<C.Element>) -> R)
+        where Content == ForEach<IndexedIdentifierCollection<C, C.Element.ID>, C.Element.ID, EditableCollectionContent<R, C>>,
+              C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, R: View {
+        var collection = IndexedIdentifierCollection<C, C.Element.ID>(items: indexed(data.wrappedValue, id: \.id))
+        
+        self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
+        if selection != nil { self.selection = List.optionalBox(selection) }
+    }
+    public init<C, ID, R>(_ data: Binding<C>, selection: Binding<SelectionValue?>, id: KeyPath<C.Element, ID>, @ViewBuilder rowContent: @escaping (Binding<C.Element>) -> R)
+        where Content == ForEach<IndexedIdentifierCollection<C, ID>, ID, EditableCollectionContent<R, C>>,
+              C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, ID: Hashable, R: View {
+        var collection = IndexedIdentifierCollection<C, ID>(items: indexed(data.wrappedValue, id: id))
+        
+        self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
+        if selection != nil { self.selection = List.optionalBox(selection) }
+    }
+}
+
+// A list with nothing selected takes its rows under the empty selection, as SwiftUI writes it.
+extension List where SelectionValue == Never {
+    public init<C, ID, R>(_ data: Binding<C>, id: KeyPath<C.Element, ID>, @ViewBuilder rowContent: @escaping (Binding<C.Element>) -> R)
+        where Content == ForEach<IndexedIdentifierCollection<C, ID>, ID, EditableCollectionContent<R, C>>,
+              C: MutableCollection & RandomAccessCollection, C.Element: Identifiable, C.Index: Hashable, ID: Hashable, R: View {
+        let collection = IndexedIdentifierCollection<C, ID>(items: indexed(data.wrappedValue, id: id))
+        self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
+    }
+    public init<C, ID, R>(_ data: Binding<C>, editActions: EditActions<C>, id: KeyPath<C.Element, ID>, @ViewBuilder rowContent: @escaping (Binding<C.Element>) -> R)
+        where Content == ForEach<IndexedIdentifierCollection<C, ID>, ID, EditableCollectionContent<R, C>>,
+              C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, ID: Hashable, R: View {
+        var collection = IndexedIdentifierCollection<C, ID>(items: indexed(data.wrappedValue, id: id))
+        if editActions.contains(.delete) { collection.deleteHook = { data.wrappedValue.remove(atOffsets: $0) } }
+        if editActions.contains(.move) { collection.moveHook = { data.wrappedValue.move(fromOffsets: $0, toOffset: $1) } }
+        self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
+    }
+}

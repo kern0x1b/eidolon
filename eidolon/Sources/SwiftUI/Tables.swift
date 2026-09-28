@@ -170,11 +170,30 @@ extension TableStyle where Self == InsetTableStyle { public static var inset: In
 public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableColumnContent>: View where Rows.TableRowValue == Value, Columns.TableRowValue == Value {
     let rows: Rows
     let columns: Columns
-    let selection: SelectionBox?
+    var selection: SelectionBox?
+    var sortOrder: Binding<[KeyPathComparator<Value>]>?
     public var body: some View {
         if UIDevice.current.userInterfaceIdiom == .pad { _Unsupported.pendingNote("Table columns on iPad") }
         let first = columns._columns.first
-        var list = List { ForEach(rows._rows) { row -> AnyView in
+        // the app sorts from the binding, the table only shows the order it is given
+        var ordered = rows._rows
+        if let sortOrder {
+            for comparator in sortOrder.wrappedValue.reversed() {
+                ordered.sort { a, b in
+                    // Comparable through the runtime: a value of any Comparable type is asked to
+                    // compare itself, which is what `<` and `>` on Comparable reduce to.
+                    let selector = NSSelectorFromString("compare:")
+                    func compare(_ left: any Comparable, _ right: any Comparable) -> Int? {
+                        guard let both = left as? NSObject, let other = right as? NSObject else { return nil }
+                        return both.perform(selector, with: other).takeUnretainedValue() as? Int
+                    }
+                    guard let order = compare(comparator.read(a), comparator.read(b)) else { return false }
+                    if order == 0 { return false }
+                    return comparator.ascending ? order < 0 : order > 0
+                }
+            }
+        }
+        var list = List { ForEach(ordered) { row -> AnyView in
             guard let first else { return AnyView(EmptyView()) }
             return AnyView(first.cell(row))
         } }
@@ -185,16 +204,17 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
 
 extension Table {
     public init<Data: RandomAccessCollection>(_ data: Data, @TableColumnBuilder<Value, Never> columns: () -> Columns) where Rows == TableForEachContent<Data, EmptyTableRowContent<Value>>, Data.Element == Value {
-        rows = TableForEachContent(data) { _ in EmptyTableRowContent() }; self.columns = columns(); selection = nil
+        rows = TableForEachContent(data) { _ in EmptyTableRowContent() }; self.columns = columns(); selection = nil; sortOrder = nil
     }
     public init<Data: RandomAccessCollection>(_ data: Data, selection: Binding<Value.ID?>, @TableColumnBuilder<Value, Never> columns: () -> Columns) where Rows == TableForEachContent<Data, EmptyTableRowContent<Value>>, Data.Element == Value {
         rows = TableForEachContent(data) { _ in EmptyTableRowContent() }; self.columns = columns()
         self.selection = SelectionBox(current: { selection.wrappedValue.map { [AnyHashable($0)] } ?? [] },
                                       choose: { if let value = $0.base as? Value.ID { selection.wrappedValue = value } },
                                       clear: { selection.wrappedValue = nil })
+        sortOrder = nil
     }
     public init(@TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
-        self.rows = rows(); self.columns = columns(); selection = nil
+        self.rows = rows(); self.columns = columns(); selection = nil; sortOrder = nil
     }
 }
 
@@ -244,15 +264,107 @@ extension Table {
     public init(of type: Value.Type, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
         self.init(columns: columns, rows: rows)
     }
+    // The sorted family: the binding is the app's own, the table reads it and writes the order a tap
+    // on a sortable column's header asks for -- the same column again with the order turned, or that
+    // column first and forward when it is a new one.
+    public init(of type: Value.Type, sortOrder: Binding<[KeyPathComparator<Value>]>, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
+        self.init(columns: columns, rows: rows)
+        self.sortOrder = sortOrder
+    }
+    public init(of type: Value.Type, selection: Binding<Value.ID?>, sortOrder: Binding<[KeyPathComparator<Value>]>, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
+        self.init(of: type, selection: selection, columns: columns, rows: rows)
+        self.sortOrder = sortOrder
+    }
+    @_disfavoredOverload
+    public init(of type: Value.Type, selection: Binding<Set<Value.ID>>, sortOrder: Binding<[KeyPathComparator<Value>]>, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
+        self.init(of: type, selection: selection, columns: columns, rows: rows)
+        self.sortOrder = sortOrder
+    }
     public init(of type: Value.Type, selection: Binding<Value.ID?>, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
         self.rows = rows(); self.columns = columns()
         self.selection = SelectionBox(current: { selection.wrappedValue.map { [AnyHashable($0)] } ?? [] },
                                       choose: { if let value = $0.base as? Value.ID { selection.wrappedValue = value } },
                                       clear: { selection.wrappedValue = nil })
+        sortOrder = nil
     }
     @_disfavoredOverload
     public init(of type: Value.Type, selection: Binding<Set<Value.ID>>, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
         self.rows = rows(); self.columns = columns()
+        self.selection = SelectionBox(current: { Set(selection.wrappedValue.map { AnyHashable($0) }) },
+                                      choose: { value in
+                                          guard let typed = value.base as? Value.ID else { return }
+                                          if selection.wrappedValue.contains(typed) { selection.wrappedValue.remove(typed) } else { selection.wrappedValue.insert(typed) }
+                                      },
+                                      clear: { selection.wrappedValue = [] })
+        sortOrder = nil
+    }
+}
+
+/// How a column is ordered: the key it sorts on, and whether that key runs forward. This is what a
+/// `Table`'s `sortOrder` binding carries, and what a tap on a sortable column's header writes into it.
+@frozen public struct KeyPathComparator<Value>: Equatable {
+    public typealias Key = KeyPath<Value, any Comparable>
+    public let key: AnyKeyPath
+    public var ascending: Bool
+    let read: (Value) -> any Comparable
+    public init<C: Comparable>(_ key: KeyPath<Value, C>, ascending: Bool = true) {
+        self.key = key as AnyKeyPath; self.ascending = ascending
+        read = { value in value[keyPath: key] as any Comparable }
+    }
+    public static func == (a: KeyPathComparator<Value>, b: KeyPathComparator<Value>) -> Bool {
+        a.key == b.key && a.ascending == b.ascending
+    }
+}
+
+extension KeyPathComparator {
+    /// What a tap on a sortable column's header writes: the same column again with the order turned
+    /// when it is already the first one, and that column first and forward when it is a new one.
+    public func ordering<C: Comparable>(_ comparators: [KeyPathComparator<Value>], after key: KeyPath<Value, C>) -> [KeyPathComparator<Value>] {
+        if comparators.first?.key == (key as AnyKeyPath) {
+            var turned = comparators
+            turned[0].ascending = !turned[0].ascending
+            return turned
+        }
+        return [KeyPathComparator(key, ascending: true)] + comparators.filter { $0.key != (key as AnyKeyPath) }
+    }
+}
+
+// A ForEach over a collection, whose content is rows rather than views: what a table's `rows:` closure
+// holds. The view form of the same type stays a View; this one is only table content.
+extension ForEach where Content: TableRowContent {
+    public init<Data: RandomAccessCollection>(_ data: Data, @TableRowBuilder<Data.Element> content: @escaping (Data.Element) -> Content)
+        where Data.Element: Identifiable {
+        self.init(data, id: \.id, content: content)
+    }
+    public init<Data: RandomAccessCollection, ID: Hashable>(_ data: Data, id: KeyPath<Data.Element, ID>,
+                                                              @TableRowBuilder<Data.Element> content: @escaping (Data.Element) -> Content)
+        where Data.Element: Identifiable {
+        self.init(data, id: id, content: content)
+    }
+}
+
+// The sorted form over a collection: the same rule, one more shape.
+extension Table {
+    public init<Data: RandomAccessCollection>(_ data: Data, sortOrder: Binding<[KeyPathComparator<Value>]>,
+                                              @TableColumnBuilder<Value, Never> columns: () -> Columns)
+        where Rows == TableForEachContent<Data, EmptyTableRowContent<Value>>, Data.Element == Value {
+        self.init(data, columns: columns)
+        self.sortOrder = sortOrder
+    }
+    public init<Data: RandomAccessCollection>(_ data: Data, selection: Binding<Value.ID?>,
+                                              sortOrder: Binding<[KeyPathComparator<Value>]>,
+                                              @TableColumnBuilder<Value, Never> columns: () -> Columns)
+        where Rows == TableForEachContent<Data, EmptyTableRowContent<Value>>, Data.Element == Value {
+        self.init(data, selection: selection, columns: columns)
+        self.sortOrder = sortOrder
+    }
+    @_disfavoredOverload
+    public init<Data: RandomAccessCollection>(_ data: Data, selection: Binding<Set<Value.ID>>,
+                                              sortOrder: Binding<[KeyPathComparator<Value>]>,
+                                              @TableColumnBuilder<Value, Never> columns: () -> Columns)
+        where Rows == TableForEachContent<Data, EmptyTableRowContent<Value>>, Data.Element == Value {
+        self.init(data, columns: columns)
+        self.sortOrder = sortOrder
         self.selection = SelectionBox(current: { Set(selection.wrappedValue.map { AnyHashable($0) }) },
                                       choose: { value in
                                           guard let typed = value.base as? Value.ID else { return }
