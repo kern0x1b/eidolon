@@ -549,7 +549,7 @@ extension List {
         where Content == ForEach<IndexedIdentifierCollection<C, C.Element.ID>, C.Element.ID, EditableCollectionContent<R, C>>,
               C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, R: View {
         var collection = IndexedIdentifierCollection<C, C.Element.ID>(items: indexed(data.wrappedValue, id: \.id))
-        
+
         self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
         if selection != nil { self.selection = List.setBox(selection) }
     }
@@ -557,7 +557,7 @@ extension List {
         where Content == ForEach<IndexedIdentifierCollection<C, ID>, ID, EditableCollectionContent<R, C>>,
               C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, ID: Hashable, R: View {
         var collection = IndexedIdentifierCollection<C, ID>(items: indexed(data.wrappedValue, id: id))
-        
+
         self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
         if selection != nil { self.selection = List.setBox(selection) }
     }
@@ -565,7 +565,7 @@ extension List {
         where Content == ForEach<IndexedIdentifierCollection<C, C.Element.ID>, C.Element.ID, EditableCollectionContent<R, C>>,
               C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, R: View {
         var collection = IndexedIdentifierCollection<C, C.Element.ID>(items: indexed(data.wrappedValue, id: \.id))
-        
+
         self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
         if selection != nil { self.selection = List.optionalBox(selection) }
     }
@@ -573,7 +573,7 @@ extension List {
         where Content == ForEach<IndexedIdentifierCollection<C, ID>, ID, EditableCollectionContent<R, C>>,
               C: MutableCollection & RandomAccessCollection & RangeReplaceableCollection, C.Element: Identifiable, C.Index: Hashable, ID: Hashable, R: View {
         var collection = IndexedIdentifierCollection<C, ID>(items: indexed(data.wrappedValue, id: id))
-        
+
         self.init(content: ForEach(data: collection, id: \.id) { EditableCollectionContent(content: rowContent(elementBinding(data, $0.index))) })
         if selection != nil { self.selection = List.optionalBox(selection) }
     }
