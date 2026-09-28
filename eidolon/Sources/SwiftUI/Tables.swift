@@ -10,6 +10,12 @@ public struct _ConditionalTableContent<TrueContent, FalseContent> {
 public struct _AnyTableColumn<Row> {
     let title: String
     let cell: (Row) -> any View
+    let sortKey: AnyKeyPath?
+    let readKey: ((Row) -> any Comparable)?
+    init(title: String, cell: @escaping (Row) -> any View, sortKey: AnyKeyPath? = nil,
+         readKey: ((Row) -> any Comparable)? = nil) {
+        self.title = title; self.cell = cell; self.sortKey = sortKey; self.readKey = readKey
+    }
 }
 
 public protocol TableColumnContent {
@@ -28,26 +34,36 @@ public struct TableColumn<RowValue: Identifiable, Sort, Content: View, Label: Vi
     public typealias TableColumnBody = Content
     let title: String
     let cell: (RowValue) -> Content
-    public var _columns: [_AnyTableColumn<RowValue>] { [_AnyTableColumn(title: title, cell: { cell($0) })] }
+    let sortKey: AnyKeyPath?
+    let readKey: ((RowValue) -> any Comparable)?
+    public var _columns: [_AnyTableColumn<RowValue>] {
+        [_AnyTableColumn(title: title, cell: { cell($0) }, sortKey: sortKey, readKey: readKey)]
+    }
     public func width(_ width: CGFloat? = nil) -> Self { self }
     public func width(min: CGFloat? = nil, ideal: CGFloat? = nil, max: CGFloat? = nil) -> Self { self }
 }
 
 extension TableColumn where Sort == Never, Label == Text {
     public init(_ titleKey: LocalizedStringKey, @ViewBuilder content: @escaping (RowValue) -> Content) {
-        title = titleKey.text; cell = content
+        title = titleKey.text; cell = content; sortKey = nil; readKey = nil
     }
     public init<S: StringProtocol>(_ title: S, @ViewBuilder content: @escaping (RowValue) -> Content) {
-        self.title = String(title); cell = content
+        self.title = String(title); cell = content; sortKey = nil; readKey = nil
     }
 }
 
 extension TableColumn where Sort == Never, Label == Text, Content == Text {
     public init(_ titleKey: LocalizedStringKey, value: KeyPath<RowValue, String>) {
-        title = titleKey.text; cell = { Text($0[keyPath: value]) }
+        title = titleKey.text
+        cell = { Text($0[keyPath: value]) }
+        sortKey = value as AnyKeyPath
+        readKey = { $0[keyPath: value] as any Comparable }
     }
     public init<S: StringProtocol>(_ title: S, value: KeyPath<RowValue, String>) {
-        self.title = String(title); cell = { Text($0[keyPath: value]) }
+        self.title = String(title)
+        cell = { Text($0[keyPath: value]) }
+        sortKey = value as AnyKeyPath
+        readKey = { $0[keyPath: value] as any Comparable }
     }
 }
 
@@ -172,7 +188,7 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
     let columns: Columns
     var selection: SelectionBox?
     var sortOrder: Binding<[KeyPathComparator<Value>]>?
-    public var body: some View {
+    public var body: AnyView {
         if UIDevice.current.userInterfaceIdiom == .pad { _Unsupported.pendingNote("Table columns on iPad") }
         let first = columns._columns.first
         // the app sorts from the binding, the table only shows the order it is given
@@ -197,8 +213,12 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
             guard let first else { return AnyView(EmptyView()) }
             return AnyView(first.cell(row))
         } }
-        list.selection = selection
-        return list
+        if sortOrder == nil { return AnyView(list) }
+        // the titles, then the rows they sort
+        return AnyView(VStack(spacing: 0) {
+            TableHeader(columns: columns._columns, sortOrder: sortOrder)
+            list
+        })
     }
 }
 
@@ -311,6 +331,20 @@ extension Table {
         self.key = key as AnyKeyPath; self.ascending = ascending
         read = { value in value[keyPath: key] as any Comparable }
     }
+    /// What a tap on this column's title writes: the same column again with the order turned when it
+    /// is already the first one, and that column first and forward when it is a new one.
+    func ordering(_ comparators: [KeyPathComparator<Value>], after column: KeyPathComparator<Value>) -> [KeyPathComparator<Value>] {
+        if comparators.first?.key == column.key {
+            var turned = comparators
+            turned[0].ascending = !turned[0].ascending
+            return turned
+        }
+        return [KeyPathComparator(existing: column.key, read: column.read)] + comparators.filter { $0.key != column.key }
+    }
+    /// The same order, made from a column that already knows how to read its own key.
+    init(existing key: AnyKeyPath, read: @escaping (Value) -> any Comparable) {
+        self.key = key; ascending = true; self.read = read
+    }
     public static func == (a: KeyPathComparator<Value>, b: KeyPathComparator<Value>) -> Bool {
         a.key == b.key && a.ascending == b.ascending
     }
@@ -371,5 +405,61 @@ extension Table {
                                           if selection.wrappedValue.contains(typed) { selection.wrappedValue.remove(typed) } else { selection.wrappedValue.insert(typed) }
                                       },
                                       clear: { selection.wrappedValue = [] })
+    }
+}
+
+// The arrow that says a column is sorted. A triangle drawn as a path, because the release has no
+// artwork to borrow; the direction is the rotation the shape pipeline already applies to any shape,
+// and the colour is the fill it already applies, so a shape needs no node of its own.
+struct TableSortArrow: Shape {
+    public func path(in whole: CGRect) -> Path {
+        let w = min(whole.size.width, 8), h = min(whole.size.height, 6)
+        let x = whole.origin.x + (whole.size.width - w) / 2
+        let y = whole.origin.y + (whole.size.height - h) / 2
+        var path = Path()
+        path.move(to: CGPoint(x: x + w / 2, y: y))
+        path.addLine(to: CGPoint(x: x + w, y: y + h))
+        path.addLine(to: CGPoint(x: x, y: y + h))
+        path.closeSubpath()
+        return path
+    }
+    public func sizeThatFits(_ proposal: ProposedViewSize) -> CGSize {
+        let proposed = proposal.replacingUnspecifiedDimensions()
+        return CGSize(width: min(proposed.width, 8), height: min(proposed.height, 6))
+    }
+}
+
+/// The titles of a table's columns. A sortable title is a button: a tap writes into the table's own
+/// binding the order the rule says -- the same column again with the order turned, and a new column in
+/// front and forward -- and the title that is sorted shows which way it runs.
+struct TableHeader<Value: Identifiable>: View {
+    let columns: [_AnyTableColumn<Value>]
+    let sortOrder: Binding<[KeyPathComparator<Value>]>?
+    var body: some View {
+        HStack(spacing: 0) {
+            cell(0)
+            cell(1)
+            cell(2)
+            cell(3)
+        }
+    }
+    private var arrowTint: Color { Color(UIColor(white: 0.55, alpha: 1)) }
+    private func cell(_ index: Int) -> some View {
+        let column = index < columns.count ? columns[index] : nil
+        guard let column else { return AnyView(EmptyView()) }
+        let key = column.sortKey
+        let sorted = key != nil && sortOrder?.wrappedValue.first?.key == key
+        let forward = sortOrder?.wrappedValue.first?.ascending ?? true
+        let title = HStack(spacing: 4) {
+            Text(column.title)
+            if sorted {
+                TableSortArrow().fill(arrowTint)
+                    .rotationEffect(.degrees(forward ? 0 : 180))
+                    .frame(width: 8, height: 6)
+            }
+        }
+        guard let sortOrder, let read = column.readKey, key != nil else { return AnyView(title) }
+        let comparator = KeyPathComparator<Value>(existing: key!, read: read)
+        return AnyView(Button(action: { sortOrder.wrappedValue = comparator.ordering(sortOrder.wrappedValue, after: comparator) }) { title })
     }
 }
