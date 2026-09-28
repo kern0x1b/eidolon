@@ -62,7 +62,7 @@
 | Данные и события | `onAppear`, `onDisappear`, `onChange`, `onReceive`, `.id`, `tag`, `PreferenceKey` с `onPreferenceChange`, `transformPreference`, якоря (`Anchor`, `anchorPreference`, `transformAnchorPreference`, `GeometryProxy[anchor]`), `overlayPreferenceValue`/`backgroundPreferenceValue`, `@FocusState` с `.focused`, `Transaction`/`withTransaction`, `EquatableView` |
 | Своё | `DynamicProperty` (свои обёртки свойств с вложенными `@State` и `update()`), `PreviewProvider` (собирается, в приложении не исполняется — как у Apple) |
 | Мост к UIKit | `UIViewRepresentable`, `UIViewControllerRepresentable` с координатором и контекстом |
-| Стили | `ButtonStyle` и `ToggleStyle` с настоящим `makeBody` и живым `isPressed` (готовые `automatic`, `plain`, `bordered`, `borderedProminent`, `switch`, `button`), `TextFieldStyle`, `ListStyle` (plain/grouped/insetGrouped), `PickerStyle` (сегменты, колесо `UIPickerView` с `defaultWheelPickerItemHeight`, меню `UIActionSheet`, `.navigationLink` — строка с текущим значением, открывающая список выбора, `.inline` — варианты строками с галочкой), `LabelStyle`, `ProgressViewStyle`, `MenuStyle`, `DisclosureGroupStyle`, `GroupBoxStyle`, `LabeledContentStyle`, `ControlGroupStyle` (в том числе `.menu`), `GaugeStyle` (линейный и круговой `accessoryCircular`), `FormStyle` — все со своими `makeBody` и конфигурацией, `navigationViewStyle` (на iPhone любой стиль — стек, как и у Apple), `datePickerStyle(.wheel)` |
+| Стили | `ButtonStyle` и `ToggleStyle` с настоящим `makeBody`; у `ButtonStyle` живое `isPressed` в конфигурации, у примитивных стилей нажатие приходит аргументом `makeBody(configuration:pressed:)` (см. ниже) (готовые `automatic`, `plain`, `bordered`, `borderedProminent`, `switch`, `button`), `TextFieldStyle`, `ListStyle` (plain/grouped/insetGrouped), `PickerStyle` (сегменты, колесо `UIPickerView` с `defaultWheelPickerItemHeight`, меню `UIActionSheet`, `.navigationLink` — строка с текущим значением, открывающая список выбора, `.inline` — варианты строками с галочкой), `LabelStyle`, `ProgressViewStyle`, `MenuStyle`, `DisclosureGroupStyle`, `GroupBoxStyle`, `LabeledContentStyle`, `ControlGroupStyle` (в том числе `.menu`), `GaugeStyle` (линейный и круговой `accessoryCircular`), `FormStyle` — все со своими `makeBody` и конфигурацией, `navigationViewStyle` (на iPhone любой стиль — стек, как и у Apple), `datePickerStyle(.wheel)` |
 | Локализация | `LocalizedStringKey` ищет строку в бандле (`NSLocalizedString`), интерполяция подставляется как есть |
 | Доступность | `accessibilityAdjustableAction` и `accessibilityScrollAction` (`accessibilityIncrement`/`Decrement`/`accessibilityScroll` у своего вида-обёртки), `accessibilityActivationPoint`, `accessibilityLabel`, `Value`, `Hint`, `Identifier`, `AddTraits`, `RemoveTraits`, `Element`, `Hidden`, `Heading` через `UIAccessibility` |
 | Приложение | `App`, `Scene`, `WindowGroup`, `@main`, `UIHostingController` (с `sizingOptions`), живой `scenePhase` (`.active`/`.inactive`/`.background` от делегата приложения), `SceneStorage`, `Commands` и `.commands` (собираются; меню и клавиатурных команд в iOS 6 нет — пишет в журнал), `ToolbarContent` с `ToolbarContentBuilder` |
@@ -293,7 +293,12 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   есть ровно на примитивном), а нажатие приходит стилю аргументом: наш собственный протокол
   `PressedButtonStyle` и `makeBody(configuration:pressed:)` у встроенных стилей, при этом запись
   `makeBody(configuration:)` — как у Apple — тоже компилируется и даёт то же тело. Проверка в тестах
-  движка нажимает `.plain` и `.borderedProminent` и читает дерево обратно.
+  движка нажимает `.plain` и читает дерево обратно: тело, нарисованное при нажатии, отличается от
+  нарисованного до, и совпадает с тем, что стиль просил (`opacity 0.4`).
+  `EnvironmentValues.isPressed` остаётся ключом с владельцем и без читателя в наших стилях: его читает
+  путь `ButtonStyleConfiguration`, который сам пишет его в окружение содержимого. Стиль, написанный
+  приложением, нажатия не увидит — на то и внутренний протокол; Apple даёт его через окружение, а
+  окружение стиля здесь не разрешается.
 - Стили `DatePicker` получили форму: `DatePickerStyle` требует `_body(configuration:)`, у конфигурации есть отметка,
   выбор, границы и показываемые компоненты. `.field` рисует дату в рамке, как ячейка сгруппированной таблицы iOS 6,
   а `.stepperField` — то же поле с двумя `UIStepper` по краям, которые идут по дате на сутки или на час.

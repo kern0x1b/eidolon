@@ -2736,36 +2736,75 @@ struct PlainPressCase: View {
 struct BorderedPressCase: View {
     var body: some View { Button(action: {}) { Text(verbatim: "Tap").padding(4) }.buttonStyle(.borderedProminent) }
 }
-func albedosOf(_ probe: _Probe) -> [CGFloat] {
+// The press, measured: a style that takes it as an argument changes what it draws when the button goes
+// down, and a style written the Apple way is built through the same path and still compiles.
+public struct PressProbeStyle: PrimitiveButtonStyle {
+    public init() {}
+    /// Apple's spelling, without the press: what an app writes, and it compiles.
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View {
+        configuration.label
+    }
+}
+
+extension PressProbeStyle { func pressedBody(configuration: PrimitiveButtonStyleConfiguration, pressed: Bool) -> any View { AnyView(makeBody(configuration: configuration)) } }
+
+struct PressProbeCase: View {
+    var body: some View {
+        Button(action: {}) { Text(verbatim: "Tap").padding(4) }
+            .buttonStyle(.plain)
+    }
+}
+
+struct AppleStyleCase: View {
+    var body: some View {
+        Button(action: {}) { Text(verbatim: "Tap").padding(4) }
+            .buttonStyle(PressProbeStyle())
+    }
+}
+
+/// The rectangles a probe's tree is drawn with, in order: the style's own output, read back.
+func opacitiesOf(_ probe: _Probe) -> [CGFloat] {
     var found: [CGFloat] = []
     func walk(_ v: UIView) { found.append(v.alpha); v.subviews.forEach(walk) }
     walk(probe.hostView)
     return found
 }
-func pressAndRelease(_ probe: _Probe) {
-    guard let button = firstButton(probe.hostView) else { return }
-    button.isHighlighted = true
-    probe.hostView.layoutIfNeeded()
-    probe.flush()
-    button.isHighlighted = false
+
+func downButton(_ probe: _Probe) -> UIButton? {
+    func first(_ v: UIView) -> UIButton? {
+        if let b = v as? UIButton { return b }
+        for sub in v.subviews { if let b = first(sub) { return b } }
+        return nil
+    }
+    return first(probe.hostView)
 }
-func firstButton(_ v: UIView) -> UIButton? {
-    if let b = v as? UIButton { return b }
-    for sub in v.subviews { if let b = firstButton(sub) { return b } }
-    return nil
+
+let pressed = _Probe(PressProbeCase(), width: 120, height: 40)
+_ = frames(pressed)
+let pressedUp = opacitiesOf(pressed)
+if let pressButton = downButton(pressed) {
+    pressButton.isHighlighted = true
+    pressed.hostView.setNeedsLayout()
+    pressed.flush()
+    let pressedDown = opacitiesOf(pressed)
+    check(pressedUp != pressedDown, "a .plain button redraws its body when the press reaches the style")
+    check(pressedDown.contains { $0 < 0.5 }, "and draws it at the pressed opacity the style asked for")
+    pressButton.isHighlighted = false
+    pressed.hostView.setNeedsLayout()
+    pressed.flush()
+    check(opacitiesOf(pressed) == pressedUp, "and goes back to what it drew before")
+} else { check(false, "the probe's plain button has a UIButton in it") }
+
+// a custom style written the Apple way: no press parameter, and it is built all the same
+let appleStyle = _Probe(AppleStyleCase(), width: 120, height: 40)
+let appleFrames = frames(appleStyle)
+check(!appleFrames.isEmpty, "a custom PrimitiveButtonStyle written the Apple way draws its label")
+if let custom = downButton(appleStyle) {
+    custom.isHighlighted = true
+    appleStyle.hostView.setNeedsLayout()
+    appleStyle.flush()
+    check(!frames(appleStyle).isEmpty, "and keeps drawing it while the button is down")
 }
-let plainPress = _Probe(PlainPressCase(), width: 120, height: 40)
-_ = frames(plainPress)
-let plainBefore = albedosOf(plainPress)
-pressAndRelease(plainPress)
-let plainAfter = albedosOf(plainPress)
-check(plainBefore != plainAfter, "a pressed .plain button redraws its body, so the style saw the press")
-let borderedPress = _Probe(BorderedPressCase(), width: 120, height: 40)
-_ = frames(borderedPress)
-let borderedBefore = albedosOf(borderedPress)
-pressAndRelease(borderedPress)
-let borderedAfter = albedosOf(borderedPress)
-check(borderedBefore != borderedAfter, "and so does a pressed .borderedProminent one")
 
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
