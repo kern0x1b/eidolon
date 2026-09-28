@@ -125,10 +125,51 @@ final class Walker: SyntaxVisitor {
     }
 }
 
-for path in CommandLine.arguments.dropFirst() {
+// The oracle is every module SwiftUI reaches, which is what its `@_exported import` lines say and not
+// a list written here: reading them and following them is the difference between the gate knowing that
+// `CGAffineTransform` is Apple's and guessing it.
+func exportedModules(in text: String) -> [String] {
+    var names: [String] = []
+    for line in text.split(separator: "\n") {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("@_exported import ") else { continue }
+        names.append(trimmed.dropFirst("@_exported import ".count)
+            .split(separator: " ").first.map(String.init) ?? "")
+    }
+    return names.filter { !$0.isEmpty }
+}
+
+let arguments = Array(CommandLine.arguments.dropFirst())
+let sdkRoot = arguments.first ?? ""
+var queue = Array(arguments.dropFirst())
+var seen = Set<String>()
+
+while let path = queue.popLast() {
+    // the module is the directory an interface sits in, not the interface's own name: two
+    // interfaces of one module (two architectures) are the same module, and keying on the file
+    // skipped the second of the two entry points
+    let name = URL(fileURLWithPath: path).deletingLastPathComponent().lastPathComponent
+    guard seen.insert(name).inserted else { continue }
     let url = URL(fileURLWithPath: path)
-    let text = try! String(contentsOf: url, encoding: .utf8)
-    let tree = Parser.parse(source: text)
-    Walker(file: path).walk(tree)
+    guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+    Walker(file: path).walk(Parser.parse(source: text))
+    if !sdkRoot.isEmpty {
+        for module in exportedModules(in: text) {
+            let found = FileManager.default
+                .enumerator(atPath: sdkRoot) as? FileManager.DirectoryEnumerator
+            var matches: [String] = []
+            // the filter belongs in the body: putting it in the while condition stops the walk at
+            // the first path that does not match
+            while let relative = found?.nextObject() as? String {
+                if relative.hasSuffix("/\(module).swiftmodule") { matches.append(relative) }
+            }
+            for match in matches {
+                let full = sdkRoot + "/" + match
+                for interface in (try? FileManager.default.contentsOfDirectory(atPath: full)) ?? [] where interface.hasSuffix(".swiftinterface") {
+                    queue.append(full + "/" + interface)
+                }
+            }
+        }
+    }
 }
 print(out.joined(separator: "\n"))

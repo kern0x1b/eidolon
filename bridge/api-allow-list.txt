@@ -1,0 +1,8 @@
+# Public names this module carries that no .swiftinterface of the re-exported closure declares, one per
+# line: `Type#name` (or `#name` for any type) and, after a tab, why.
+_Probe#openURL	the headless probe's test hook: it opens a URL against the probe's own handler list. Apple's `openURL` is the environment key, not a probe method
+#CGAffineTransform	the CoreGraphics type is imported from Objective-C and appears in no .swiftinterface; the port declares the name so its own signatures spell it
+#CGPoint	as CGAffineTransform
+#CGRect	as CGAffineTransform
+#CGSize	as CGAffineTransform
+#TimelineViewDefaultContext	as CGAffineTransform

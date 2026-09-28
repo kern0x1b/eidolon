@@ -8,10 +8,11 @@ question, which nothing else did: what does this module declare that Apple does 
 rather than reimplemented is a row the ledger counts as covered and the reader of the API never asked
 for, so every such name is a line in the output.
 
-The oracle is the union of the 26.2 interfaces of the modules this one re-exports (APPLE_26_SDK
-overrides the root): the standard library, SwiftUI, SwiftUICore, Foundation, Combine, Observation,
-CoreGraphics and UIKit. Judging a re-export against SwiftUI's interface alone called half the standard
-library invented.
+The oracle is the union of the 26.2 interfaces of every module SwiftUI reaches through its
+`@_exported import` lines, written by `bridge/surface-swiftui.sh` and read from `apple-26-surface.tsv`.
+Judging a re-export against SwiftUI's interface alone called half the standard library invented, and
+reading the interfaces with regular expressions instead of a parser called 40 of Apple's own witnesses
+invented; both are fixed, and a missing surface file is an error rather than a different answer.
 """
 import glob
 import json
@@ -25,43 +26,28 @@ SDK = os.environ.get('APPLE_26_SDK') or os.path.expanduser(
 # The oracle is every module this one re-exports, not SwiftUI alone: a name like `MutableCollection`
 # or `URL` is declared by the standard library, and judging it against SwiftUI's interface called it
 # invented. The union of the seven is what the module's own surface is written against.
-MODULES = ('Swift', 'SwiftUI', 'SwiftUICore', 'Foundation', 'CoreFoundation', 'Combine', 'Observation',
-           'CoreGraphics', 'UIKit')
-
-
-def interfaces():
-    for module in MODULES:
-        found = sorted(glob.glob(f'{SDK}/**/{module}.swiftmodule/*.swiftinterface', recursive=True))
-        if not found:
-            print(f'# no interface for {module} under {SDK}', file=sys.stderr)
-            continue
-        yield from found
-
-
 SURFACE = os.environ.get('APPLE_26_SURFACE') or os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                              'apple-26-surface.tsv')
 
+if not os.path.exists(SURFACE):
+    # Falling back is not an option: the hand parse below answers a different question and gives a
+    # different number (241 rows against 205 on this tree), so a gate that quietly changed its own
+    # oracle would be a gate nobody could trust. `bridge/surface-swiftui.sh` writes the file.
+    print(f'# ERROR no Apple surface: {SURFACE} is missing', file=sys.stderr)
+    print('# run bridge/surface-swiftui.sh first; the gate does not fall back to its own parse', file=sys.stderr)
+    sys.exit(2)
+
+# The surface file is what bridge/surface-swiftui.sh writes: the interfaces of every module SwiftUI
+# reaches through its `@_exported import` lines, read by swift-syntax's SwiftParser. A parser sees what
+# regular expressions cannot — an associatedtype witness printed as a `var`, a nested `typealias` printed
+# as a property, an enum `case`, a `subscript`, a static in a constrained extension — and every such row
+# used to be a name Apple declares and this gate called invented.
 apple = set()
-if os.path.exists(SURFACE):
-    # The surface file is what bridge/surface-swiftui.sh writes: the same interfaces read by
-    # swift-syntax's SwiftParser, which sees what the regular expressions below could not — an
-    # associatedtype witness printed as a `var`, a nested `typealias` printed as a property, an enum
-    # `case`, a `subscript`, a static in a constrained extension. Every such row was a name Apple
-    # declares and this gate called invented.
-    for line in open(SURFACE, errors='replace'):
-        parts = line.rstrip('\n').split('\t')
-        if len(parts) >= 2 and parts[1]:
-            apple.add(parts[1].split('.')[-1].split('(')[0])
-    print(f'# Apple surface from {SURFACE} ({len(apple)} names)', file=sys.stderr)
-else:
-    print(f'# no {SURFACE}: falling back to the regular-expression parse of the interfaces', file=sys.stderr)
-    for path in interfaces():
-        text = open(path, errors='replace').read()
-        # Apple's text qualifies everything with its module; the member name is what has to match ours
-        text = re.sub(r'\b(?:Swift|SwiftUI|SwiftUICore|Foundation|CoreFoundation|UIKit|QuartzCore|ObjectiveC|CoreGraphics|Darwin|Dispatch|Combine|Observation)\.(?=[A-Z])', '', text)
-        apple |= set(re.findall(r'(?:func|var|let|init|subscript|typealias|case)\s+([A-Za-z_][\w]*)', text))
-        apple |= set(re.findall(r'(?:struct|class|enum|protocol|actor|typealias)\s+([A-Za-z_][\w]*)', text))
-        apple |= set(re.findall(r'extension\s+(?:SwiftUI\.|SwiftUICore\.)?([A-Za-z_][\w]*)', text))
+for line in open(SURFACE, errors='replace'):
+    parts = line.rstrip('\n').split('\t')
+    if len(parts) >= 2 and parts[1]:
+        apple.add(parts[1].split('.')[-1].split('(')[0])
+print(f'# Apple surface from {SURFACE} ({len(apple)} names)', file=sys.stderr)
 apple |= {'==', 'hash', 'self', 'Type', 'init', 'some', 'get', 'set'}
 
 root = json.load(open(sys.argv[1]))['ABIRoot']
@@ -104,11 +90,35 @@ def walk(node, path, public):
 
 walk(root, [], False)
 
+# the allow-list: a name this port carries that no interface of the modules the port declares
+# against declares either, with the reason it is here. `#name` is the name under any type.
+ALLOW = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'api-allow-list.txt')
+allowed = {}
+if os.path.exists(ALLOW):
+    for line in open(ALLOW):
+        line = line.rstrip('\n')
+        # a comment is a `#` with a space after it: `#name` is the bare form for any type
+        if not line.strip() or line.lstrip().startswith('# ') or line.lstrip().startswith('//'):
+            continue
+        name, _, reason = line.partition('\t')
+        allowed[name.strip()] = reason.strip()
+used = set()
+print(f'# {len(allowed)} names on the allow-list', file=sys.stderr)
+
+
 invented = []
 for owner, name, access in ours:
     if name in apple:
         continue
+    key = next((k for k in (f'{owner}#{name}', f'#{name}') if k in allowed), None)
+    if key:
+        used.add(key)
+        continue
     invented.append((owner, name, access))
+
+for key in sorted(set(allowed) - used):
+    print(f'allowed\t{key}\t{allowed[key]}')
+print(f'# {len(used)} of the {len(allowed)} allow-listed names were used', file=sys.stderr)
 
 seen = set()
 for owner, name, access in invented:
