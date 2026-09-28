@@ -56,11 +56,12 @@ public protocol CustomAnimation: Hashable {
 }
 
 /// A custom animation held in a value of its own: an `Animation` compares and hashes by it, and an
-/// existential does neither by itself.
-public struct CustomAnimationBox: Hashable {
+/// existential does neither by itself. The port's own box — the port's name for what an
+/// `any CustomAnimation` is stored in, and not an SDK type.
+struct CustomAnimationBox: Hashable {
     let base: any CustomAnimation
 
-    public init(_ base: any CustomAnimation) { self.base = base }
+    init(_ base: any CustomAnimation) { self.base = base }
 
     public static func == (a: CustomAnimationBox, b: CustomAnimationBox) -> Bool { equatableEqual(a.base, b.base) }
     public func hash(into hasher: inout Hasher) { withUnsafeBytes(of: base) { hasher.combine(bytes: $0) } }

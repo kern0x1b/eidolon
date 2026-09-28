@@ -2788,7 +2788,7 @@ if let pressButton = downButton(pressed) {
     pressed.flush()
     let pressedDown = opacitiesOf(pressed)
     check(pressedUp != pressedDown, "a .plain button redraws its body when the press reaches the style")
-    check(pressedDown.contains { $0 < 0.5 }, "and draws it at the pressed opacity the style asked for")
+    check(pressedDown.contains { $0 <= 0.4 + 0.001 }, "and draws it at the pressed opacity the style asked for")
     pressButton.isHighlighted = false
     pressed.hostView.setNeedsLayout()
     pressed.flush()

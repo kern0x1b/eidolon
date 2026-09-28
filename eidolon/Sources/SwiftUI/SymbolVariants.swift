@@ -6,7 +6,9 @@
 //  commit efa103755b95bd5a6ab42681a261c7cc66be6f75, MIT (Copyright (c) 2023-2025 Kyle-Ye). Its doc comments come with it.
 //  Changed for this port: no availability macros, `package` is internal, the corner radius is a
 //  CGFloat, `nonisolated` is dropped (there is no actor isolation here), and the name a variant
-//  gives a symbol is what the glyph lookup asks for.
+//  gives a symbol is what the glyph lookup asks for. Nothing was added: an earlier version of this port
+//  carried `EnvironmentValues.symbolBackgroundCornerRadius` and `symbolsGrowToFitBackground`, which no
+//  SDK declares and nothing read, and both are gone.
 //
 //
 //  SymbolVariants.swift
@@ -497,15 +499,5 @@ extension EnvironmentValues {
     public var symbolVariants: SymbolVariants {
         get { self[SymbolVariantsKey.self] }
         set { self[SymbolVariantsKey.self] = newValue }
-    }
-
-        public var symbolBackgroundCornerRadius: CGFloat? {
-        get { self[SymbolBackgroundCornerRadiusKey.self] }
-        set { self[SymbolBackgroundCornerRadiusKey.self] = newValue }
-    }
-
-        public var symbolsGrowToFitBackground: Bool {
-        get { self[SymbolsGrowToFitBackgroundKey.self] }
-        set { self[SymbolsGrowToFitBackgroundKey.self] = newValue }
     }
 }

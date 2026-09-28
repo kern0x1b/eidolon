@@ -235,9 +235,6 @@ extension MoveKeyframe {
     public func _steps() -> [_ResolvedKeyframeTrackContent<Value>] { [_ResolvedKeyframeTrackContent(to: to, duration: 0)] }
 }
 
-/// Anything that is one step of a keyframe track.
-public typealias AnyKeyframe = KeyframeTrackContent
-
 // MARK: the track a builder makes
 
 public struct KeyframeTrack<Root, Value, Content>: Keyframes where Value: Animatable, Content: KeyframeTrackContent, Content.Value == Value {
@@ -339,8 +336,10 @@ public extension KeyframesBuilder {
     }
 }
 
-/// The steps of a keyframe track, in the order they are written.
-public struct KeyframeTrackSteps<Value>: KeyframeTrackContent where Value: Animatable {
+/// The steps of a keyframe track, in the order they are written. The port's own accumulator: the
+/// builders hand their keyframes to one of these, and Apple has no such type — a `KeyframeTrackContent`
+/// is what a keyframe conforms to.
+struct KeyframeTrackSteps<Value>: KeyframeTrackContent where Value: Animatable {
     public var steps: [_ResolvedKeyframeTrackContent<Value>]
     public typealias Body = KeyframeTrackSteps<Value>
     public var body: Body { self }

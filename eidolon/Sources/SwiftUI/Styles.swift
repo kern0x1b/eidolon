@@ -57,19 +57,31 @@ public struct ButtonRole: Equatable {
 
 /// The glass of a button on iOS 26: how thick it is and how much of the background it lets through.
 /// iOS 6 has no live blur, so the thickness is what the fill is drawn with.
-public struct Glass: Hashable {
-    public enum Thickness: Hashable { case regular, thick }
-    public var thickness: Thickness
-    public var interactive: Bool
-    public var isAdaptive: Bool
-    public init(thickness: Thickness = .regular, interactive: Bool = false, isAdaptive: Bool = true) {
-        self.thickness = thickness
-        self.interactive = interactive
-        self.isAdaptive = isAdaptive
-    }
-    public static let regular = Glass()
-    public static let thick = Glass(thickness: .thick)
+/// The glass of a button on iOS 26: three settings and nothing else, as the interface declares it
+/// (`SwiftUICore.swiftinterface:32551` — `regular`, `clear`, `identity`, `Equatable`, no stored
+/// property and no initialiser). iOS 6 has no live blur, so a glass button is the release's own button
+/// drawn translucent, and `GlassEffect` below is the port's own measurement of that drawing.
+public struct Glass: Equatable {
+    enum Kind: Equatable { case regular, clear, identity }
+    let kind: Kind
+    init(_ kind: Kind) { self.kind = kind }
+    public static var regular: Glass { Glass(.regular) }
+    public static var clear: Glass { Glass(.clear) }
+    public static var identity: Glass { Glass(.identity) }
 }
+
+/// How translucent a glass button is drawn, which is the port's own: iOS 6 has no blur to measure, so
+/// the thickness is the alpha the fill is painted with and the flags say what else the paint does.
+struct GlassEffect {
+    enum Thickness { case regular, thick }
+    var thickness: Thickness = .regular
+    var interactive = false
+    var isAdaptive = true
+    var opacity: Double { thickness == .thick ? 0.9 : 0.75 }
+    init(_ glass: Glass) { kind = glass.kind }
+    private var kind: Glass.Kind
+}
+
 
 public struct DefaultButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
     public init() {}
@@ -144,15 +156,15 @@ extension PrimitiveButtonStyle where Self == LinkButtonStyle {
 }
 
 public struct GlassButtonStyle: PrimitiveButtonStyle, PressedButtonStyle {
-
     var glass: Glass
-    public init() { glass = .regular }
-    public init(_ glass: Glass) { self.glass = glass }
+    var effect: GlassEffect
+    public init() { glass = .regular; effect = GlassEffect(.regular) }
+    public init(_ glass: Glass) { self.glass = glass; effect = GlassEffect(glass) }
     public func makeBody(configuration: Configuration, pressed: Bool) -> some View {
         _Unsupported.note("PrimitiveButtonStyle.glass", "iOS 6 has no live blur, so a glass button is the release's own button drawn translucent")
         return AnyView(configuration.label
             .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
-            .background(Color(UIColor(white: 0.97, alpha: glass.thickness == .thick ? 0.9 : 0.75)), cornerRadius: 7)
+            .background(Color(UIColor(white: 0.97, alpha: effect.opacity)), cornerRadius: 7)
             .border(Color(white: 0.62), width: 1)
             .opacity(pressed ? 0.4 : 1))
     }
