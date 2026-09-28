@@ -78,3 +78,18 @@ extension List where SelectionValue == Never {
         self.init { OutlineGroup(data, id: id, children: children, content: rowContent) }
     }
 }
+
+// An outline group's rows for a table are its leaves' rows: a node with children is a section, and the
+// row content of a node is the content of the leaf it stands for. The row value is the leaf's own.
+extension OutlineGroup: TableRowContent where Leaf: TableRowContent {
+    public typealias TableRowValue = Leaf.TableRowValue
+    public typealias TableRowBody = Never
+    public var _rows: [Leaf.TableRowValue] { leafRows(in: items, as: Leaf.self) }
+}
+
+private func leafRows<Value: TableRowContent>(in items: [OutlineItem], as: Value.Type) -> [Value.TableRowValue] {
+    items.flatMap { item -> [Value.TableRowValue] in
+        if let children = item.children { return leafRows(in: children, as: Value.self) }
+        return (item.row() as? Value)?._rows ?? []
+    }
+}
