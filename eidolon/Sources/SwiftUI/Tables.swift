@@ -103,6 +103,11 @@ public struct TableColumnBuilder<RowValue: Identifiable, Sort> {
         where RowValue == T.TableRowValue, T: TableColumnContent, F: TableColumnContent,
               T.TableColumnSortComparator == Never, T.TableRowValue == F.TableRowValue,
               F.TableColumnSortComparator == Never { _ConditionalContent(storage: .falseContent(second)) }
+    public static func buildIf<C>(_ content: C?) -> C?
+        where RowValue == C.TableRowValue, Sort == C.TableColumnSortComparator, C: TableColumnContent { content }
+    @_disfavoredOverload
+    public static func buildIf<C>(_ content: C?) -> C?
+        where RowValue == C.TableRowValue, C: TableColumnContent, C.TableColumnSortComparator == Never { content }
     public static func buildLimitedAvailability<C: TableColumnContent>(_ content: C) -> C where C.TableRowValue == RowValue, C.TableColumnSortComparator == Sort { content }
     @_disfavoredOverload
     public static func buildLimitedAvailability<C: TableColumnContent>(_ content: C) -> C where C.TableRowValue == RowValue, C.TableColumnSortComparator == Never { content }

@@ -5,7 +5,17 @@ public struct DefaultTabViewStyle: TabViewStyle { public init() {} }
 public typealias DefaultTabViewStyleMarker = DefaultTabViewStyle
 
 public struct PageTabViewStyle: TabViewStyle {
-    public enum IndexDisplayMode { case automatic, always, never }
+    /// Apple's is a struct with three constants, not an enum, so `.page(indexDisplayMode: .never)` reads
+    /// the same either way but the declared shape is this one.
+    public struct IndexDisplayMode: Hashable {
+        let mode: Int
+        init(_ mode: Int) { self.mode = mode }
+        public static let automatic = IndexDisplayMode(0)
+        public static let always = IndexDisplayMode(1)
+        public static let never = IndexDisplayMode(2)
+        public static func == (a: IndexDisplayMode, b: IndexDisplayMode) -> Bool { a.mode == b.mode }
+        public func hash(into hasher: inout Hasher) { hasher.combine(mode) }
+    }
     let indexDisplayMode: IndexDisplayMode
     public init(indexDisplayMode: IndexDisplayMode = .automatic) { self.indexDisplayMode = indexDisplayMode }
 }
@@ -92,7 +102,7 @@ final class PagedTabsNode: LayoutNode {
         switch paged.settings.showsIndex {
         case .never: showsDots = false
         case .always: showsDots = true
-        case .automatic: showsDots = pages.count > 1
+        default: showsDots = pages.count > 1
         }
         dots.isHidden = !showsDots
         dots.pageIndicatorTintColor = UIColor(white: 0.75, alpha: 1)
