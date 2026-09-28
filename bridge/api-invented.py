@@ -25,7 +25,8 @@ SDK = os.environ.get('APPLE_26_SDK') or os.path.expanduser(
 # The oracle is every module this one re-exports, not SwiftUI alone: a name like `MutableCollection`
 # or `URL` is declared by the standard library, and judging it against SwiftUI's interface called it
 # invented. The union of the seven is what the module's own surface is written against.
-MODULES = ('Swift', 'SwiftUI', 'SwiftUICore', 'Foundation', 'Combine', 'Observation', 'CoreGraphics', 'UIKit')
+MODULES = ('Swift', 'SwiftUI', 'SwiftUICore', 'Foundation', 'CoreFoundation', 'Combine', 'Observation',
+           'CoreGraphics', 'UIKit')
 
 
 def interfaces():
@@ -37,14 +38,30 @@ def interfaces():
         yield from found
 
 
+SURFACE = os.environ.get('APPLE_26_SURFACE') or os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                             'apple-26-surface.tsv')
+
 apple = set()
-for path in interfaces():
-    text = open(path, errors='replace').read()
-    # Apple's text qualifies everything with its module; the member name is what has to match ours
-    text = re.sub(r'\b(?:Swift|SwiftUI|SwiftUICore|Foundation|CoreFoundation|UIKit|QuartzCore|ObjectiveC|CoreGraphics|Darwin|Dispatch|Combine|Observation)\.(?=[A-Z])', '', text)
-    apple |= set(re.findall(r'(?:func|var|let|init|subscript|typealias|case)\s+([A-Za-z_][\w]*)', text))
-    apple |= set(re.findall(r'(?:struct|class|enum|protocol|actor|typealias)\s+([A-Za-z_][\w]*)', text))
-    apple |= set(re.findall(r'extension\s+(?:SwiftUI\.|SwiftUICore\.)?([A-Za-z_][\w]*)', text))
+if os.path.exists(SURFACE):
+    # The surface file is what bridge/surface-swiftui.sh writes: the same interfaces read by
+    # swift-syntax's SwiftParser, which sees what the regular expressions below could not — an
+    # associatedtype witness printed as a `var`, a nested `typealias` printed as a property, an enum
+    # `case`, a `subscript`, a static in a constrained extension. Every such row was a name Apple
+    # declares and this gate called invented.
+    for line in open(SURFACE, errors='replace'):
+        parts = line.rstrip('\n').split('\t')
+        if len(parts) >= 2 and parts[1]:
+            apple.add(parts[1].split('.')[-1].split('(')[0])
+    print(f'# Apple surface from {SURFACE} ({len(apple)} names)', file=sys.stderr)
+else:
+    print(f'# no {SURFACE}: falling back to the regular-expression parse of the interfaces', file=sys.stderr)
+    for path in interfaces():
+        text = open(path, errors='replace').read()
+        # Apple's text qualifies everything with its module; the member name is what has to match ours
+        text = re.sub(r'\b(?:Swift|SwiftUI|SwiftUICore|Foundation|CoreFoundation|UIKit|QuartzCore|ObjectiveC|CoreGraphics|Darwin|Dispatch|Combine|Observation)\.(?=[A-Z])', '', text)
+        apple |= set(re.findall(r'(?:func|var|let|init|subscript|typealias|case)\s+([A-Za-z_][\w]*)', text))
+        apple |= set(re.findall(r'(?:struct|class|enum|protocol|actor|typealias)\s+([A-Za-z_][\w]*)', text))
+        apple |= set(re.findall(r'extension\s+(?:SwiftUI\.|SwiftUICore\.)?([A-Za-z_][\w]*)', text))
 apple |= {'==', 'hash', 'self', 'Type', 'init', 'some', 'get', 'set'}
 
 root = json.load(open(sys.argv[1]))['ABIRoot']
