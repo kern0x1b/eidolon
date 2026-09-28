@@ -19,7 +19,10 @@ public protocol TableColumnContent {
     var _columns: [_AnyTableColumn<TableRowValue>] { get }
 }
 
-public struct TableColumn<RowValue: Identifiable, Sort, Content: View, Label: View>: TableColumnContent {
+public struct TableColumn<RowValue: Identifiable, Sort, Content: View, Label: View>: TableColumnContent, View, PrimitiveView {
+    public typealias Body = Never
+    public var body: Never { neverBody(Self.self) }
+    func makeNode(_ env: EnvironmentValues) -> Node { EmptyView().makeNode(env) }
     public typealias TableRowValue = RowValue
     public typealias TableColumnSortComparator = Sort
     public typealias TableColumnBody = Content
@@ -95,7 +98,10 @@ public protocol TableRowContent {
     var _rows: [TableRowValue] { get }
 }
 
-public struct TableRow<Value: Identifiable>: TableRowContent {
+public struct TableRow<Value: Identifiable>: TableRowContent, View, PrimitiveView {
+    public typealias Body = Never
+    public var body: Never { neverBody(Self.self) }
+    func makeNode(_ env: EnvironmentValues) -> Node { EmptyView().makeNode(env) }
     public typealias TableRowValue = Value
     public typealias TableRowBody = Never
     let value: Value
@@ -103,10 +109,15 @@ public struct TableRow<Value: Identifiable>: TableRowContent {
     public var _rows: [Value] { [value] }
 }
 
-public struct TableForEachContent<Data: RandomAccessCollection>: TableRowContent where Data.Element: Identifiable {
+public struct TableForEachContent<Data: RandomAccessCollection, RowContent: TableRowContent>: TableRowContent
+    where Data.Element: Identifiable, RowContent.TableRowValue == Data.Element {
     public typealias TableRowValue = Data.Element
     public typealias TableRowBody = Never
     let data: Data
+    let content: (Data.Element) -> RowContent
+    public init(_ data: Data, content: @escaping (Data.Element) -> RowContent) {
+        self.data = data; self.content = content
+    }
     public var _rows: [Data.Element] { Array(data) }
 }
 
@@ -173,11 +184,11 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
 }
 
 extension Table {
-    public init<Data: RandomAccessCollection>(_ data: Data, @TableColumnBuilder<Value, Never> columns: () -> Columns) where Rows == TableForEachContent<Data>, Data.Element == Value {
-        rows = TableForEachContent(data: data); self.columns = columns(); selection = nil
+    public init<Data: RandomAccessCollection>(_ data: Data, @TableColumnBuilder<Value, Never> columns: () -> Columns) where Rows == TableForEachContent<Data, EmptyTableRowContent<Value>>, Data.Element == Value {
+        rows = TableForEachContent(data) { _ in EmptyTableRowContent() }; self.columns = columns(); selection = nil
     }
-    public init<Data: RandomAccessCollection>(_ data: Data, selection: Binding<Value.ID?>, @TableColumnBuilder<Value, Never> columns: () -> Columns) where Rows == TableForEachContent<Data>, Data.Element == Value {
-        rows = TableForEachContent(data: data); self.columns = columns()
+    public init<Data: RandomAccessCollection>(_ data: Data, selection: Binding<Value.ID?>, @TableColumnBuilder<Value, Never> columns: () -> Columns) where Rows == TableForEachContent<Data, EmptyTableRowContent<Value>>, Data.Element == Value {
+        rows = TableForEachContent(data) { _ in EmptyTableRowContent() }; self.columns = columns()
         self.selection = SelectionBox(current: { selection.wrappedValue.map { [AnyHashable($0)] } ?? [] },
                                       choose: { if let value = $0.base as? Value.ID { selection.wrappedValue = value } },
                                       clear: { selection.wrappedValue = nil })
@@ -225,4 +236,28 @@ extension Group: TableColumnContent where Content: TableColumnContent {
     public typealias TableColumnSortComparator = Content.TableColumnSortComparator
     public typealias TableColumnBody = Never
     public var _columns: [_AnyTableColumn<Content.TableRowValue>] { content._columns }
+}
+
+// The `of:` family: the row value is named rather than inferred from the rows closure, and the rows
+// themselves are built by the row builder, as the 26.2 interface declares.
+extension Table {
+    public init(of type: Value.Type, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
+        self.init(columns: columns, rows: rows)
+    }
+    public init(of type: Value.Type, selection: Binding<Value.ID?>, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
+        self.rows = rows(); self.columns = columns()
+        self.selection = SelectionBox(current: { selection.wrappedValue.map { [AnyHashable($0)] } ?? [] },
+                                      choose: { if let value = $0.base as? Value.ID { selection.wrappedValue = value } },
+                                      clear: { selection.wrappedValue = nil })
+    }
+    @_disfavoredOverload
+    public init(of type: Value.Type, selection: Binding<Set<Value.ID>>, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
+        self.rows = rows(); self.columns = columns()
+        self.selection = SelectionBox(current: { Set(selection.wrappedValue.map { AnyHashable($0) }) },
+                                      choose: { value in
+                                          guard let typed = value.base as? Value.ID else { return }
+                                          if selection.wrappedValue.contains(typed) { selection.wrappedValue.remove(typed) } else { selection.wrappedValue.insert(typed) }
+                                      },
+                                      clear: { selection.wrappedValue = [] })
+    }
 }
