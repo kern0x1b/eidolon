@@ -18,8 +18,8 @@ $DIGESTER -dump-sdk -module SwiftUI -o "$O/ours.json" -sdk "$SDK" -target armv7-
 python3 api-diff.py "$O/apple.json" "$O/ours.json" > "$O/gaps.txt"
 sort "$O/gaps.txt" | cut -f1 | uniq -c | sort -rn | head -30
 
-# The other direction: what this module declares that Apple's own 26.2 interface does not. An invented
-# public member is a row the ledger counts as covered and no reader of Apple's API ever asked for.
-IFACE=${APPLE_26_INTERFACE:-$HOME/Git/projects/ios/charon/.agent-work/sdk-26.2/iPhoneOS26.2.sdk/System/Library/Frameworks/SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface}
-python3 api-invented.py "$O/ours.json" "$IFACE" > "$O/invented.txt" || true
-echo "api-surface: $(wc -l < "$O/invented.txt" | tr -d ' ') public names here that Apple's 26.2 SwiftUI interface does not declare (see $O/invented.txt); STRICT=1 makes this a failure"
+# The other direction: what this module declares that no 26.2 interface of the modules we re-export
+# declares. An invented public member is a row the ledger counts as covered and no reader of Apple's
+# API ever asked for. APPLE_26_SDK overrides where those interfaces are looked for.
+python3 api-invented.py "$O/ours.json" > "$O/invented.txt" || true
+echo "api-surface: $(wc -l < "$O/invented.txt" | tr -d ' ') public names here that Apple's 26.2 does not declare (see $O/invented.txt); STRICT=1 makes this a failure"

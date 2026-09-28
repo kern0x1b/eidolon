@@ -1,28 +1,50 @@
 #!/usr/bin/env python3
 """api-invented.py OURS26 INTERFACE: the public members our module has that Apple's 26.2 interface does not.
 
-    api-invented.py ours.json arm64e-apple-ios.swiftinterface
+    api-invented.py ours.json
 
 The typed diff in api-diff.py asks what Apple's declarations are missing here. This asks the other
 question, which nothing else did: what does this module declare that Apple does not? A member invented
 rather than reimplemented is a row the ledger counts as covered and the reader of the API never asked
-for, so every such name is a line in the output and a non-empty output is a failure.
+for, so every such name is a line in the output.
+
+The oracle is the union of the 26.2 interfaces of the modules this one re-exports (APPLE_26_SDK
+overrides the root): the standard library, SwiftUI, SwiftUICore, Foundation, Combine, Observation,
+CoreGraphics and UIKit. Judging a re-export against SwiftUI's interface alone called half the standard
+library invented.
 """
+import glob
 import json
 import os
 import re
 import sys
 
-INTERFACE = sys.argv[2] if len(sys.argv) > 2 else os.environ.get(
-    'APPLE_26_INTERFACE',
-    os.path.expanduser('~/Git/projects/ios/charon/.agent-work/sdk-26.2/iPhoneOS26.2.sdk/System/Library/Frameworks/'
-                      'SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface'))
+SDK = os.environ.get('APPLE_26_SDK') or os.path.expanduser(
+    '~/Git/projects/ios/charon/.agent-work/sdk-26.2/iPhoneOS26.2.sdk')
 
-text = open(INTERFACE, errors='replace').read()
-# Apple's text qualifies everything with its module; the member name is what has to match ours
-text = re.sub(r'\b(?:Swift|SwiftUI|SwiftUICore|Foundation|CoreFoundation|UIKit|QuartzCore|ObjectiveC|CoreGraphics|Darwin|Dispatch)\.(?=[A-Z])', '', text)
-apple = set(re.findall(r'(?:func|var|let|init|subscript|typealias|case)\s+([A-Za-z_][\w]*)', text))
-apple |= set(re.findall(r'extension\s+(?:SwiftUI\.|SwiftUICore\.)?([A-Za-z_][\w]*)', text))
+# The oracle is every module this one re-exports, not SwiftUI alone: a name like `MutableCollection`
+# or `URL` is declared by the standard library, and judging it against SwiftUI's interface called it
+# invented. The union of the seven is what the module's own surface is written against.
+MODULES = ('Swift', 'SwiftUI', 'SwiftUICore', 'Foundation', 'Combine', 'Observation', 'CoreGraphics', 'UIKit')
+
+
+def interfaces():
+    for module in MODULES:
+        found = sorted(glob.glob(f'{SDK}/**/{module}.swiftmodule/*.swiftinterface', recursive=True))
+        if not found:
+            print(f'# no interface for {module} under {SDK}', file=sys.stderr)
+            continue
+        yield from found
+
+
+apple = set()
+for path in interfaces():
+    text = open(path, errors='replace').read()
+    # Apple's text qualifies everything with its module; the member name is what has to match ours
+    text = re.sub(r'\b(?:Swift|SwiftUI|SwiftUICore|Foundation|CoreFoundation|UIKit|QuartzCore|ObjectiveC|CoreGraphics|Darwin|Dispatch|Combine|Observation)\.(?=[A-Z])', '', text)
+    apple |= set(re.findall(r'(?:func|var|let|init|subscript|typealias|case)\s+([A-Za-z_][\w]*)', text))
+    apple |= set(re.findall(r'(?:struct|class|enum|protocol|actor|typealias)\s+([A-Za-z_][\w]*)', text))
+    apple |= set(re.findall(r'extension\s+(?:SwiftUI\.|SwiftUICore\.)?([A-Za-z_][\w]*)', text))
 apple |= {'==', 'hash', 'self', 'Type', 'init', 'some', 'get', 'set'}
 
 root = json.load(open(sys.argv[1]))['ABIRoot']
@@ -78,7 +100,7 @@ for owner, name, access in invented:
         continue
     seen.add(key)
     print(f'{owner:34} {access:10} {name}')
-print(f'# {len(seen)} public names in ours that the 26.2 SwiftUI interface does not declare', file=sys.stderr)
+print(f'# {len(seen)} public names in ours that no 26.2 interface of the modules we re-export declares', file=sys.stderr)
 # The oracle is SwiftUI's own interface, so the standard library and Foundation that this module
 # re-exports are all "invented" by that measure. STRICT=1 makes a non-empty list fail; until the
 # re-exports are whitelisted the list is reported and the check does not stop a build.
