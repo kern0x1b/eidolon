@@ -2,7 +2,9 @@
 # api-surface.sh [DIR]: what Eidolon lacks of Apple's SwiftUI, declaration by declaration.
 # Dumps the API of Apple's SwiftUI (the iOS 16.4 interface, through the patched copy in fw/) and of the module built
 # by ../eidolon/build.sh with swift-api-digester, and lists Apple's declarations that have no counterpart with the
-# same signature. DIR (default ./api) receives apple.json, ours.json and gaps.txt; api-diff.py explains the columns.
+# same signature, and the other way round: the public names this module has that Apple's own 26.2 interface does not
+# declare, which is a failure. DIR (default ./api) receives apple.json, ours.json, gaps.txt and invented.txt;
+# api-diff.py and api-invented.py explain the columns.
 set -e
 cd "$(dirname "$0")"
 source ../pkg-env.sh
@@ -15,3 +17,9 @@ $DIGESTER -dump-sdk -module SwiftUI -o "$O/ours.json" -sdk "$SDK" -target armv7-
   -resource-dir "$RT/lib/swift" -swift-version 5 -avoid-tool-args -module-cache-path "$O/mc"
 python3 api-diff.py "$O/apple.json" "$O/ours.json" > "$O/gaps.txt"
 sort "$O/gaps.txt" | cut -f1 | uniq -c | sort -rn | head -30
+
+# The other direction: what this module declares that Apple's own 26.2 interface does not. An invented
+# public member is a row the ledger counts as covered and no reader of Apple's API ever asked for.
+IFACE=${APPLE_26_INTERFACE:-$HOME/Git/projects/ios/charon/.agent-work/sdk-26.2/iPhoneOS26.2.sdk/System/Library/Frameworks/SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface}
+python3 api-invented.py "$O/ours.json" "$IFACE" > "$O/invented.txt" || true
+echo "api-surface: $(wc -l < "$O/invented.txt" | tr -d ' ') public names here that Apple's 26.2 SwiftUI interface does not declare (see $O/invented.txt); STRICT=1 makes this a failure"

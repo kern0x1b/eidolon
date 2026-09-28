@@ -319,7 +319,7 @@ extension Table {
 extension KeyPathComparator {
     /// What a tap on a sortable column's header writes: the same column again with the order turned
     /// when it is already the first one, and that column first and forward when it is a new one.
-    public func ordering<C: Comparable>(_ comparators: [KeyPathComparator<Value>], after key: KeyPath<Value, C>) -> [KeyPathComparator<Value>] {
+    func ordering<C: Comparable>(_ comparators: [KeyPathComparator<Value>], after key: KeyPath<Value, C>) -> [KeyPathComparator<Value>] {
         if comparators.first?.key == (key as AnyKeyPath) {
             var turned = comparators
             turned[0].ascending = !turned[0].ascending

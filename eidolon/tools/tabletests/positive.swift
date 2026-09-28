@@ -54,20 +54,8 @@ func sortedForms() {
     _ = (overRows, overData, selected)
 }
 
-// the order a tap on a sortable column's header writes: the same column again with the order turned,
-// and a new column first and forward
-func headerTapOrdering() {
-    let ascending = KeyPathComparator(\Row.name)
-    let descending = KeyPathComparator(\Row.name, ascending: false)
-    let byID = KeyPathComparator(\Row.id)
-    let forward = ascending.ordering([], after: \Row.name)
-    let turned = ascending.ordering(forward, after: \Row.name)
-    let moved = ascending.ordering(turned, after: \Row.id)
-    check(forward == [ascending], "a new column goes first and forward")
-    check(turned == [descending], "the same column again turns the order")
-    check(moved == [byID, descending], "another column goes in front of the rest")
-    _ = (ascending, descending, byID)
-}
+// the order a header tap writes is the table's own: it is driven through Table's behaviour, which the
+// engine tests exercise, and is not public API here.
 
 // an editable list: the rows are written against the element's own binding
 func editableList(_ items: Binding<[Row]>) {

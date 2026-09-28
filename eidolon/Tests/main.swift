@@ -25,6 +25,32 @@ func equal<T: Equatable>(_ got: T, _ want: T, _ what: String) {
 }
 
 // leaf views only, in the coordinates of the host view: that is what a person sees
+/// The text of every label under a view, top to bottom.
+func labels(of view: UIView) -> [String] {
+    var found: [(CGFloat, String)] = []
+    var stack: [UIView] = [view]
+    while let current = stack.popLast() {
+        if let label = current as? UILabel, let text = label.text, !text.isEmpty {
+            found.append((label.convert(label.bounds, to: view).minY, text))
+        }
+        stack.append(contentsOf: current.subviews)
+    }
+    return found.sorted { $0.0 < $1.0 }.map { $0.1 }
+}
+
+/// Where each text sits on screen, so the order a table shows can be read off it.
+func positions(of view: UIView) -> [String: CGFloat] {
+    var seen: [String: CGFloat] = [:]
+    var stack: [UIView] = [view]
+    while let current = stack.popLast() {
+        if let label = current as? UILabel, let text = label.text, !text.isEmpty, seen[text] == nil {
+            seen[text] = label.convert(label.bounds, to: view).minY
+        }
+        stack.append(contentsOf: current.subviews)
+    }
+    return seen
+}
+
 func frames(_ probe: _Probe) -> [CGRect] {
     var out: [CGRect] = []
     func walk(_ v: UIView) {
@@ -2357,6 +2383,46 @@ if let scroller = firstScroller(positioned.hostView) {
     positioned.flush()
     equal(scroller.contentOffset.y, 200, "scrollTo(edge: .bottom) rests at the end of the content")
 } else { check(false, "the scroll view with a position made a scroller") }
+
+// A sorted table shows the rows in the order its binding names: the app sorts, the table shows.
+struct SortRow: Identifiable, Comparable {
+    let id: Int
+    let name: String
+    static func < (a: SortRow, b: SortRow) -> Bool { a.name < b.name }
+}
+struct SortTableCase: View {
+    let rows: [SortRow]
+    @Binding var order: [KeyPathComparator<SortRow>]
+    var body: some View {
+        Table(of: SortRow.self, sortOrder: $order) {
+            TableColumn("name", value: \.name)
+        } rows: {
+            ForEach(rows) { TableRow($0) }
+        }
+    }
+}
+func sortedTableShowsTheOrderTheBindingNames() {
+    let rows = [SortRow(id: 0, name: "c"), SortRow(id: 1, name: "a"), SortRow(id: 2, name: "b")]
+    var order: [KeyPathComparator<SortRow>] = []
+    let holder = SortOrderBox(order: order)
+    let probe = _Probe(SortTableCase(rows: rows, order: Binding(get: { holder.order }, set: { holder.order = $0 })),
+                      width: 200, height: 200)
+    _ = frames(probe)
+    let texts = labels(of: probe.hostView)
+    check(texts.contains("c") && texts.contains("a") && texts.contains("b"), "a table with no order shows every row")
+    holder.order = [KeyPathComparator(\.name)]
+    probe.flush()
+    let sorted = labels(of: probe.hostView)
+    let forward = positions(of: probe.hostView)
+    check(forward["a"]! < forward["b"]! && forward["b"]! < forward["c"]!,
+          "the rows follow the order the binding names, a before b before c")
+    holder.order = [KeyPathComparator(\.name, ascending: false)]
+    probe.flush()
+    let back = positions(of: probe.hostView)
+    check(back["c"]! < back["b"]! && back["b"]! < back["a"]!, "and a descending order puts c first")
+}
+final class SortOrderBox { var order: [KeyPathComparator<SortRow>]
+    init(order: [KeyPathComparator<SortRow>]) { self.order = order } }
 
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
