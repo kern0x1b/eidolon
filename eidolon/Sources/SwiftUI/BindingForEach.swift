@@ -1,9 +1,12 @@
 import UIKit
 
-public struct _IndexedIdentifier<Index, ID: Hashable> {
+// The identity a ForEach asks for, so a collection of these needs no key path of its own.
+public struct _IndexedIdentifier<Index, ID: Hashable>: Identifiable {
     let index: Index
-    let id: ID
+    public var id: ID { identity }
+    var identity: ID
 }
+
 
 protocol _EditHooks {
     var deleteHook: ((IndexSet) -> Void)? { get }
@@ -30,7 +33,7 @@ extension ForEach: EditableContent where Data: _EditHooks, Content: View {
 }
 
 func indexed<C: RandomAccessCollection, ID: Hashable>(_ collection: C, id: KeyPath<C.Element, ID>) -> [_IndexedIdentifier<C.Index, ID>] where C.Index: Hashable {
-    collection.indices.map { _IndexedIdentifier(index: $0, id: collection[$0][keyPath: id]) }
+    collection.indices.map { _IndexedIdentifier(index: $0, identity: collection[$0][keyPath: id]) }
 }
 
 func elementBinding<C: MutableCollection>(_ data: Binding<C>, _ index: C.Index) -> Binding<C.Element> {
