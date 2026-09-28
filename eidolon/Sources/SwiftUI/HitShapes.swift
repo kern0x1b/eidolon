@@ -60,7 +60,7 @@ extension View {
     }
     public func datePickerStyle<S: DatePickerStyle>(_ style: S) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
-            environment.datePickerBody = { configuration in AnyView(style._body(configuration: configuration)) }
+            environment.datePickerBody = { configuration in AnyView(style.makeBody(configuration: configuration)) }
         }, onUpdate: nil))
     }
 }

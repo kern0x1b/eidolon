@@ -294,6 +294,22 @@ struct CalendarCase: View {
     }
 }
 
+/// A date picker in each of the three styles, so the label is in the tree for all of them.
+struct DatePickerStyleCase: View {
+    @State var date = Date(timeIntervalSince1970: 1_260_000_000)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            DatePicker("Birthday", selection: $date, displayedComponents: .date)
+                .datePickerStyle(.field)
+            DatePicker("Appointment", selection: $date, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.stepperField)
+            DatePicker("Released", selection: $date)
+                .datePickerStyle(.wheel)
+        }
+        .padding(10)
+    }
+}
+
 struct NavigationCase: View {
     @State var active = true
     var body: some View {
@@ -453,6 +469,7 @@ func snapshotCases() -> [SnapshotCase] {
         SnapshotCase(name: "pickers", width: 320, height: 300, view: PickersCase(), inWindow: true),
         SnapshotCase(name: "progress", width: 320, height: 200, view: ProgressCase()),
         SnapshotCase(name: "calendar", width: 320, height: 300, view: CalendarCase()),
+        SnapshotCase(name: "date-picker-styles", width: 320, height: 300, view: DatePickerStyleCase()),
         SnapshotCase(name: "suggestions", width: 320, height: 300, view: SuggestionsCase(model: suggesting), inWindow: true,
                      action: activateSearch,
                      note: { "isSearching \(suggesting.searching)" }),

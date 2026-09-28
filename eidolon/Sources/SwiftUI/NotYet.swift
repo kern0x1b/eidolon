@@ -133,14 +133,16 @@ protocol WrappedView { var wrapped: any View { get } }
 /// How a date picker is drawn. iOS 6 has one `UIDatePicker`, the wheel, so a style says which of the
 /// things around it are drawn and the wheel itself is what it always is.
 public protocol DatePickerStyle {
+    associatedtype Body: View
     typealias Configuration = DatePickerStyleConfiguration
     associatedtype _Body: View = EmptyView
-    /// The view the style puts above the wheel; nothing at all is the release's own picker alone.
-    @ViewBuilder func _body(configuration: Configuration) -> _Body
+    @ViewBuilder func makeBody(configuration: Configuration) -> Body
 }
 
+/// The view the style puts above the wheel; nothing at all is the release's own picker alone, which is
+/// what Apple's own default `_Body` gives.
 extension DatePickerStyle {
-    public func makeBody(configuration: Configuration) -> some View { _body(configuration: configuration) }
+    public func _body(configuration: Configuration) -> EmptyView { EmptyView() }
 }
 
 public struct DatePickerStyleConfiguration {
@@ -165,12 +167,16 @@ public struct DatePickerStyleConfiguration {
 
 public struct WheelDatePickerStyle: DatePickerStyle {
     public init() {}
-    public func _body(configuration: DatePickerStyleConfiguration) -> EmptyView { EmptyView() }
+    /// The wheel of the release, with the label above it, which is where SwiftUI puts it.
+    public func makeBody(configuration: Configuration) -> AnyView {
+        AnyView(configuration.label)
+    }
 }
 
 public struct CompactDatePickerStyle: DatePickerStyle {
     public init() {}
-    public func _body(configuration: DatePickerStyleConfiguration) -> some View {
+    public typealias Body = AnyView
+    public func makeBody(configuration: Configuration) -> AnyView {
         _Unsupported.note("DatePickerStyle.compact", "UIDatePicker on iOS 6 has only the wheel, so a compact date picker is the wheel with just the components that were asked for")
         return AnyView(configuration.label)
     }
@@ -178,7 +184,8 @@ public struct CompactDatePickerStyle: DatePickerStyle {
 
 public struct GraphicalDatePickerStyle: DatePickerStyle {
     public init() {}
-    public func _body(configuration: DatePickerStyleConfiguration) -> some View {
+    public typealias Body = AnyView
+    public func makeBody(configuration: Configuration) -> AnyView {
         _Unsupported.note("DatePickerStyle.graphical", "iOS 6 has no calendar view, so a graphical date picker is the wheel of the date alone")
         return AnyView(configuration.label)
     }
@@ -188,16 +195,26 @@ public struct GraphicalDatePickerStyle: DatePickerStyle {
 /// what this style is there for.
 public struct FieldDatePickerStyle: DatePickerStyle {
     public init() {}
-    public func _body(configuration: DatePickerStyleConfiguration) -> some View {
-        _DateField(date: configuration.selection, components: configuration.displayedComponents)
+    /// The date in a field with the label beside it, as a cell of a grouped table shows one.
+    public func makeBody(configuration: Configuration) -> AnyView {
+        AnyView(HStack(alignment: .center, spacing: 8) {
+            configuration.label
+            Spacer()
+            _DateField(date: configuration.selection, components: configuration.displayedComponents)
+        })
     }
 }
 
 /// The same field with the two steppers beside it that walk the date by a day or an hour.
 public struct StepperFieldDatePickerStyle: DatePickerStyle {
     public init() {}
-    public func _body(configuration: DatePickerStyleConfiguration) -> some View {
-        _DateStepperField(date: configuration.selection, components: configuration.displayedComponents)
+    /// The same field with the label and the two steppers of iOS 6 beside it.
+    public func makeBody(configuration: Configuration) -> AnyView {
+        AnyView(HStack(alignment: .center, spacing: 8) {
+            configuration.label
+            Spacer()
+            _DateStepperField(date: configuration.selection, components: configuration.displayedComponents)
+        })
     }
 }
 

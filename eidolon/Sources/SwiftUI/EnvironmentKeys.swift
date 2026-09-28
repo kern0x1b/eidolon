@@ -22,6 +22,7 @@ struct ControlSizeKey: EnvironmentKey { static var defaultValue: ControlSize { .
 struct HorizontalSizeClassKey: EnvironmentKey { static var defaultValue: UserInterfaceSizeClass? { nil } }
 struct VerticalSizeClassKey: EnvironmentKey { static var defaultValue: UserInterfaceSizeClass? { nil } }
 struct DisplayScaleKey: EnvironmentKey { static var defaultValue: CGFloat { UIScreen.main.scale } }
+struct IsPressedKey: EnvironmentKey { static var defaultValue: Bool { false } }
 struct OpenURLKey: EnvironmentKey { static var defaultValue: OpenURLAction { OpenURLAction() } }
 struct SymbolRenderingModeKey: EnvironmentKey { static var defaultValue: SymbolRenderingMode { .monochrome } }
 struct VerticalScrollIndicatorKey: EnvironmentKey { static var defaultValue: Visibility { .automatic } }
@@ -133,6 +134,12 @@ extension EnvironmentValues {
     public var listSectionSpacing: CGFloat {
         get { self[ListSectionSpacingKey.self] }
         set { self[ListSectionSpacingKey.self] = newValue }
+    }
+    /// Whether the button being pressed is down. SwiftUI's own primitive button styles read this
+    /// rather than a member of their configuration, and so do ours.
+    public var isPressed: Bool {
+        get { self[IsPressedKey.self] }
+        set { self[IsPressedKey.self] = newValue }
     }
     public var locale: Locale {
         get { self[LocaleKey.self] }

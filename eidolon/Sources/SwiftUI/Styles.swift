@@ -29,7 +29,6 @@ public struct PrimitiveButtonStyleConfiguration {
     }
     public let label: Label
     public let role: ButtonRole?
-    public let isPressed: Bool
     let action: () -> Void
     public func trigger() { action() }
 }
@@ -65,33 +64,37 @@ public struct Glass: Hashable {
 }
 
 public struct DefaultButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 14))
-            .background(configuration.isPressed ? Color(white: 0.85) : Color.white, cornerRadius: 8)
+            .background(isPressed ? Color(white: 0.85) : Color.white, cornerRadius: 8)
             .border(Color(white: 0.7), width: 1)
     }
 }
 
 public struct PlainButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(configuration.isPressed ? 0.4 : 1)
+        configuration.label.opacity(isPressed ? 0.4 : 1)
     }
 }
 
 public struct BorderedButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: configuration.isPressed)
+        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: isPressed)
     }
 }
 
 public struct BorderedProminentButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: AnyView(configuration.label), prominent: true, pressed: configuration.isPressed)
+        _BorderedChrome(label: AnyView(configuration.label), prominent: true, pressed: isPressed)
     }
 }
 
@@ -99,19 +102,22 @@ public struct BorderedProminentButtonStyle: PrimitiveButtonStyle {
 // blue word, a link is blue and underlined, and a card is the rounded button of the release without the
 // fill gradient. Glass and the accessory bar have nothing to correspond to and say so in the journal.
 public struct LinkButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
+
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(Color(red: 0.11, green: 0.37, blue: 0.80))
             .underline(true, color: Color(red: 0.11, green: 0.37, blue: 0.80))
-            .opacity(configuration.isPressed ? 0.4 : 1)
+            .opacity(isPressed ? 0.4 : 1)
     }
 }
 
 public struct CardButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: configuration.isPressed)
+        _BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: isPressed)
     }
 }
 
@@ -136,6 +142,8 @@ extension PrimitiveButtonStyle where Self == LinkButtonStyle {
 }
 
 public struct GlassButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
+
     var glass: Glass
     public init() { glass = .regular }
     public init(_ glass: Glass) { self.glass = glass }
@@ -145,11 +153,13 @@ public struct GlassButtonStyle: PrimitiveButtonStyle {
             .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
             .background(Color(UIColor(white: 0.97, alpha: glass.thickness == .thick ? 0.9 : 0.75)), cornerRadius: 7)
             .border(Color(white: 0.62), width: 1)
-            .opacity(configuration.isPressed ? 0.4 : 1))
+            .opacity(isPressed ? 0.4 : 1))
     }
 }
 
 public struct GlassProminentButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
+
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         _Unsupported.note("PrimitiveButtonStyle.glassProminent", "iOS 6 has no live blur, so a glass button is the release's own button drawn translucent")
@@ -157,25 +167,28 @@ public struct GlassProminentButtonStyle: PrimitiveButtonStyle {
             .foregroundColor(.white)
             .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
             .background(Color(red: 0.20, green: 0.42, blue: 0.78).opacity(0.85), cornerRadius: 7)
-            .opacity(configuration.isPressed ? 0.4 : 1))
+            .opacity(isPressed ? 0.4 : 1))
     }
 }
 
 public struct AccessoryBarButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         _Unsupported.note("PrimitiveButtonStyle.accessoryBar", "iOS 6 has no accessory bar, so the button is the release's own")
-        return AnyView(_BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: configuration.isPressed))
+        return AnyView(_BorderedChrome(label: AnyView(configuration.label), prominent: false, pressed: isPressed))
     }
 }
 
 public struct AccessoryBarActionButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.isPressed) var isPressed
+
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         _Unsupported.note("PrimitiveButtonStyle.accessoryBarAction", "iOS 6 has no accessory bar, so the button is the release's own")
         return AnyView(configuration.label
             .foregroundColor(Color(red: 0.11, green: 0.37, blue: 0.80))
-            .opacity(configuration.isPressed ? 0.4 : 1))
+            .opacity(isPressed ? 0.4 : 1))
     }
 }
 
@@ -332,7 +345,7 @@ public struct DefaultMenuStyle: MenuStyle {
 
 public struct DefaultDatePickerStyle: DatePickerStyle {
     public init() {}
-    public func _body(configuration: DatePickerStyleConfiguration) -> EmptyView { EmptyView() }
+    public func makeBody(configuration: Configuration) -> some View { EmptyView() }
 }
 public struct SeparatorShapeStyle: ShapeStyle {
     public init() {}

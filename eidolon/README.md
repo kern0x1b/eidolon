@@ -24,8 +24,8 @@
 ### Что поддержано, что игнорируется, чего нет
 
 Счёт ведётся скриптом `coverage.py` по интерфейсу SwiftUI из SDK 16.4 (592 публичных типа, 311 модификаторов `View`).
-На сегодня: **509 типов** и **311 модификаторов**, из них **190 действуют**, 0 заглушки (пишут в журнал), 121 объявлены и игнорируются.
-Из того, что Apple объявляет доступным на iOS: **491 из 520 типов** и **289 из 289 модификаторов**, из них **189 действуют**, 0 заглушки, 100 игнорируются
+На сегодня: **509 типов** и **311 модификаторов**, из них **189 действуют**, 0 заглушки (пишут в журнал), 122 объявлены и игнорируются.
+Из того, что Apple объявляет доступным на iOS: **491 из 520 типов** и **289 из 289 модификаторов**, из них **188 действуют**, 0 заглушки, 101 игнорируются
 (остальное в интерфейсе помечено `@available(iOS, unavailable)` — это macOS, tvOS и watchOS; списки строит `../bridge/ios-surface.py`).
 
 **Что эти числа не говорят.** Счёт выше — по *именам* типов и модификаторов. По декларациям картина строже:
@@ -55,7 +55,7 @@
 | Модальность | `.sheet` (в том числе `sheet(item:)`), `.fullScreenCover`, `.alert` (родной `UIAlertView`), `.actionSheet`, `.confirmationDialog`, `contextMenu`, `presentationMode` |
 | Оформление | фон и накладка стилем (`.background(.ultraThinMaterial)`, `.background(.blue, in: Capsule())`, `.background(in:)` с `backgroundStyle`), `foregroundStyle` со `ShapeStyle`, `containerShape` для `ContainerRelativeShape`, `contentTransition` (смена текста наплывом `CATransition`), `projectionEffect` (`CATransform3D`), `compositingGroup` (растеризация слоя — так в iOS 6 получается групповая прозрачность), `buttonBorderShape` для `bordered`/`borderedProminent`, `opacity`, `cornerRadius`, `border`, `shadow`, `clipped`, `clipShape`, `offset`, `rotationEffect`, `scaleEffect`, `overlay`, `background` видом, `hidden`, `zIndex`, `drawingGroup`, `redacted` |
 | Жесты | Движок с типизированными событиями: `TapGesture`, `SpatialTapGesture`, `LongPressGesture` (нажатие с момента касания, а не через `minimumDuration`), `DragGesture` (с `minimumDistance` и `coordinateSpace`), `MagnificationGesture`, `RotationGesture`; `onChanged`, `onEnded`, `map`, `updating` с `@GestureState` (значение сбрасывается, когда жест кончился или отменён), `simultaneously`, `sequenced` (второй жест ждёт первого), `exclusively` (второй ждёт, пока не откажет первый), `AnyGesture`, жесты, собранные через `body`; `gesture`, `simultaneousGesture`, `highPriorityGesture` с `including:`; `onTapGesture`, `onLongPressGesture` с `onPressingChanged`; `contentShape` (форма, в которой жест принимает касание) |
-| Анимация | `Keyframes` и `KeyframeTrack` с `KeyframeTrackContent`, `KeyframesBuilder`, `CubicKeyframe`, `LinearKeyframe`, `SpringKeyframe`, `MoveKeyframe`, `KeyframeAnimator` и `PhaseAnimator` (вид показывает значение, которое ведёт по кадрам его трек, фаза живёт столько, сколько длится её анимация), `CustomAnimation` с `AnimationContext` и `AnimationState`, `Animation.custom` (`animate`, `velocity`, `shouldMerge`, `base`), `Transaction.addAnimationCompletion(criteria:_:)` (замыкание выполняется, когда анимация транзакции кончилась), `Animation` (
+| Анимация | `Keyframes` и `KeyframeTrack` с `KeyframeTrackContent`, `KeyframesBuilder`, `CubicKeyframe`, `LinearKeyframe`, `SpringKeyframe`, `MoveKeyframe`, `KeyframeAnimator` и `PhaseAnimator` (вид показывает значение, которое ведёт по кадрам его трек, фаза живёт столько, сколько длится её анимация), `CustomAnimation` с `AnimationContext` и `AnimationState`, `Animation.custom` (`animate`, `velocity`, `shouldMerge`, `base`), `Transaction.addAnimationCompletion(criteria:_:)` (замыкание выполняется, когда анимация транзакции кончилась), `Animation` (`.linear`, `.easeIn`, `.easeOut`, `.easeInOut`, `.spring` — по `response:dampingFraction:`, по `duration:bounce:` и по `Spring`, `.interactiveSpring`, `.interpolatingSpring`, `.smooth`, `.snappy`, `.bouncy`, `timingCurve(_:duration:)` для `UnitCurve` и для четырёх точек, `delay`, `speed`, `repeatCount`, `repeatForever`, `logicallyComplete`), `Spring` (все четыре способа построить, `value`/`velocity`/`force`/`update` для `VectorArithmetic` и для `Animatable`, `settlingDuration`, `smooth`/`snappy`/`bouncy`), `UnitCurve` (кривые Безье и три круговые, `value`, `velocity`, `inverse`, `bezier(startControlPoint:endControlPoint:)`), `withAnimation`, `.animation` поверх `UIView.animate`, `repeatForever`, `repeatCount` (с `autoreverses`), `transition`, `matchedGeometryEffect` с `@Namespace` (новый вид едет из места старого); **данные `Animatable` интерполируются кадр за кадром** у своих `Shape` (`animatableData`), `GeometryEffect`, `ViewModifier & Animatable` и `Layout`; у встроенных — `trim`, углы `RoundedRectangle`, `offset`, `scale`, `rotation` фигур |
 | Геометрия | `Path` (`forEach`, `addLines`, `addRects`, `addRelativeArc`, `strokedPath`, `trimmedPath`), `Shape.trim`, `Shape.size`, `Shape.sizeThatFits` (круг берёт меньшую сторону), `GeometryEffect` (переход слоя по `ProjectionTransform`, начало координат в левом верхнем углу, как у Apple), `ProjectionTransform` (`concatenating`, `inverted`, `isAffine`) |
 | Анимация | `Animation`, `withAnimation`, `.animation` поверх `UIView.animate`, `transition`, `matchedGeometryEffect` с `@Namespace` (новый вид едет из места старого) |
 | Core Data | `@FetchRequest` и `SectionedFetchRequest` поверх `NSFetchedResultsController` (перечитывание при сохранении контекста, изменение предиката и сортировки через `$request`), `FetchedResults`, `SectionedFetchResults`, `\.managedObjectContext` |
@@ -228,14 +228,14 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   не мог). Ключ — это хранилище: значение читают виды и пишут модификаторы, независимо от того, читает ли его
   сегодня хоть один вид. Значения, названные типами, которых у этого порта нет, объявлены рядом
   (`EnvironmentValueTypes.swift`) по списку случаев из интерфейса Apple.
-  Не объявлены 12: `immersiveSpaceDisplacement` (тип `Spatial.Pose3D` — Spatial не фреймворк iOS),
+  Не объявлены 18: `immersiveSpaceDisplacement` (тип `Spatial.Pose3D` — Spatial не фреймворк iOS),
   `openImmersiveSpace` и `dismissImmersiveSpace` (immersive space — виvisionOS), `allowedDynamicRange`
   (запас яркости выше SDR у экранов iOS 6 нет), `openWindow`, `pushWindow`, `dismissWindow`, `openSettings`,
   `newDocument`, `openDocument` и `rename` (окон и документов в iOS 6 нет), `realHorizontalSizeClass` и
   `realVerticalSizeClass` (классы размера Catalyst), `defaultWheelPickerItemHeight` (колесо выбора — watchOS),
   `isSceneCaptured`, `fontResolutionContext` (`Font.Context` — тип SwiftUI iOS 18, вложенного `Context` у нашего
   `Font` нет), `lineHeight` и `_lineHeightMultiple` (это свойства `AttributedString`, которого в этом заходе
-  ещё нет). Для них — `bridge/not-applicable.txt`.
+  ещё нет). Для них — `bridge/not-applicable.txt` (16 строк); `lineHeight` и `_lineHeightMultiple` ждут `AttributedString`.
 
 - `SymbolVariants` взят из OpenSwiftUI (MIT, `OpenSwiftUIProject/OpenSwiftUI`,
   `Sources/OpenSwiftUICore/View/Image/SymbolVariants.swift`, коммит `efa1037`): вариант символа с его
@@ -248,27 +248,45 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   на `Environment` этого движка — переносить их к iOS 6 нечего, пока не будет решено, чем заменяется граф.
   `ParagraphTypesetting` (насколько абзац сжимается, где переносится) — тоже, и он опирается на тот же граф.
 
-- Настройки текста, которые добавил SDK 26.2: `typesettingLanguage` (одним шрифтом iOS 6 настройки нет),
-  `textScale` и `textVariant` (вариантов размера и ширины у текста iOS 6 нет) и четыре речи
+- Настройки текста, которые добавил SDK 26.2. `TypesettingLanguage` и `Text.Scale` взяты из OpenSwiftUI
+  (MIT, `Sources/OpenSwiftUICore/View/Text/Typesetting/TypesettingLanguage.swift` и
+  `Sources/OpenSwiftUICore/View/Text/Text/Text+Scale.swift`, оба «Status: Complete», коммит `efa1037`):
+  `automatic`/`explicit(_:)`, `.default`/`.secondary` и `textScale` в окружении. Модификаторы объявлены и
+  на `Text`, и на `View` — как их и объявляет интерфейс 26.2: `typesettingLanguage` (одним шрифтом iOS 6
+  настройки нет), `textScale` и `textVariant` (вариантов размера и ширины у текста iOS 6 нет;
+  `textVariant` — над `TextVariantPreference`, с `FixedTextVariant` и `SizeDependentTextVariant`), плюс
+  `writingDirection(strategy:)` и `multilineTextAlignment(strategy:)` с их тремя случаями — обе
+  стратегии пишут в журнал, обе названы там же. `writingDirection` и `multilineTextAlignment` —
+  имена этих двух модификаторов в журнале. И четыре речи
   VoiceOver — `speechAlwaysIncludesPunctuation`, `speechSpellsOutCharacters`, `speechAdjustedPitch`,
-  `speechAnnouncementsQueued` (`UIAccessibility` iOS 6 таких атрибутов не имеет). Каждый пишет в журнал.
+  `speechAnnouncementsQueued`. Сами четыре атрибута в каноне этого порта есть
+  (`apple-backports/UIKit/UIAccessibilitySpeechAttributes.m` и два соседа, `registry/UIKit/ios13rest.json`),
+  а VoiceOver iOS 6 не читает ни одного с атрибутированной строки —
+  `apple-backports/facts/UIKit/UIAccessibilitySpeechAttributes.md`; каждый пишет в журнал именно с этим.
+  Эти четыре `Text`-перегрузки — то, что добавил 26.2; `View`-перегрузки были уже в 16.4.
   `TypesettingLanguage` назван по идентификатору языка: в Foundation этой поры нет `Locale.Language`.
 - `PlainButtonStyle`, `BorderedButtonStyle`, `BorderedProminentButtonStyle`, `DefaultButtonStyle` и
   `BorderlessButtonStyle` — это `PrimitiveButtonStyle`, а не `ButtonStyle`, как в обоих SDK, которые у нас
   есть (в 16.4 и в 26.2 у `ButtonStyle` нет ни одного `where Self ==`-расширения, а эти шесть стилей объявлены
   как `PrimitiveButtonStyle`); наши пять имён `ButtonStyle.plain` и подобных выдуманы и убраны.
 
-- Стили кнопки, которых у SwiftUI 26.2 больше, чем было в 16.4: `PrimitiveButtonStyle.link` (синее подчёркнутое слово,
-  как ссылка в `UITableViewCell` iOS 6), `.card` (скруглённая кнопка релиза без градиентной заливки),
+- Стили кнопки. `link` (синее подчёркнутое слово, как ссылка в `UITableViewCell` iOS 6) и `card`
+  (скруглённая кнопка релиза без градиентной заливки) есть и в 16.4, и в 26.2 — их не хватало у нас.
+  Добавляет 26.2:
   `PrimitiveButtonStyle.glass` и `PrimitiveButtonStyle.glassProminent` (живого размытия в iOS 6 нет — кнопка
   рисуется полупрозрачной, пишет в журнал), `PrimitiveButtonStyle.accessoryBar` и
   `PrimitiveButtonStyle.accessoryBarAction` (панели над клавиатурой в iOS 6 нет — рисуется кнопка релиза, пишет в журнал),
   `Glass` (толщина стекла — это то, чем заливается полупрозрачная заливка), `ButtonRole.confirm` и `.close`.
-  У `PrimitiveButtonStyleConfiguration` появилось `isPressed` — так его и передаёт узел кнопки.
+- Нажатие кнопки — это `EnvironmentValues.isPressed`, как в SwiftUI: узел кнопки пишет его в окружение
+  содержимого, и стиль читает `@Environment(\.isPressed)`. В `PrimitiveButtonStyleConfiguration` такого
+  члена нет ни в 16.4, ни в 26.2, и мы его не добавляем.
 - Стили `DatePicker` получили форму: `DatePickerStyle` требует `_body(configuration:)`, у конфигурации есть отметка,
   выбор, границы и показываемые компоненты. `.field` рисует дату в рамке, как ячейка сгруппированной таблицы iOS 6,
   а `.stepperField` — то же поле с двумя `UIStepper` по краям, которые идут по дате на сутки или на час.
-  `DatePickerStyle.compact` и `DatePickerStyle.graphical` пишут в журнал: `UIDatePicker` в iOS 6 умеет только колесо, поэтому колесо и остаётся.
+  Требование протокола — `makeBody(configuration:)`, как у Apple; `_body(configuration:)` есть, но по
+  умолчанию отдаёт `EmptyView`, и движок зовёт `makeBody`. Отметка показа везде на месте: над колесом у
+  `.wheel`, рядом с полем у `.field` и между полем и степперами у `.stepperField` (сценарий
+  `date-picker-styles`). `DatePickerStyle.compact` и `DatePickerStyle.graphical` пишут в журнал: `UIDatePicker` в iOS 6 умеет только колесо, поэтому колесо и остаётся.
 
 - `Double` и `Float` отвечают `Animatable` сами собой (`animatableData` — сам тип), как у Apple: без этого дорожку
   ключевых кадров нельзя построить над числом.
