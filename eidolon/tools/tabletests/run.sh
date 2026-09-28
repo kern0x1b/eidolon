@@ -4,9 +4,20 @@
 # that the row value reaches through ForEach and Group as the element's own type; the negative one says a
 # Text is not table content. Build the module first (eidolon/build.sh), which writes eidolon/out/mods.
 set -u
-ROOT=$(cd "$(dirname "$0")/../../.." && pwd); O=$ROOT/eidolon/out
+ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
+O=$ROOT/eidolon/out
+# pkg-env.sh finds the packages under $PWD, so it is read from the repository root, the way build.sh does
+cd "$ROOT"
+source ./pkg-env.sh
+# Without a compiler there is nothing to type-check, and a snippet that was never checked would read as a
+# snippet that passed. Say so and fail.
+if [ -z "${SWIFTC:-}" ] || [ ! -x "${SWIFTC:-}" ]; then
+  echo "tabletests: no swiftc: pkg-env.sh set SWIFTC='${SWIFTC:-}'" >&2
+  echo "tabletests: run this from a tree with eidolon/xmake-global, after eidolon/build.sh" >&2
+  exit 2
+fi
 cd "$ROOT/eidolon"
-source "$ROOT/pkg-env.sh"
+
 # The positive snippet must compile, and the negative one must be rejected for the reason it exists:
 # a Text is not table content. Anything else -- a snippet that compiles, or one rejected for an
 # unrelated reason -- is a failure, and this script's exit code is the gate.
@@ -14,9 +25,14 @@ status=0
 check_one() {
   local name=$1 expect=$2
   local out
-  out=$($SWIFTC $PKGFLAGS $OCFLAGS -I "$O/mods" -module-cache-path "$O/mc" -enforce-exclusivity=unchecked \
+  out=$("$SWIFTC" $PKGFLAGS $OCFLAGS -I "$O/mods" -module-cache-path "$O/mc" -enforce-exclusivity=unchecked \
         -suppress-warnings -typecheck -parse-as-library -module-name TableChecks \
         "$ROOT/eidolon/tools/tabletests/$name.swift" 2>&1)
+  if [ $? -ne 0 ] && [ -z "$out" ]; then
+    printf '%-9s FAIL -- the compiler exited without saying why\n' "$name:"
+    status=1
+    return
+  fi
   local first
   first=$(echo "$out" | grep -m1 'error:')
   if [ "$expect" = compiles ]; then
