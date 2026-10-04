@@ -40,8 +40,12 @@ add_requires("charon@apple-backports", {alias = "apple-backports", configs = {co
 -- the waiver claims is what apple.runtime_guards records for the runtime and what the backports
 -- answer for Styx; a build without it either confirms that and the waiver goes, or names a weak
 -- import the table does not record, which is a row the table is missing.
-local function eidolon_weak_import_waiver(target)
-    target:add("values", "charon.waive.weak-imports",
+-- Inside a target() scope xmake binds that target's API as globals and there is no `self` - measured,
+-- `self` in a target scope is nil - so a helper that took the target was handed nil and indexed it. The
+-- scope's own add_values is what can be handed over instead: it is already bound to this target, so the
+-- sentence is written once and every target gets it.
+local function eidolon_weak_import_waiver(add_values)
+    add_values("charon.waive.weak-imports",
                "every weak import is reached only behind #available or carried by the backports: the runtime's overlays built with availability checking on, Styx's run-loop timer tolerance, compiler-rt's version check")
 end
 
@@ -59,7 +63,7 @@ target("EidolonDemo")
     -- Naming the backports switches verify_placed to the branch that copies the library in.
     set_values("charon.libraries", "apple-backports")
     set_values("charon.control", "control")
-    eidolon_weak_import_waiver(self)
+    eidolon_weak_import_waiver(add_values)
 
 -- The same program as a second bundle. The scenarios need a key window and SpringBoard's own lifecycle,
 -- so they are the application that renders them; what tells it to is a key of its own Info.plist, which
@@ -82,7 +86,7 @@ target("EidolonSnapshots")
     end
     set_values("charon.libraries", "apple-backports")
     set_values("charon.control", "control")
-    eidolon_weak_import_waiver(self)
+    eidolon_weak_import_waiver(add_values)
 
 -- The engine tests: one binary and no UIApplication, so xmake emulate run starts it as the guest's first
 -- process and its verdict is the exit status.
@@ -97,4 +101,4 @@ target("EidolonTests")
     set_values("swift.flags", "-disable-availability-checking")
     set_values("charon.libraries", "apple-backports")
     set_values("charon.control", "control-tests")
-    eidolon_weak_import_waiver(self)
+    eidolon_weak_import_waiver(add_values)
