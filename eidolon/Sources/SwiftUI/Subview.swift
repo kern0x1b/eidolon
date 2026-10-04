@@ -129,3 +129,36 @@ public struct SectionConfiguration: Identifiable {
         self.actions = actions
     }
 }
+
+/// The subviews a container holds, read as a collection: what `ForEach(subviews:)` takes, and what a
+/// container hands a builder that asked for its children rather than for views.
+public struct ForEachSubviewCollection<Content: View>: RandomAccessCollection {
+    public typealias Element = Subview
+    public typealias Index = Int
+    public typealias Indices = Range<Int>
+    public typealias Iterator = IndexingIterator<ForEachSubviewCollection>
+    public typealias SubSequence = Slice<ForEachSubviewCollection>
+    let children: [Subview]
+    let content: (Subview) -> Content
+    public init(_ children: SubviewsCollection, @ViewBuilder content: @escaping (Subview) -> Content) {
+        self.children = Array(children)
+        self.content = content
+    }
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { children.count }
+    public subscript(index: Int) -> Subview { children[index] }
+    public func index(after i: Int) -> Int { i + 1 }
+    public func index(before i: Int) -> Int { i - 1 }
+    /// The views this collection stands for, which is what a container lays out.
+    public var views: [Content] { children.map { content($0) } }
+}
+
+/// What a `Group` holds when it is given a container's children rather than views: the group, and the
+/// result of the transform the app applied to each child.
+public struct GroupElementsOfContent<Subviews: View, Content: View>: View {
+    public typealias Body = Never
+    public var body: Never { neverBody(Self.self) }
+    let subviews: Subviews
+    let transformed: Content
+    public var childViews: [any View] { [subviews, transformed] }
+}
