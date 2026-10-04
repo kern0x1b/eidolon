@@ -163,7 +163,9 @@ public struct TabView<SelectionValue: Hashable, Content: View>: View, PrimitiveV
 }
 
 extension TabView where SelectionValue == Int {
+    @_disfavoredOverload
     public init(@ViewBuilder content: () -> Content) { self.init(selection: nil, content: content()) }
+    @_disfavoredOverload
     public init(selection: Binding<SelectionValue>?, @ViewBuilder content: () -> Content) {
         self.init(selection: selection, content: content())
     }

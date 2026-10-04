@@ -271,12 +271,10 @@ public struct TabContentRows: View, PrimitiveView, GroupView {
 }
 
 extension TabView {
-    @_disfavoredOverload
     public init(selection: Binding<SelectionValue>, @TabContentBuilder<SelectionValue> content: () -> [TabContentRow])
         where Content == TabContentRows {
         self.selection = selection; self.content = TabContentRows(rows: content())
     }
-    @_disfavoredOverload
     public init(@TabContentBuilder<Never> content: () -> [TabContentRow])
         where SelectionValue == Never, Content == TabContentRows {
         self.selection = nil; self.content = TabContentRows(rows: content())
