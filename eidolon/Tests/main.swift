@@ -3034,13 +3034,13 @@ func aViewThatStandsForAGroupIsThatGroup() {
 }
 
 // RasterizationOptions: Apple's shape from the SDK of 16.4, and what reaches a layer of iOS 6
-var raster = RasterizationOptions()
+var raster = _RendererConfiguration.RasterizationOptions()
 check(raster.colorMode == .nonLinear, "a layer is rasterised with the non-linear colour mode by default")
 check(!raster.rendersAsynchronously, "and drawn on the main thread by default")
 check(!raster.isOpaque, "and over what is behind it, not over an opaque fill")
 check(!raster.drawsPlatformViews, "and platform views are not drawn into it")
 check(!raster.prefersDisplayCompositing, "and the system does not composite it by preference")
-equal(raster.maxDrawableCount, 3, "with three drawables of the release's own")
+equal(raster.maxDrawableCount, 0, "with as many drawables as the release draws, which no SDK and no host states")
 equal(raster.rbColorMode, nil, "and no colour mode the release would send down, which iOS 6 has no key for")
 raster.isOpaque = true
 raster.prefersDisplayCompositing = true

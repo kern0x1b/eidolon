@@ -62,7 +62,7 @@ extension View {
         // iOS 6 has: a colour mode and an opaque flag are keys it has none of
         applyingToViews { view in
             view.layer.shouldRasterize = true
-            var options = RasterizationOptions()
+            var options = _RendererConfiguration.RasterizationOptions()
             options.colorMode = colorMode
             options.isOpaque = opaque
             options.applied(to: view.layer)
