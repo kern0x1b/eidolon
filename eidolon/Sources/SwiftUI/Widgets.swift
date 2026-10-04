@@ -23,6 +23,9 @@ public protocol Widget {
 @available(tvOS, unavailable)
 public protocol WidgetConfiguration {
     associatedtype Body: WidgetConfiguration
+    // no builder: `WidgetConfigurationBuilder` is in neither SwiftUI's interface nor WidgetKit's
+    // (`grep -c` is 0 in both), and 26.2 spells these three bodies plainly
+    // (SwiftUI.swiftinterface:24911, :16719, :11775)
     var body: Body { get }
 }
 
@@ -66,10 +69,37 @@ public struct WidgetBundleBuilder {
     public static func buildOptional<W>(_ widget: W?) where W: Widget {
         WidgetBox(wrapped: widget)
     }
+    /// The unavailable overload the interface carries at
+    /// `arm64e-apple-ios.swiftinterface:21969`, with its message: a bare `if` in a bundle is a
+    /// compile error there, and has to be here too, with `#available` around it.
+    @available(*, unavailable, message: "if statements in a WidgetBundleBuilder can only be used with #available clauses")
+    public static func buildOptional(_ widget: Widget?) -> any Widget & _LimitedAvailabilityWidgetMarker {
+        AnyLimitedAvailabilityWidget()
+    }
+
     public static func buildLimitedAvailability(_ widget: some Widget) -> any Widget & _LimitedAvailabilityWidgetMarker {
         AnyLimitedAvailabilityWidget(erasing: widget)
     }
+
+    /// The disfavoured overload of the same name the interface carries at :21979, for a widget handed in
+    /// as an existential rather than as `some Widget`.
+    @_disfavoredOverload
+    public static func buildLimitedAvailability(_ widget: any Widget) -> any Widget & _LimitedAvailabilityWidgetMarker {
+        AnyLimitedAvailabilityWidget()
+    }
+
+    /// A control widget is a widget the system puts a control on, and it opens the same way
+    /// (:21995). iOS 6 has no control widgets, so none is ever handed here.
+    public static func buildLimitedAvailability(_ widget: some ControlWidget) -> any Widget & _LimitedAvailabilityWidgetMarker {
+        AnyLimitedAvailabilityWidget()
+    }
 }
+
+/// The builder is Sendable in 26.2 (`arm64e-apple-ios.swiftinterface:21943`), and a result builder is a
+/// value the system may hold across threads.
+@available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
+@available(tvOS, unavailable)
+extension WidgetBundleBuilder: Sendable {}
 
 /// The marker the interface's `buildLimitedAvailability` returns. It is underscored, so it is the
 /// port's own and internal: nothing outside can name it, and nothing outside needs to.
@@ -91,6 +121,7 @@ struct AnyLimitedAvailabilityWidget: _LimitedAvailabilityWidgetMarker {
     var body: Body { let empty = EmptyWidgetConfiguration(); return empty }
     var erased: (any Widget)?
     init(erasing widget: some Widget) { erased = widget }
+    init() {}
 }
 
 /// A widget's configuration that is behind an availability, which the interface builds through
@@ -137,4 +168,18 @@ struct WidgetBox<Wrapped>: Widget where Wrapped: Widget {
 struct EmptyWidget: Widget {
     typealias Body = EmptyWidgetConfiguration
     var body: EmptyWidgetConfiguration { let empty = EmptyWidgetConfiguration(); return empty }
+}
+
+
+// MARK: - a control widget
+
+/// A widget the system puts a control on. Apple's shape from the SDK of 26.2
+/// (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:4968`): a body like a widget's, and nothing
+/// else the interface spells. iOS 6.1.3 has no such place either, for the same reason a widget has
+/// none: the system has nowhere to put a control.
+@available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
+@available(tvOS, unavailable)
+@preconcurrency @MainActor public protocol ControlWidget {
+    associatedtype Body: WidgetConfiguration
+    var body: Body { get }
 }
