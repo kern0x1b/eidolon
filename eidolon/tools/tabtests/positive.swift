@@ -35,7 +35,7 @@ func tabListNamesItsRows() {
 // A tab with its value written in it is tab content, and a TabView takes it.
 func tabsReachATabView() {
     let tab = Tab("Inbox", systemImage: "envelope", value: 1) { Color.gray }
-    _ = tab.namedRows.count + tab.title.count
+    _ = tab.namedRows.count
     let bar = TabView {
         Tab("Inbox", systemImage: "envelope", value: 1) { Color.gray }
         Tab("Sent", systemImage: "paperplane", value: 2) { Color.white }

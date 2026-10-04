@@ -1,7 +1,8 @@
 import SwiftUI
 
-// A value that is not Hashable cannot name a tab, so this must not compile.
-struct Untagged { let folder: String }   // not Hashable, so a tab value is not a value here
+// An element that is not Hashable cannot be named as a tab's row, so this must not compile -- and the
+// rejection has to come from this module's own constraint, not from the standard library's AnyHashable.
+struct Untagged { let folder: String }
 
 struct MailTab: TabContent {
     let folder: String

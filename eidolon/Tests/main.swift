@@ -3037,8 +3037,14 @@ func aTabIsOneTabNamedByItsValue() {
     equal(tab.namedRows.first?.value, AnyHashable(1), "named by the value written in it")
     let probe = _Probe(ValueTabCase(selected: Binding(get: { 1 }, set: { _ in })), width: 320, height: 480)
     _ = frames(probe)
-    check(labels(of: probe.hostView).contains("Inbox"), "and a bar over tabs shows the titles the tabs carry")
-    check(labels(of: probe.hostView).contains("Sent"), "each tab, not only the first")
+    // the bar's own items are where a tab bar keeps its titles, not labels in the view tree
+    var bar: UITabBar?
+    var stack: [UIView] = [probe.hostView]
+    while let current = stack.popLast() {
+        if let found = current as? UITabBar { bar = found; break }
+        stack.append(contentsOf: current.subviews)
+    }
+    equal(bar?.items?.map { $0.title } ?? [], ["Inbox", "Sent"], "and a bar over tabs shows a bar item per tab")
 }
 
 print("\(checks - failures)/\(checks) checks passed")

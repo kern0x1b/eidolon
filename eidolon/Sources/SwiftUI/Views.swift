@@ -485,6 +485,7 @@ public struct ForEach<Data, ID, Content> where Data: RandomAccessCollection, ID:
 extension ForEach: View, PrimitiveView, ForEachLike where Content: View {
     public typealias Body = Never
     public var body: Never { neverBody(Self.self) }
+    @_disfavoredOverload
     public init(_ data: Data, id: KeyPath<Data.Element, ID>, @ViewBuilder content: @escaping (Data.Element) -> Content) {
         self.init(data: data, id: id, content: content)
     }
@@ -528,6 +529,7 @@ final class ForEachNode: Node {
 }
 
 extension ForEach where ID == Data.Element.ID, Content: View, Data.Element: Identifiable {
+    @_disfavoredOverload
     public init(_ data: Data, @ViewBuilder content: @escaping (Data.Element) -> Content) { self.init(data, id: \.id, content: content) }
 }
 
