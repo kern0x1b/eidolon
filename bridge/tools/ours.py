@@ -11,6 +11,79 @@ Two things it gets right that it did not before, and both cost a review:
 import re, glob, sys, os
 
 KIND = r'(?:struct|class|enum|protocol|typealias|actor)'
+
+def braces(line, in_block, in_multiline, hashes):
+    # The braces a line really opens and closes.
+    #
+    # Counting them with `count('{')` is wrong the moment a string or a comment carries one, and from that
+    # line on the walk sits at the wrong depth and attributes nothing after it. So the line is read as
+    # Swift: a line comment, a block comment, a plain string, a multi-line one and a raw one with any
+    # number of hashes carry no brace, and a block comment or a multi-line literal carries its state on.
+
+    # Returns (opened, closed, in_block, in_multiline, hashes).
+    opened = closed = 0
+    i, n = 0, len(line)
+    while i < n:
+        if in_block:
+            if line.startswith('*/', i):
+                in_block = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if in_multiline:
+            closing = ('#' * hashes + '"""') if hashes else '"""'
+            if line.startswith(closing, i):
+                in_multiline = False
+                i += len(closing)
+                continue
+            i += 1
+            continue
+        if line.startswith('//', i):
+            break
+        if line.startswith('/*', i):
+            in_block = True
+            i += 2
+            continue
+        if line[i] == '#':
+            run = 0
+            while i + run < n and line[i + run] == '#':
+                run += 1
+            if i + run < n and line[i + run] == '"':
+                hashes = run
+                i += run + 1
+                if line.startswith('"""', i):
+                    in_multiline = True
+                    i += 3
+                    continue
+                closing = '#' * hashes + '"'
+                end = line.find(closing, i)
+                i = n if end < 0 else end + len(closing)
+                continue
+            i += run
+            continue
+        if line[i] == '"':
+            if line.startswith('"""', i):
+                in_multiline = True
+                i += 3
+                continue
+            i += 1
+            while i < n:
+                if line[i] == chr(92):
+                    i += 2
+                    continue
+                if line[i] == '"':
+                    i += 1
+                    break
+                i += 1
+            continue
+        if line[i] == '{':
+            opened += 1
+        elif line[i] == '}':
+            closed += 1
+        i += 1
+    return opened, closed, in_block, in_multiline, hashes
+
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 files = sorted(glob.glob(os.path.join(root, 'eidolon/Sources/SwiftUI/*.swift')))
 
@@ -19,6 +92,9 @@ for path in files:
     lines = open(path).read().split('\n')
     depth = 0
     owner = None
+    in_block = False
+    in_multiline = False
+    hashes = 0
     for line in lines:
         s = line.strip()
         if depth == 0:
@@ -83,7 +159,8 @@ for path in files:
                 alias, target = re.match(r'\s*typealias\s+(\w+)\s*=\s*(\w+)', body).groups()
                 out.append((owner, 'type', alias, os.path.basename(path)))
                 out.append(('', 'type', target, os.path.basename(path)))
-        depth += line.count('{') - line.count('}')
+        opened, closed, in_block, in_multiline, hashes = braces(s, in_block, in_multiline, hashes)
+        depth += opened - closed
         if depth == 0:
             owner = None
 for owner, kind, name, path in out:
