@@ -360,21 +360,31 @@ extension Table {
     public init(of type: Value.Type, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
         self.init(columns: columns, rows: rows)
     }
+    /// Both at once, as 26.2 declares for iOS: the order the rows are in and the columns the app shows.
+    public init(of type: Value.Type, sortOrder: Binding<[KeyPathComparator<Value>]>,
+                columnCustomization: Binding<TableColumnCustomization<Value>>,
+                @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows)
+        where Value.ID: Codable {
+        self.init(of: type, sortOrder: sortOrder, columns: columns, rows: rows)
+        project(columnCustomization.wrappedValue)
+    }
     public init(of type: Value.Type, columnCustomization: Binding<TableColumnCustomization<Value>>,
                 @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows)
         where Value.ID: Codable {
         self.init(columns: columns, rows: rows)
-        let given = columnCustomization.wrappedValue
-        // the i-th column is the column of the row order[i], so the order and the visibility are read as
-        // positions: what an app hides is the column of the row it named
+        project(columnCustomization.wrappedValue)
+    }
+    /// The order and the visibility the app gave, read the way a table reads them: the i-th column is the
+    /// column of the row order[i], so what an app hides is the column of the row it named.
+    mutating func project(_ given: TableColumnCustomization<Value>) where Value.ID: Codable {
         var titles: [String] = []
         var hiddenTitles: [String] = []
-        let drawn: [_AnyTableColumn<Value>] = self.columns._columns
+        let drawn = columns._columns
         for (index, id) in given.order.enumerated() where index < drawn.count {
             titles.append(drawn[index].title)
             if given.visibility[id] == false { hiddenTitles.append(drawn[index].title) }
         }
-        self.columnCustomization = ColumnVisibility(order: titles, hidden: hiddenTitles)
+        columnCustomization = ColumnVisibility(order: titles, hidden: hiddenTitles)
     }
     // The sorted family: the binding is the app's own, the table reads it and writes the order a tap
     // on a sortable column's header asks for -- the same column again with the order turned, or that
