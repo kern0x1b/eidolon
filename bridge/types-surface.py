@@ -59,13 +59,19 @@ def main():
         module = os.path.basename(os.path.dirname(path)).removesuffix('.swiftmodule')
         text = open(path, errors='replace').read()
         # a type declared inside another is not a module-level name, and a doc or comment line is not a
-        # declaration: take only lines that start with an attribute or a public keyword at the left
+        # declaration: take only lines that start with an attribute or a public keyword at the left.
+        # The SDK writes @available on the line above the declaration it belongs to and on no declaration's
+        # own line at all, so a declaration's attributes are its own line and the @-lines above it; read off
+        # its own line alone, unavailable_on_ios never fires and nothing is ever dropped.
+        above = []
         for line in text.split('\n'):
             stripped = line.lstrip()
-            if not stripped.startswith('@') and not re.match(r'(public|open|package)\b', stripped):
+            if stripped.startswith('@') and not DECL.match(stripped):
+                above.append(stripped)
                 continue
             m = DECL.match(stripped)
             if not m:
+                above = []
                 continue
             attrs, access, kind, name = m.groups()
             if access == 'package':
@@ -73,8 +79,9 @@ def main():
             entry = (name, kind)
             per_module.setdefault(module, {})[name] = kind
             everything[name] = kind
-            if not unavailable_on_ios(attrs):
+            if not unavailable_on_ios(' '.join(above + [attrs])):
                 on_ios[name] = kind
+            above = []
     previous = {}
     path = os.path.join(here, 'apple-types.txt')
     if os.path.exists(path):
