@@ -3019,6 +3019,28 @@ func theBuildersTakeAConditionalColumnAndRow() {
 
 final class BuilderShow { var show = true; init() {} }
 
+// A tab with its value written in it: one tab, named by that value, and a bar that shows it.
+// WRITTEN, NOT RUN until the emulator lands (emulate-launch, 7e035ac0).
+struct ValueTabCase: View {
+    @Binding var selected: Int?
+    var body: some View {
+        TabView(selection: $selected) {
+            Tab("Inbox", systemImage: "envelope", value: 1) { Color.gray }
+            Tab("Sent", systemImage: "paperplane", value: 2) { Color.blue }
+        }
+    }
+}
+
+func aTabIsOneTabNamedByItsValue() {
+    let tab = Tab("Inbox", systemImage: "envelope", value: 1) { Color.gray }
+    equal(tab.namedRows.count, 1, "a tab is one tab")
+    equal(tab.namedRows.first?.value, AnyHashable(1), "named by the value written in it")
+    let probe = _Probe(ValueTabCase(selected: Binding(get: { 1 }, set: { _ in })), width: 320, height: 480)
+    _ = frames(probe)
+    check(labels(of: probe.hostView).contains("Inbox"), "and a bar over tabs shows the titles the tabs carry")
+    check(labels(of: probe.hostView).contains("Sent"), "each tab, not only the first")
+}
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

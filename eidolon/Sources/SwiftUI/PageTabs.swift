@@ -202,13 +202,23 @@ func tabContentRows(_ content: any TabContent) -> [TabContentRow] {
 }
 
 /// One tab content wrapped so a list of tabs can be held together whatever their types are.
-public struct AnyTabContent: TabContent {
-    public typealias TabValue = AnyHashable
-    public typealias Body = AnyTabContent
+public struct AnyTabContent<TabValue: Hashable>: TabContent {
+    public typealias TabValue = TabValue
+    public typealias Body = AnyTabContent<TabValue>
     let content: any TabContent
-    init(_ content: any TabContent) { self.content = content }
-    public var body: AnyTabContent { self }
+    init<C: TabContent>(_ content: C) where C.TabValue == TabValue { self.content = content }
+    public var body: AnyTabContent<TabValue> { self }
     public var namedRows: [TabContentRow] { tabContentRows(content) }
+}
+
+/// The label a tab shows when the app does not write one: the release's own tab bar item.
+public struct DefaultTabLabel: View, PrimitiveView {
+    public typealias Body = Never
+    public var body: Never { neverBody(Self.self) }
+    let text: String
+    let image: String?
+    init(text: String, image: String?) { self.text = text; self.image = image }
+    func makeNode(_ env: EnvironmentValues) -> Node { EmptyView().makeNode(env) }
 }
 
 /// The tabs, in order, each with the view it stands for and the value that names it. This is what
@@ -236,7 +246,7 @@ public protocol TabContentNaming {
 @resultBuilder
 public struct TabContentBuilder<TabValue: Hashable> {
     public typealias Content = [TabContentRow]
-    public static func buildExpression<C: TabContent>(_ content: C) -> [TabContentRow] {
+    public static func buildExpression<C: TabContent>(_ content: C) -> [TabContentRow] where C.TabValue == TabValue {
         tabContentRows(content)
     }
     public static func buildExpression<C: View>(_ content: C) -> [TabContentRow] {
@@ -291,9 +301,9 @@ extension ForEach where Content: TabContent {
 /// A ForEach of tab content is the tabs, one per element, named by the element -- which is what a
 /// TabView reads, and what makes a tab's value the element's own.
 extension ForEach: TabContent, TabContentNaming where Content: TabContent {
-    public typealias TabValue = AnyHashable
-    public typealias Body = AnyTabContent
-    public var body: AnyTabContent { AnyTabContent(self) }
+    public typealias TabValue = Content.TabValue
+    public typealias Body = AnyTabContent<Content.TabValue>
+    public var body: AnyTabContent<Content.TabValue> { AnyTabContent(self) }
     public var namedRows: [TabContentRow] {
         let factory = content
         return data.map { element in
@@ -311,4 +321,97 @@ extension ForEach: TabContent, TabContentNaming where Content: TabContent {
 // the three are declared rather than derived, as they are for a frozen type.
 extension Anchor where Value: Hashable {
     public var hashValue: Int { var hasher = Hasher(); hash(into: &hasher); return hasher.finalize() }
+}
+
+/// What a tab is for, which is what a bar that adapts between a sidebar and a bar reads.
+public struct TabRole: Hashable {
+    let name: String
+    public static var search: TabRole { TabRole(name: "search") }
+    public static var bookmark: TabRole { TabRole(name: "bookmark") }
+    public static var history: TabRole { TabRole(name: "history") }
+    public static var `default`: TabRole { TabRole(name: "default") }
+    public static var more: TabRole { TabRole(name: "more") }
+}
+
+/// A tab, with the value that names it written in the tab itself. A tab bar on iOS 6 shows a bar and has
+/// no sidebar, so a role is carried and the bar has nowhere to sort by it: the tab's value is what a
+/// selection matches, and the title and image are what the bar shows, which is the release's own bar item.
+public struct Tab<Value, Content, Label> {
+    let title: String
+    let image: String?
+    let role: TabRole?
+    let value: Value
+    let content: Content
+    let label: Label?
+}
+
+extension Tab: TabContent, TabContentNaming where Value: Hashable, Content: View, Label: View {
+    public typealias TabValue = Value
+    public typealias Body = AnyTabContent<Value>
+    public var body: AnyTabContent<Value> { AnyTabContent(self) }
+    public var namedRows: [TabContentRow] { [TabContentRow(value: AnyHashable(value), view: AnyView(content))] }
+}
+
+extension Tab where Label == DefaultTabLabel, Value: Hashable, Content: View {
+    public init<S: StringProtocol>(_ title: S, image: String? = nil, value: Value,
+                                   @ViewBuilder content: () -> Content) {
+        self.init(title: String(title), image: image, role: nil, value: value, content: content(), label: nil)
+    }
+    public init<S: StringProtocol>(_ title: S, image: String? = nil, value: Value, role: TabRole?,
+                                   @ViewBuilder content: () -> Content) {
+        self.init(title: String(title), image: image, role: role, value: value, content: content(), label: nil)
+    }
+    public init(_ titleKey: LocalizedStringKey, image: String? = nil, value: Value,
+                @ViewBuilder content: () -> Content) {
+        self.init(title: titleKey.text, image: image, role: nil, value: value, content: content(), label: nil)
+    }
+    public init<S: StringProtocol>(_ title: S, systemImage: String, value: Value,
+                                   @ViewBuilder content: () -> Content) {
+        self.init(title: String(title), image: systemImage, role: nil, value: value, content: content(), label: nil)
+    }
+    public init<S: StringProtocol>(_ title: S, systemImage: String, value: Value, role: TabRole?,
+                                   @ViewBuilder content: () -> Content) {
+        self.init(title: String(title), image: systemImage, role: role, value: value, content: content(), label: nil)
+    }
+    public init(_ titleKey: LocalizedStringKey, systemImage: String, value: Value,
+                @ViewBuilder content: () -> Content) {
+        self.init(title: titleKey.text, image: systemImage, role: nil, value: value, content: content(), label: nil)
+    }
+    /// The value is optional, so `Tab("Inbox", value: .inbox)` fills in the tab's own value type.
+    public init<S: StringProtocol, T: Hashable>(_ title: S, image: String? = nil, value: T,
+                                                @ViewBuilder content: () -> Content)
+        where Value == T? {
+        self.init(title: String(title), image: image, role: nil, value: value, content: content(), label: nil)
+    }
+    public init<S: StringProtocol, T: Hashable>(_ title: S, image: String? = nil, value: T, role: TabRole?,
+                                                @ViewBuilder content: () -> Content)
+        where Value == T? {
+        self.init(title: String(title), image: image, role: role, value: value, content: content(), label: nil)
+    }
+    public init<S: StringProtocol, T: Hashable>(_ title: S, systemImage: String, value: T,
+                                                @ViewBuilder content: () -> Content)
+        where Value == T? {
+        self.init(title: String(title), image: systemImage, role: nil, value: value, content: content(), label: nil)
+    }
+    public init<S: StringProtocol, T: Hashable>(_ title: S, systemImage: String, value: T, role: TabRole?,
+                                                @ViewBuilder content: () -> Content)
+        where Value == T? {
+        self.init(title: String(title), image: systemImage, role: role, value: value, content: content(), label: nil)
+    }
+}
+
+extension Tab where Value: Hashable, Content: View {
+    /// The label is a view the app writes, as Apple's is when it is not the default one.
+    public init(_ title: String, image: String? = nil, value: Value, @ViewBuilder label: () -> Label,
+                @ViewBuilder content: () -> Content) {
+        self.init(title: title, image: image, role: nil, value: value, content: content(), label: label())
+    }
+    public init(_ title: String, systemImage: String, value: Value, @ViewBuilder label: () -> Label,
+                @ViewBuilder content: () -> Content) {
+        self.init(title: title, image: systemImage, role: nil, value: value, content: content(), label: label())
+    }
+    public init(_ title: String, image: String? = nil, value: Value, role: TabRole?,
+                @ViewBuilder label: () -> Label, @ViewBuilder content: () -> Content) {
+        self.init(title: title, image: image, role: role, value: value, content: content(), label: label())
+    }
 }
