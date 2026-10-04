@@ -63,7 +63,7 @@ def find(name, path, label):
     hits = []
     for number, line, owner in walk(lines):
         stripped = line.strip()
-        if not stripped or stripped.startswith('//') or stripped.startswith('@') or owner is None:
+        if not stripped or stripped.startswith('//') or owner is None:
             continue
         found = MEMBER.search(stripped)
         if not found or found.group(1) != member:

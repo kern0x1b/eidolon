@@ -41,22 +41,39 @@ def is_declaration(line):
     return m.group(1), unmodule(m.group(2))
 
 
-def walk(lines):
-    """yields (line number, text, owner-as-written or None) for every line of an interface"""
+def walk(lines, trace=False):
+    """yields (line number, text, owner-as-written or None) for every line of an interface
+
+    A preprocessor line and an attribute line are neither a declaration nor a member: they must not push
+    and must not pop, and `#if compiler(…)` in particular sits at the indent of the block it guards, so
+    treating it as one closes the block above it.
+    """
     stack = []                       # (indent, name)
     for number, line in enumerate(lines, start=1):
         indent = indent_of(line)
-        declaration = is_declaration(line)
-        owner = '.'.join(name for _, name in stack) if stack else None
+        stripped = line.strip() if line.strip() else ''
+        preprocessor = stripped.startswith('#')
+        attribute = stripped.startswith('@')
+        # a line may begin with an attribute and still be the declaration itself:
+        # `@frozen public enum Orientation` is one, and reading it as an attribute left the
+        # stack on `Image` and lost the nested type with every member under it
+        declaration = None if preprocessor else is_declaration(line)
+        attribute = attribute and declaration is None
+        before = ' > '.join(name for _, name in stack)
         if declaration and indent is not None:
             while stack and stack[-1][0] >= indent:
                 stack.pop()
-            owner = '.'.join(name for _, name in stack) if stack else None
             kind, name = declaration
             stack.append((indent, name))
-            yield number, line, owner
-            continue
-        if indent is not None:
-            while stack and stack[-1][0] >= indent:
-                stack.pop()
+            owner = '.'.join(n for _, n in stack)
+            decision = f'push {kind} {name}'
+        else:
+            if indent is not None and not preprocessor and not attribute:
+                while stack and stack[-1][0] >= indent:
+                    stack.pop()
+            owner = '.'.join(name for _, name in stack) if stack else None
+            decision = 'skip (preprocessor)' if preprocessor else ('skip (attribute)' if attribute else 'member')
+        if trace:
+            print(f'{number:4} | {indent if indent is not None else -1:2} | {before or "-":40} -> '
+                  f'{" > ".join(n for _, n in stack) or "-":40} | {decision:28} | {stripped[:44]}')
         yield number, line, owner
