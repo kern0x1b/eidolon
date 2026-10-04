@@ -115,6 +115,8 @@
 
 `PresentationDetent.custom(_:)` и `maxDetentValue` — высота, которую вычисляет приложение, и наибольшая деталь, которую позволяет платформа; у модального экрана iOS 6 нет деталей, он всегда во весь экран, поэтому `PresentationDetent.Context.maximum` — это экран, и `PresentationDetent.height(in:)` у `CustomPresentationDetent` возвращает то, что вычислило приложение, из этого контекста.
 
+`ForEach(subviews:)` и `Group(subviews:)` берут детей через `subviewChildren(of:)`: так же, как движок читает детей везде, — через группу, за которую стоит обёртка, и через содержимое, которое обёртка оборачивает, пока не встретится то, что и есть содержимое. Расхождение с SwiftUI одно и оно названо здесь: свой `View`, чьё собственное `body` — это группа, здесь остаётся одним ребёнком, потому что у примитива нет тела, которое можно прочитать насквозь (его `body` — `Never` по построению), а в SwiftUI взяли бы детей группы.
+
 Значения окружения, которых у iOS 6 нет как настройки (`accessibilityReduceMotion`, `accessibilityReduceTransparency`, `accessibilityDifferentiateWithoutColor`, `accessibilityShowButtonShapes`, `accessibilitySwitchControlEnabled`, `accessibilityQuickActionsEnabled`, `accessibilityLargeContentViewerEnabled`, `isLuminanceReduced`, `supportsMultipleWindows`), читаются как «выключено»: человек не мог их включить. `dynamicTypeSize` всегда `.large`. `monospacedDigit()` ничего не меняет: цифры системного шрифта iOS 6 и так одной ширины.
 
 **Заглушек нет.** Последние четыре — доступность — сделаны на средствах iOS 6: `accessibilityRepresentation`

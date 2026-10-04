@@ -171,9 +171,8 @@ public struct GroupElementsOfContent<Subviews: View, Content: View>: View {
 extension ForEach where Content: View {
     public init<V: View>(subviews view: V, @ViewBuilder content: @escaping (Subview) -> Content)
         where Data == ForEachSubviewCollection<Content>, ID == Subview.ID {
-        // the children of the view the caller passed: a group, a stack or anything else that holds them
-        let children: [any View] = view is GroupView ? (view as! GroupView).childViews : [view]
-        let identified = children.map { Subview($0) }
+        // the children of the view the caller passed: a group, a stack, or anything else that holds them
+        let identified = subviewChildren(of: view).map { Subview($0) }
         self.init(data: ForEachSubviewCollection(children: identified, content: content), id: \.id, content: content)
     }
 }
@@ -185,8 +184,7 @@ extension Group {
     public init<Base: View, Result: View>(subviews view: Base,
                                           @ViewBuilder transform: @escaping (SubviewsCollection) -> Result)
         where Content == GroupElementsOfContent<Base, Result> {
-        let children: [any View] = view is GroupView ? (view as! GroupView).childViews : [view]
-        let collection = SubviewsCollection(children.map { Subview($0) })
+        let collection = SubviewsCollection(subviewChildren(of: view).map { Subview($0) })
         self.init { GroupElementsOfContent(subviews: view, transformed: transform(collection)) }
     }
 }
@@ -209,3 +207,21 @@ public struct SubviewGroup: View, PrimitiveView, GroupView {
     public var childViews: [any View] { subviews.map { $0.content } }
 }
 
+/// The children a view holds, in the order they are laid out. The engine reads a view's children the
+/// way it reads them everywhere else: through the group a wrapper stands for, and through the content
+/// a modifier wraps, until it reaches something that *is* the content. That is what SwiftUI's
+/// `ForEach(subviews:)` reads, and it is why `Group { … }` and a modified `Group { … }` hand over their
+/// children rather than themselves.
+///
+/// A custom `View` whose own `body` is a group is where this engine stops: a primitive has no body to
+/// read through -- its `body` is `Never` by construction -- so such a view is one child, where SwiftUI
+/// would take the group's. That is the case named in the ledger.
+func subviewChildren(of view: any View) -> [any View] {
+    var current = view
+    while true {
+        if let group = current as? GroupView { return group.childViews }
+        if let wrapped = current as? WrappedView { current = wrapped.wrapped; continue }
+        if let modified = current as? ModifiedViewLike { current = modified.modifiedContent; continue }
+        return [current]
+    }
+}
