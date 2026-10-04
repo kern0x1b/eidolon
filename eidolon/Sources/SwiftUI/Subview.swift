@@ -213,15 +213,19 @@ public struct SubviewGroup: View, PrimitiveView, GroupView {
 /// `ForEach(subviews:)` reads, and it is why `Group { … }` and a modified `Group { … }` hand over their
 /// children rather than themselves.
 ///
-/// A custom `View` whose own `body` is a group is where this engine stops: a primitive has no body to
-/// read through -- its `body` is `Never` by construction -- so such a view is one child, where SwiftUI
-/// would take the group's. That is the case named in the ledger.
+/// A custom view that only stands for a group is read through its body, as SwiftUI reads it: `View`'s
+/// `bodyView` gives the body as a view, and a `PrimitiveView` overrides it to be itself, because a
+/// primitive is its own content. So the rule needs no witness from any conformer.
 func subviewChildren(of view: any View) -> [any View] {
     var current = view
     while true {
         if let group = current as? GroupView { return group.childViews }
         if let wrapped = current as? WrappedView { current = wrapped.wrapped; continue }
         if let modified = current as? ModifiedViewLike { current = modified.modifiedContent; continue }
-        return [current]
+        // a view that only stands for something is that something, the way SwiftUI reads it; a
+        // primitive is its own content, and `bodyView` hands it straight back
+        let body = current.bodyView
+        if type(of: body) == type(of: current) { return [current] }
+        current = body
     }
 }

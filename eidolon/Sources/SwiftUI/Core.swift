@@ -10,6 +10,17 @@ import UIKit
     static func _makeViewList(view: _GraphValue<Self>, inputs: _ViewListInputs) -> _ViewListOutputs
     static func _viewListCount(inputs: _ViewListCountInputs) -> Int?
     @ViewBuilder var body: Body { get }
+    /// The body as a view, which is how a container reads a view's children the way SwiftUI does: a
+    /// custom view that only stands for a group is that group, not a leaf of its own.
+    var bodyView: any View { get }
+}
+
+extension View {
+    /// A view's body, as a view. `Self` is known here, so this needs no witness from the conformer, and
+    /// a primitive answers itself: its body is `Never`, and a primitive *is* its own content.
+    public var bodyView: any View {
+        self is any PrimitiveView ? AnyView(self) : AnyView(body)
+    }
 }
 
 extension View {
@@ -36,6 +47,7 @@ extension Never: View {
 protocol PrimitiveView {
     func makeNode(_ env: EnvironmentValues) -> Node
 }
+
 
 func neverBody(_ type: Any.Type) -> Never { fatalError("\(type) is a primitive view") }
 

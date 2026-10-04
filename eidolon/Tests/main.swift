@@ -3036,6 +3036,34 @@ func aTabIsOneTabNamedByItsValue() {
     equal(bar?.items?.map { $0.title } ?? [], ["Inbox", "Sent"], "and a bar over tabs shows a bar item per tab")
 }
 
+// A custom view that only stands for a group is that group, so a container that reads its children
+// takes the group's -- the case SwiftUI's own `ForEach(subviews:)` reaches through a body.
+// WRITTEN, NOT RUN until the emulator lands (emulate-launch, 7e035ac0 / stack 14).
+struct StandingForAGroup: View {
+    var body: some View {
+        Group {
+            Color.red.frame(width: 10, height: 10)
+            Color.green.frame(width: 10, height: 10)
+        }
+    }
+}
+
+func aViewThatStandsForAGroupIsThatGroup() {
+    // read the way an app does: through Group(subviews:), whose transform is handed the children
+    var standing = 0
+    _ = Group(subviews: StandingForAGroup()) { children in
+        standing = children.count
+        return EmptyView()
+    }
+    equal(standing, 2, "a custom view's children are its body's, not itself")
+    var primitive = 0
+    _ = Group(subviews: Color.gray) { children in
+        primitive = children.count
+        return EmptyView()
+    }
+    equal(primitive, 1, "and a primitive is its own content: one child, itself")
+}
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
