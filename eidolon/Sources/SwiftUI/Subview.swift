@@ -88,3 +88,44 @@ public struct SubviewsCollectionSlice: RandomAccessCollection {
     public func index(after i: Int) -> Int { i + 1 }
     public func index(before i: Int) -> Int { i - 1 }
 }
+
+/// A section a container knows about, as a `Section`'s content sees it: its identity, the container values
+/// the container wrote for it, and its header, footer and rows as collections of subviews.
+public struct SectionConfiguration: Identifiable {
+    /// What tells two sections apart: the identity behind them and where they sit.
+    public struct ID: Hashable {
+        let identity: AnyHashable
+        let position: Int
+        public static func == (a: SectionConfiguration.ID, b: SectionConfiguration.ID) -> Bool {
+            a.identity == b.identity && a.position == b.position
+        }
+        public func hash(into hasher: inout Hasher) {
+            hasher.combine(identity)
+            hasher.combine(position)
+        }
+        public var hashValue: Int { var hasher = Hasher(); hash(into: &hasher); return hasher.finalize() }
+    }
+
+    /// The row actions a section offers -- a list's and a table's swipe actions, which the release's own
+    /// table view carries on a row.
+    public struct Actions {
+        public var rowActions: [any View] = []
+        public init() {}
+    }
+
+    public let id: ID
+    public let containerValues: ContainerValues
+    public let header: SubviewsCollection
+    public let footer: SubviewsCollection
+    public let content: SubviewsCollection
+    public let actions: Actions
+    init(id: ID, containerValues: ContainerValues, header: SubviewsCollection, footer: SubviewsCollection,
+         content: SubviewsCollection, actions: Actions = Actions()) {
+        self.id = id
+        self.containerValues = containerValues
+        self.header = header
+        self.footer = footer
+        self.content = content
+        self.actions = actions
+    }
+}
