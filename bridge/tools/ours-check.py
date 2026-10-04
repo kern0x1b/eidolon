@@ -39,14 +39,22 @@ check('a real brace', ours.braces('    struct X {', False, False, 0)[0], 1)
 
 # control 1, the walk itself: TextModifiers.swift:168 declares bounds and rect on Anchor.Source
 out = ours.out
-source_bounds = any(owner.endswith('Source') and kind == 'var' and name == 'bounds' for owner, kind, name, _ in out)
-source_rect = any(owner.endswith('Source') and kind == 'func' and name == 'rect' for owner, kind, name, _ in out)
+# the owner is the whole extended name: `Anchor.Source`, not `Source` and not `Anchor`
+def owned_by(owner, kind, name):
+    return any(o == 'Anchor.Source' and k == kind and n == name for o, k, n, _ in out)
+
+source_bounds = owned_by('Anchor.Source', 'var', 'bounds')
+source_rect = owned_by('Anchor.Source', 'func', 'rect')
+stray = [o for o, k, n, _ in out if n in ('bounds', 'rect') and o != 'Anchor.Source' and o.endswith('Source')]
 print(f'{"ok  " if source_bounds else "FAIL"} Anchor.Source has bounds (TextModifiers.swift:168)')
 print(f'{"ok  " if source_rect else "FAIL"} Anchor.Source has rect (TextModifiers.swift:168)')
+print(f'{"ok  " if not stray else "FAIL"} and no other owner claims them: {stray}')
 if not (source_bounds and source_rect):
     failures.append('the Anchor.Source extension at TextModifiers.swift:168 produced neither bounds nor rect')
+if stray:
+    failures.append(f'bounds or rect is filed under {stray}, not under Anchor.Source')
 
 for line in failures:
     print(f'# {line}', file=sys.stderr)
-print(f'# {5 + 2 - len(failures)} of {5 + 2} controls passed', file=sys.stderr)
+print(f'# {7 - len(failures)} of 7 controls passed', file=sys.stderr)
 sys.exit(1 if failures else 0)

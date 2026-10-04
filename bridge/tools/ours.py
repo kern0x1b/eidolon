@@ -119,7 +119,10 @@ for path in files:
             else:
                 m = re.match(r'extension\s+([\w.]+)', s)
                 if m:
-                    owner = m.group(1).split('.')[-1]
+                    # the whole extended name without its module, so a member of `Anchor.Source` is
+                    # recorded under `Anchor.Source` and not under `Source`
+                    extended = m.group(1)
+                    owner = extended.split('.', 1)[1] if '.' in extended else extended
                 else:
                     owner = None
         elif owner and s and not s.startswith('//') and s not in ('{', '}', 'get', 'set', 'get set', 'willSet', 'didSet'):
@@ -144,7 +147,9 @@ for path in files:
                 # a conformance declares what the compiler synthesises from it, and no line of ours
                 # shows those members: Hashable is hash(into:) and hashValue, Equatable is ==
                 conformed, protocols = re.search(r'\bextension\s+([\w.]+)\s*:\s*([\w, ]+)', s).groups()
-                owner = conformed.split('.')[-1]
+                # the whole extended name without its module: a member of `Anchor.Source` belongs to
+                # `Anchor.Source`, not to `Source` and not to `Anchor`
+                owner = conformed.split('.', 1)[1] if '.' in conformed else conformed
                 if 'Hashable' in protocols:
                     out.append((owner, 'func', 'hash', os.path.basename(path)))
                     out.append((owner, 'var', 'hashValue', os.path.basename(path)))
