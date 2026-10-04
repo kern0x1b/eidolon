@@ -33,7 +33,9 @@ def indent_of(line):
 
 def is_declaration(line):
     stripped = line.strip()
-    if not stripped or stripped.startswith('//') or stripped.startswith('@'):
+    # not `startswith('@')`: a declaration may carry its own attributes, and the pattern
+    # already allows them — `@frozen public enum Orientation` is a declaration, not an attribute
+    if not stripped or stripped.startswith('//'):
         return None
     m = DECL.match(stripped)
     if not m:
