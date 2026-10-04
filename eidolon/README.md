@@ -344,7 +344,7 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   (`arm64e-apple-ios.swiftinterface:17490` и в 26.2 то же), семь хранимых свойств и `init()`. Значений по
   умолчанию **ни один интерфейс не даёт**, и на хосте его не прочитать: тип член underscored-структуры и на
   публичной поверхности macOS его нет — **это было неверно**: подчёркнутое имя в Swift публичное, и
-  `.agent-work/host/hostrenderer.swift` его читает. Замерено на фреймворке macOS 27: `colorMode` nonLinear,
+  `eidolon/host/hostrenderer.swift` его читает. Замерено на фреймворке macOS 27: `colorMode` nonLinear,
   `rendersAsynchronously` false, `isOpaque` **true**, `drawsPlatformViews` **true**,
   `prefersDisplayCompositing` false, `maxDrawableCount` **3**, `rbColorMode` nil. Внешний тип назван так,
   как его объявляет SDK, — `_RendererConfiguration`, без замены. В слой `CALayer` iOS 6 доходят три из семи:

@@ -7,7 +7,7 @@ import CoreGraphics
 // interface spells the seven properties and `init()` and gives no initial value for any of them.
 //
 // The seven defaults are the framework's own, read off it on the host with
-// `.agent-work/host/hostrenderer.swift` (an underscored name is public in Swift, so the type is in
+// `eidolon/host/hostrenderer.swift` (an underscored name is public in Swift, so the type is in
 // scope there): colorMode nonLinear, rendersAsynchronously false, isOpaque true, drawsPlatformViews
 // true, prefersDisplayCompositing false, maxDrawableCount 3, rbColorMode nil. An earlier version of
 // this file had three of the seven wrong and claimed no source existed; the measurement was there.
