@@ -20,7 +20,10 @@ func tabValuesReachATabView() {
     let view = TabView {
         tabs
     }
-    let selected = TabView(selection: Binding<Mailbox?>.constant(nil)) {
+    let optional = TabView(selection: Binding<Mailbox?>.constant(nil)) {
+        ForEach<[Mailbox], Mailbox.ID, MailTab>(mailboxes) { box in MailTab(folder: box.folder) }
+    }
+    let selected = TabView(selection: Binding<Mailbox>.constant(mailboxes[0])) {
         ForEach<[Mailbox], Mailbox.ID, MailTab>(mailboxes) { box in MailTab(folder: box.folder) }
     }
     _ = (view, selected)
@@ -44,5 +47,9 @@ func tabsReachATabView() {
         Tab("Inbox", systemImage: "envelope", value: 1) { Color.gray }
         Tab("Sent", systemImage: "paperplane", value: 2) { Color.white }
     }
-    _ = (bar, chosen, tab)
+    // a selection that may be nothing, over tabs of a value it selects on
+    let nothing = TabView(selection: Binding<Int?>.constant(nil)) {
+        Tab("Inbox", systemImage: "envelope", value: 1) { Color.gray }
+    }
+    _ = (bar, chosen, nothing, tab)
 }

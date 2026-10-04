@@ -239,6 +239,11 @@ public struct TabContentList<Element: Hashable>: TabContent, TabContentNaming {
     public var rows: [(value: AnyHashable, view: AnyView)] { elements.map { (named($0), view($0)) } }
 }
 
+/// A ForEach over tab content, whatever its element and id are: the one the builder has to recognise.
+public protocol ForEachProtocol: TabContent, TabContentNaming where TabValue: Hashable {}
+
+extension ForEach: ForEachProtocol where Content: TabContent, Content.TabValue: Hashable {}
+
 public protocol TabContentNaming {
     var namedRows: [TabContentRow] { get }
 }
@@ -249,6 +254,11 @@ public struct TabContentBuilder<TabValue: Hashable> {
     public static func buildExpression<C: TabContent>(_ content: C) -> [TabContentRow] where C.TabValue == TabValue {
         tabContentRows(content)
     }
+    /// A TabView's selection may be an optional of what its tabs carry, and then the tabs are of the
+    /// wrapped value: `TabView(selection: $mailbox) { ForEach(mailboxes) { … } }` selects on a `Mailbox`.
+    @_disfavoredOverload
+    public static func buildExpression<C: TabContent, V: Hashable>(_ content: C) -> [TabContentRow]
+        where C.TabValue == V, TabValue == V? { tabContentRows(content) }
     /// The builder of a TabView with no selection carries no tab value of its own, so it takes tab content of
     /// any value -- which is what `TabView { ForEach(mailboxes) { … } }` is: the tabs name themselves.
     @_disfavoredOverload
@@ -257,6 +267,10 @@ public struct TabContentBuilder<TabValue: Hashable> {
     }
     public static func buildExpression<C: View>(_ content: C) -> [TabContentRow] {
         [TabContentRow(value: nil, view: AnyView(content))]
+    }
+    /// A ForEach whose content is tab content is tab content itself, and is the tabs, one per element.
+    public static func buildExpression<C: ForEachProtocol>(_ content: C) -> [TabContentRow] {
+        tabContentRows(content)
     }
     public static func buildBlock(_ content: [TabContentRow]...) -> [TabContentRow] { content.flatMap { $0 } }
     public static func buildIf(_ content: [TabContentRow]?) -> [TabContentRow]? { content }
@@ -277,9 +291,22 @@ public struct TabContentRows: View, PrimitiveView, GroupView {
 }
 
 extension TabView {
+    /// A binding whose own value is an optional is left to the initialiser below, which builds over what it
+    /// selects on rather than over the optional.
+    @_disfavoredOverload
     public init(selection: Binding<SelectionValue>, @TabContentBuilder<SelectionValue> content: () -> [TabContentRow])
         where Content == TabContentRows {
         self.selection = selection; self.content = TabContentRows(rows: content())
+    }
+    /// The same, when the selection is an optional: the builder is over what it selects on, so the tabs are
+    /// of that value and the binding may hold nothing.
+    public init(selection: Binding<SelectionValue?>, @TabContentBuilder<SelectionValue> content: () -> [TabContentRow])
+        where Content == TabContentRows {
+        var last = selection.wrappedValue
+        let lifted = Binding<SelectionValue>(get: { last! },
+                                              set: { last = $0; selection.wrappedValue = $0 })
+        self.selection = lifted
+        self.content = TabContentRows(rows: content())
     }
     public init(@TabContentBuilder<Never> content: () -> [TabContentRow])
         where SelectionValue == Never, Content == TabContentRows {
