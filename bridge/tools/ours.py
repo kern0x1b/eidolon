@@ -11,6 +11,8 @@ Two things it gets right that it did not before, and both cost a review:
 import re, glob, sys, os
 
 KIND = r'(?:struct|class|enum|protocol|typealias|actor)'
+# the modules a name may be written with, and which the owner keeps no part of
+MODULES = {'Swift', 'SwiftUI', 'SwiftUICore', 'Foundation', 'UIKit', 'Combine'}
 
 def braces(line, in_block, in_multiline, hashes):
     # The braces a line really opens and closes.
@@ -122,9 +124,17 @@ for path in files:
                     # the whole extended name without its module, so a member of `Anchor.Source` is
                     # recorded under `Anchor.Source` and not under `Source`
                     extended = m.group(1)
-                    owner = extended.split('.', 1)[1] if '.' in extended else extended
+                    owner = extended.split('.', 1)[1] if extended.split('.', 1)[0] in MODULES else extended
                 else:
                     owner = None
+        elif re.match(r'extension\s+[\w.]+', s):
+            # An `extension` line opens a new section wherever it stands, and the walk reaches it at
+            # whatever depth the file has drifted to — TextModifiers.swift:168 is one. The owner is the
+            # whole extended name without its module, so a member of `Anchor.Source` is recorded under
+            # `Anchor.Source` and not under `Source`, which is what a name that belongs to neither the
+            # type nor its nested type would look like.
+            extended = re.match(r'extension\s+([\w.]+)', s).group(1)
+            owner = extended.split('.', 1)[1] if extended.split('.', 1)[0] in MODULES else extended
         elif owner and s and not s.startswith('//') and s not in ('{', '}', 'get', 'set', 'get set', 'willSet', 'didSet'):
             body = s[:s.index('{')] if '{' in s else s
             if re.search(r'\bfunc (\w+)', body):
@@ -149,7 +159,7 @@ for path in files:
                 conformed, protocols = re.search(r'\bextension\s+([\w.]+)\s*:\s*([\w, ]+)', s).groups()
                 # the whole extended name without its module: a member of `Anchor.Source` belongs to
                 # `Anchor.Source`, not to `Source` and not to `Anchor`
-                owner = conformed.split('.', 1)[1] if '.' in conformed else conformed
+                owner = conformed.split('.', 1)[1] if conformed.split('.', 1)[0] in MODULES else conformed
                 if 'Hashable' in protocols:
                     out.append((owner, 'func', 'hash', os.path.basename(path)))
                     out.append((owner, 'var', 'hashValue', os.path.basename(path)))

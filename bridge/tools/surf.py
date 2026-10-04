@@ -55,14 +55,13 @@ def scan(path, out):
                     pending = []
                     attrs = pending
                     # the whole extended name, and a member of `Anchor.Source` belongs to `Anchor.Source`
+                    # the whole extended name, with a module dropped and nothing else: a member of
+                    # `Anchor.Source` belongs to `Anchor.Source`, and not to `Anchor`
+                    # the type list says which type this band owns, matched on the last component so
+                    # `Anchor.Source` is matched by `Anchor`; the owner keeps the whole name
                     extended = m.group(2)
-                    if extended in want and '{' in s:
-                        owner = extended
-                    elif any(extended == f'{name}.{suffix}' or extended.endswith(f'.{suffix}')
-                             for name in want for suffix in ('Source',)) and '{' in s:
-                        owner = extended
-                    else:
-                        owner = None
+                    last = extended.split('.')[-1]
+                    owner = extended if ('{' in s and (extended in want or last in want)) else None
                 else:
                     pending = [s] if s.startswith('@') else []
                 opened, closed, in_block, in_multiline, hashes = braces(s, in_block, in_multiline, hashes)
