@@ -12,6 +12,8 @@ set_defaultarchs("iphoneos|armv7")
 add_requires("charon@swift-runtime", {alias = "swift-runtime"})
 add_requires("charon@libcxx", {alias = "libcxx"})
 add_requires("charon@styx", {alias = "styx"})
+-- libc++ and the runtime link apple-compat, and the build scripts link it too: required here so `xmake where` names it
+add_requires("charon@apple-compat", {alias = "apple-compat"})
 
 target("eidolonrt")
     add_rules("@addon/charon/daemon", "@addon/charon/swift")

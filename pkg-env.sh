@@ -1,25 +1,25 @@
-# pkg-env.sh: sourced by the build scripts (Styx, the Combine module, from charon@styx built against the same runtime) (toolchain pinned to what xmake resolved for ../rtpkg; runtime deps read from its manifest) — the charon@swift-runtime installation in ./xmake-global (one installation: runtime, libc++, compat, compiler)
+# pkg-env.sh: sourced by the build scripts: the toolchain, charon@swift-runtime, libc++, apple-compat and Styx (charon@styx, built against the same runtime) that ../rtpkg requires, from the shared xmake store
 STUDY=${STUDY:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}
-X=$STUDY/xmake-global/.xmake/packages
-# the runtime is the one Styx was built against, so the module and the app cannot disagree; the newest Styx install decides
-ST=$(ls -td $X/s/styx/*/*/ 2>/dev/null | head -1); ST=${ST%/}
-RT=$X/s/swift-runtime/6.4.0/$(awk '/\["swift-runtime"\] = \{/ {f=1} f && /buildhash/ {gsub(/[ ",]/, ""); split($0, a, "="); print a[2]; exit}' $ST/manifest.txt)
-[ -d "$RT" ] || { echo "pkg-env: no swift-runtime install matches the one Styx names" >&2; return 1 2>/dev/null || exit 1; }
+# every package is the one ../rtpkg requires, in the shared xmake store, named by xmake itself (charon's `xmake where`)
+pkg_where() {
+    local d
+    d=$(cd "$STUDY/rtpkg" && xmake where "$1") && d=${d##*$'\n'} && [ -d "$d" ] && echo "$d" && return 0
+    echo "pkg-env: ../rtpkg names no installed $1; install its packages with (cd rtpkg && xmake f -p iphoneos -a armv7 -y)" >&2
+    return 1
+}
+# sourced, a failure returns to the script; run on its own, it exits
+ST=$(pkg_where styx) && RT=$(pkg_where swift-runtime) && LIBCXX=$(pkg_where libcxx) && COMPAT=$(pkg_where apple-compat) &&
+    SDKPKG=$(pkg_where iphoneos-sdk) && LLVM=$(pkg_where llvm) && LD=$(pkg_where ld64)/bin/ld && LDID=$(pkg_where ldid)/bin/ldid ||
+    { return 1 2>/dev/null || exit 1; }
 SWIFTC=$(grep -A1 'SWIFT_EXEC' $RT/manifest.txt | tail -1 | tr -d ' "')
 # the manifest records the compiler by absolute path, which is whatever machine built the package; if that one is gone, the
 # package is still here under our own xmake root, so resolve it there (the suffix past .xmake/packages is the same layout)
 [ -x "$SWIFTC" ] || SWIFTC="$X/${SWIFTC#*".xmake/packages/"}"
 [ -x "$SWIFTC" ] || { echo "pkg-env: no swiftc for the runtime at $RT" >&2; return 1 2>/dev/null || exit 1; }
 SWIFTHOME=$(dirname $(dirname $SWIFTC))
-dep_hash() { awk -v name="$1" '$0 ~ "^        (\\[\")?"name"(\"\\])? = \\{" {found=1} found && /buildhash/ {gsub(/[ ",]/, ""); split($0, a, "="); print a[2]; exit}' $RT/manifest.txt; }
-LIBCXX=$X/l/libcxx/23.1.1/$(dep_hash libcxx)
-COMPAT=$X/a/apple-compat/latest/$(dep_hash apple-compat)
 OCFLAGS="-I $ST/lib/swift/iphoneos -I $ST/include/CombineHelpers"
 OCLINK="-L$ST/lib -lCombine -lCombineHelpers"
-SDK=$X/i/iphoneos-sdk/16.4/2b9d2eb960474b48acc5cdb2e27db307/Developer.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS16.4.sdk
-LLVM=$X/l/llvm/23.1.1/6a8c97aaa69241df9ed69ac86f13a045
-LD=$X/l/ld64/956.6/aac8ea2d04874dfdbdc0b81f5db2dd03/bin/ld
-LDID=$(ls $X/l/ldid/*/*/bin/ldid | head -1)
+SDK=$(ls -d $SDKPKG/Developer.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS*.sdk)
 MARK=$(grep -A1 'CHARON_SWIFT_RUNTIME_MARK' $RT/manifest.txt | tail -1 | tr -d ' "')
 T=armv7-apple-ios6.0
 PKGFLAGS="-target $T -clang-target $T -sdk $SDK -resource-dir $RT/lib/swift -Xfrontend -bundled-swift-runtime -runtime-compatibility-version none -plugin-path $SWIFTHOME/lib/swift/host/plugins"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# build.sh host|pkg (pkg, also "ios": armv7 iOS 6 against the charon@swift-runtime installation in ../xmake-global): OpenCombine + OpenCombineDispatch + OpenCombineFoundation + tests (with the XCTest shim) into out-<mode>/
+# build.sh host|pkg (pkg, also "ios": armv7 iOS 6 against the charon@swift-runtime ../rtpkg requires, from the shared xmake store): OpenCombine + OpenCombineDispatch + OpenCombineFoundation + tests (with the XCTest shim) into out-<mode>/
 set -e
 cd "$(dirname "$0")"
 MODE=${1:-host}; [ "$MODE" = ios ] && MODE=pkg; ROOT=$PWD/..; SRC=$ROOT/src/OpenCombine; O=$PWD/out-$MODE

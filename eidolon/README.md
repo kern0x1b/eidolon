@@ -160,16 +160,16 @@
 ../run-app.sh app1 out/EidolonDemo.app 560 ../scratch/ctl7.txt   # демо в эмуляторе со сценарием касаний
 ```
 
-Сборка идёт против установки пакета `charon@swift-runtime` 6.4.0 (charon main 70c716c, метка сборки
-`charon_swift_runtime_9c2013b4…`) в приватном `../xmake-global`; пути и флаги — в `../pkg-env.sh`.
+Сборка идёт против установки пакета `charon@swift-runtime` 6.4.0, которую требует `../rtpkg`, в общем хранилище
+xmake; `../pkg-env.sh` спрашивает путь к каждому пакету у самого xmake (`xmake where`) и собирает флаги.
 Все модули и dylib — из одной установки: стандартная библиотека, конкурентность, оверлеи Foundation, UIKit,
 QuartzCore, CoreGraphics, Dispatch, ObjectiveC, CoreFoundation и CoreData. Цель — `armv7-apple-ios6.0` с
 `-bundled-swift-runtime`, **проверка доступности включена**: любое API новее iOS 6 компилятор называет сам, а не
 падение на устройстве (так нашлись и исправлены `CGPathAddRoundedRect`, `component(_:from:)`,
 `keyboardDismissMode`, `contentSizeForViewInPopover`; `NSItemProvider`/`NSUserActivity` в подписях помечены iOS 8).
 Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, модуль `Combine`) из той же установки, собранный против того же
-рантайма: без издателей `URLSession` (iOS 7), допуск таймера — за `#available`; `../rtpkg` требует его, `pkg-env.sh`
-находит установку по хэшу рантайма. Прогон тестов предка, OpenCombine, — `../combine/build.sh pkg` (1448 из 1453); у Styx свои тесты.
+рантайма: без издателей `URLSession` (iOS 7), допуск таймера — за `#available`; `../rtpkg` требует его с тем же
+рантаймом. Прогон тестов предка, OpenCombine, — `../combine/build.sh pkg` (1448 из 1453); у Styx свои тесты.
 
 ## Замеры
 

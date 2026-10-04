@@ -1,5 +1,5 @@
 #!/bin/bash
-# stage-pkg.sh: link the armv7 test runner against the charon@swift-runtime installation (../xmake-global), @executable_path install names, sign
+# stage-pkg.sh: link the armv7 test runner against the charon@swift-runtime ../rtpkg requires (shared xmake store), @executable_path install names, sign
 set -e
 cd "$(dirname "$0")"
 ROOT=$PWD/..; O=$PWD/out-pkg; S=$O/stage

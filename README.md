@@ -68,9 +68,10 @@ exists.
 
 ## Requirements
 
-- macOS with the [Charon](https://github.com/kern0x1b/charon) toolchain, and its packages installed into a private
-  xmake global directory (`xmake-global/` in this checkout): `swift-runtime`, `libcxx`, `apple-compat`, `styx`,
-  the iOS SDK, `llvm`, `ld64` and `ldid`. `pkg-env.sh` finds them there.
+- macOS with the [Charon](https://github.com/kern0x1b/charon) toolchain, and the packages `rtpkg/` requires
+  installed into the shared xmake store (`cd rtpkg && xmake f -p iphoneos -a armv7 -y`): `swift-runtime`, `libcxx`,
+  `apple-compat`, `styx`, the iOS SDK, `llvm`, `ld64` and `ldid`. `pkg-env.sh` asks xmake where each is
+  (`xmake where`). An app that only uses Eidolon takes it as the package `charon@eidolon` instead.
 - To run the tests and rendered scenarios: an iOS 6 firmware root file system from Charon, and an emulator lab that
   provides `scripts/ilemu.sh` and the helper scripts `run-emu.sh` and `run-app.sh` call. Point `EMULATOR_LAB` at it.
 - To measure on hardware: an iPhone 4S or an iPad 2 on iOS 6.1.3, reached through Charon's device tooling
