@@ -13,8 +13,8 @@ ST=$(pkg_where styx) && RT=$(pkg_where swift-runtime) && LIBCXX=$(pkg_where libc
     { return 1 2>/dev/null || exit 1; }
 SWIFTC=$(grep -A1 'SWIFT_EXEC' $RT/manifest.txt | tail -1 | tr -d ' "')
 # the manifest records the compiler by absolute path, which is whatever machine built the package; if that one is gone, the
-# package is still here under our own xmake root, so resolve it there (the suffix past .xmake/packages is the same layout)
-[ -x "$SWIFTC" ] || SWIFTC="$X/${SWIFTC#*".xmake/packages/"}"
+# compiler is a package of ours too, so take it from the store the runtime came from -- the same layout one level out
+[ -x "$SWIFTC" ] || SWIFTC=$(ls -td "${RT%%/s/swift-runtime/*}"/s/swift/*/*/bin/swiftc 2>/dev/null | head -1)
 [ -x "$SWIFTC" ] || { echo "pkg-env: no swiftc for the runtime at $RT" >&2; return 1 2>/dev/null || exit 1; }
 SWIFTHOME=$(dirname $(dirname $SWIFTC))
 OCFLAGS="-I $ST/lib/swift/iphoneos -I $ST/include/CombineHelpers"
