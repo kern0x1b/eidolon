@@ -340,6 +340,12 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   в `docs/facts/TextSelection.md`: сам заголовок UIKit 26.2 говорит, что `selectedRange` — это весь
   выбор начиная с iOS 2, а первый `NSArray` выделенных диапазонов — `selectedRanges` в iOS 26.0.
 
+- `RasterizationOptions` — по форме 16.4 (`SwiftUI.swiftinterface:17490`): семь хранимых свойств и `init()`.
+  Каждое из них — то, что у `CALayer` iOS 6 есть: асинхронная отрисовка и масштаб растеризации едут в слой,
+  а `colorMode`, `rbColorMode`, `drawsPlatformViews`, `prefersDisplayCompositing`, `maxDrawableCount` и
+  `isOpaque` — ключей, которых у слоя нет, и они остаются на порте. `drawingGroup` собирает эти значения
+  и отдаёт слою те два, что у него есть. Сам `applied(to:)` — наш, и он внутренний.
+
 - Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
   `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
   (там только `Sendable`). Поэтому имена, которые несут нашу дорожку, — наши: `keyframes`,

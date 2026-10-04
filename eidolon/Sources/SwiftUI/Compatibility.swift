@@ -58,7 +58,15 @@ extension View {
     public func controlSize(_ size: ControlSize) -> some View { environment(\.controlSize, size) }
     public func dynamicTypeSize(_ size: DynamicTypeSize) -> some View { ignored(self, "dynamicTypeSize", "iOS 6 has no dynamic type") }
     public func drawingGroup(opaque: Bool = false, colorMode: ColorRenderingMode = .nonLinear) -> some View {
-        applyingToViews { $0.layer.shouldRasterize = true; $0.layer.rasterizationScale = UIScreen.main.scale }
+        // the options are the same values `RasterizationOptions` carries, and the same two the layer of
+        // iOS 6 has: a colour mode and an opaque flag are keys it has none of
+        applyingToViews { view in
+            view.layer.shouldRasterize = true
+            var options = RasterizationOptions()
+            options.colorMode = colorMode
+            options.isOpaque = opaque
+            options.applied(to: view.layer)
+        }
     }
     public func edgesIgnoringSafeArea(_ edges: Edge.Set) -> some View { ignored(self, "edgesIgnoringSafeArea", "iOS 6 has no safe area") }
     public func ignoresSafeArea(_ regions: SafeAreaRegions = .all, edges: Edge.Set = .all) -> some View { ignored(self, "ignoresSafeArea", "iOS 6 has no safe area") }

@@ -3033,6 +3033,33 @@ func aViewThatStandsForAGroupIsThatGroup() {
     equal(primitive, 1, "and a primitive is its own content: one child, itself")
 }
 
+// RasterizationOptions: Apple's shape from the SDK of 16.4, and what reaches a layer of iOS 6
+var raster = RasterizationOptions()
+check(raster.colorMode == .nonLinear, "a layer is rasterised with the non-linear colour mode by default")
+check(!raster.rendersAsynchronously, "and drawn on the main thread by default")
+check(!raster.isOpaque, "and over what is behind it, not over an opaque fill")
+check(!raster.drawsPlatformViews, "and platform views are not drawn into it")
+check(!raster.prefersDisplayCompositing, "and the system does not composite it by preference")
+equal(raster.maxDrawableCount, 3, "with three drawables of the release's own")
+equal(raster.rbColorMode, nil, "and no colour mode the release would send down, which iOS 6 has no key for")
+raster.isOpaque = true
+raster.prefersDisplayCompositing = true
+raster.maxDrawableCount = 1
+check(raster.isOpaque && raster.prefersDisplayCompositing && raster.maxDrawableCount == 1, "and the three of them are the port's to set")
+// and the options reach a real layer, through the one view that rasterises: `drawingGroup`
+func layerOf(_ probe: _Probe) -> CALayer? {
+    var found: CALayer?
+    func walk(_ v: UIView) { if !v.subviews.isEmpty { found = found ?? v.layer }; v.subviews.forEach(walk) }
+    walk(probe.hostView)
+    return found
+}
+let drawn = _Probe(Color.red.frame(width: 40, height: 40).drawingGroup(), width: 60, height: 60)
+_ = frames(drawn)
+if let layer = layerOf(drawn) {
+    check(layer.shouldRasterize, "a drawing group rasterises the layer of iOS 6")
+    check(layer.rasterizationScale == UIScreen.main.scale, "at the scale of the screen")
+} else { check(false, "a drawing group has a layer of its own") }
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
