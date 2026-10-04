@@ -2991,9 +2991,8 @@ struct ValueTabCase: View {
 }
 
 func aTabIsOneTabNamedByItsValue() {
-    let tab = Tab("Inbox", systemImage: "envelope", value: 1) { Color.gray }
-    equal(tab.namedRows.count, 1, "a tab is one tab")
-    equal(tab.namedRows.first?.value, AnyHashable(1), "named by the value written in it")
+    // a tab is one tab named by the value written in it: what a caller can see is the bar item it
+    // becomes, so that is what is asked for -- the rows behind it are the port's own
     let probe = _Probe(ValueTabCase(selected: Binding(get: { 1 }, set: { _ in })), width: 320, height: 480)
     _ = frames(probe)
     // the bar's own items are where a tab bar keeps its titles, not labels in the view tree

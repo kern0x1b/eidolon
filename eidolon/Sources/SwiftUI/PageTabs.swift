@@ -233,7 +233,7 @@ struct _TabContentList<Element: Hashable>: TabContent, TabContentNaming {
         self.elements = elements; self.view = view; self.named = named
     }
     public var body: _TabContentList<Element> { self }
-    public var namedRows: [_TabContentRow] {
+    var namedRows: [_TabContentRow] {
         elements.map { _TabContentRow(value: named($0), view: view($0)) }
     }
     public var rows: [(value: AnyHashable, view: AnyView)] { elements.map { (named($0), view($0)) } }
@@ -328,7 +328,7 @@ extension ForEach: TabContent, TabContentNaming where Content: TabContent {
     public typealias TabValue = Content.TabValue
     public typealias Body = AnyTabContent<Content.TabValue>
     public var body: AnyTabContent<Content.TabValue> { AnyTabContent(self) }
-    public var namedRows: [_TabContentRow] {
+    var namedRows: [_TabContentRow] {
         let factory = content
         return data.map { element in
             let tab = factory(element)
@@ -371,7 +371,7 @@ extension Tab: TabContent, TabContentNaming where Value: Hashable, Content: View
     public typealias TabValue = Value
     public typealias Body = AnyTabContent<Value>
     public var body: AnyTabContent<Value> { AnyTabContent(self) }
-    public var namedRows: [_TabContentRow] { [_TabContentRow(value: AnyHashable(value), view: AnyView(content))] }
+    var namedRows: [_TabContentRow] { [_TabContentRow(value: AnyHashable(value), view: AnyView(content))] }
 }
 
 extension Tab where Label == DefaultTabLabel, Value: Hashable, Content: View {
