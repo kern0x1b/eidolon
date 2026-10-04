@@ -18,7 +18,12 @@ xmake -P eidolon emulate -d iPhone4,1 -r 6.1.3 -s "${SECONDS_BUDGET:-240}" -t 15
     run /usr/libexec/EidolonTests > "$out/run.log" 2>&1 || status=$?
 cat "$out/run.log"
 folder=$(sed -n 's/^run folder //p' "$out/run.log" | tail -1)
-[ -n "$folder" ] && cp -R "$folder/results/." "$out/" 2>/dev/null || true
+if [ -z "$folder" ] || [ ! -d "$folder/results" ]; then
+  echo "the run left no results folder; its log is $out/run.log" >&2
+  exit 1
+fi
+cp -R "$folder/results/." "$out/"
+cp "$folder/verdict.json" "$out/" 2>/dev/null || true
 grep -a "FAIL\|checks " "$out/test.stdout" | tail -20 || true
-echo "exit=$status run folder ${folder:-unknown}" | tee -a "$out/verdict.txt"
+echo "exit=$status run folder $folder" | tee -a "$out/verdict.txt"
 exit "$status"
