@@ -7,9 +7,28 @@ public enum AccessibilityTextContentType { case plain, console, fileSystem, mess
 public enum MoveCommandDirection { case up, down, left, right }
 public struct PresentationDetent: Hashable {
     let name: String
+    /// the app's own detent type, when it named one: its height is what the type computes
+    let customType: Any.Type?
+    init(name: String, custom: Any.Type? = nil) { self.name = name; customType = custom }
+    /// The height the app's type computes from the context, which is the screen on this platform.
+    public var customHeight: CGFloat? {
+        guard let customType else { return nil }
+        return (customType as? any CustomPresentationDetent.Type)?.height(in: Context(maxDetentValue: maxDetentValue))
+    }
+    public static func == (a: PresentationDetent, b: PresentationDetent) -> Bool { a.name == b.name }
+    public func hash(into hasher: inout Hasher) { hasher.combine(name) }
+    public var hashValue: Int { var h = Hasher(); hash(into: &h); return h.finalize() }
     public static let medium = PresentationDetent(name: "medium")
     public static let large = PresentationDetent(name: "large")
     public static func height(_ height: CGFloat) -> PresentationDetent { PresentationDetent(name: "height") }
+    /// The detent an app's own type describes. Its height is the one it computes from the context, and
+    /// the context's largest detent is the screen, because a modal screen of iOS 6 is the whole screen.
+    public static func custom<D: CustomPresentationDetent>(_ type: D.Type) -> PresentationDetent {
+        PresentationDetent(name: "custom-\(String(describing: type))", custom: type)
+    }
+    /// The largest detent this platform allows a modal screen to be: the screen, which is all of it here.
+    public var maxDetentValue: CGFloat { Context.maximum }
+
     public static func fraction(_ fraction: CGFloat) -> PresentationDetent { PresentationDetent(name: "fraction") }
 }
 public enum PresentationAdaptation { case automatic, none, popover, sheet, fullScreenCover }
