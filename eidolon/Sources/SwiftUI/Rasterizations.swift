@@ -27,18 +27,9 @@ public struct RasterizationOptions {
     }
 }
 
-extension EnvironmentValues {
-    /// How the layers below are rasterised. Nothing reads it until a view puts it in the environment,
-    /// which is what `drawingGroup` does.
-    public var rasterizationOptions: RasterizationOptions? {
-        get { self[RasterizationOptionsKey.self] }
-        set { self[RasterizationOptionsKey.self] = newValue }
-    }
-}
-
-struct RasterizationOptionsKey: EnvironmentKey {
-    static var defaultValue: RasterizationOptions? { nil }
-}
+// No environment key: Apple's `RasterizationOptions` is a parameter of the APIs that take it, and
+// neither SDK declares one in `EnvironmentValues` — the reverse check is what caught that the first
+// version of this file had.
 
 extension RasterizationOptions {
     /// The layer settings the release's own rasterisation asks for. `shouldRasterize` and the scale are

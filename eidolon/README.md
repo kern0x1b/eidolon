@@ -344,7 +344,10 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   Каждое из них — то, что у `CALayer` iOS 6 есть: асинхронная отрисовка и масштаб растеризации едут в слой,
   а `colorMode`, `rbColorMode`, `drawsPlatformViews`, `prefersDisplayCompositing`, `maxDrawableCount` и
   `isOpaque` — ключей, которых у слоя нет, и они остаются на порте. `drawingGroup` собирает эти значения
-  и отдаёт слою те два, что у него есть. Сам `applied(to:)` — наш, и он внутренний.
+  и отдаёт слою те два, что у него есть. Сам `applied(to:)` — наш, и он внутренний. Ключа в
+  `EnvironmentValues` нет: `RasterizationOptions` у Apple — параметр тех API, которые его берут, и ни в
+  16.4, ни в 26.2 такого ключа нет; обратная проверка это и показала, когда первая версия файла его
+  объявила.
 
 - Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
   `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
