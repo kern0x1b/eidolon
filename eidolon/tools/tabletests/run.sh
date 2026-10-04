@@ -19,14 +19,15 @@ fi
 cd "$ROOT/eidolon"
 
 # The positive snippet must compile, and the negative one must be rejected for the reason it exists:
-# a Text is not table content. Anything else -- a snippet that compiles, or one rejected for an
+# a Text is not table content, and a bare `if` is not a widget bundle member. Anything else -- a snippet that compiles, or one rejected for an
 # unrelated reason -- is a failure, and this script's exit code is the gate.
 status=0
 check_one() {
-  local name=$1 expect=$2
+  local name=$1 expect=$2 extra="${3:-}"
   local out
+  # shellcheck disable=SC2086
   out=$("$SWIFTC" $PKGFLAGS $OCFLAGS -I "$O/mods" -module-cache-path "$O/mc" -enforce-exclusivity=unchecked \
-        -suppress-warnings -typecheck -parse-as-library -module-name TableChecks \
+        -suppress-warnings -typecheck -parse-as-library -module-name TableChecks $extra \
         "$ROOT/eidolon/tools/tabletests/$name.swift" 2>&1)
   if [ $? -ne 0 ] && [ -z "$out" ]; then
     printf '%-9s FAIL -- the compiler exited without saying why\n' "$name:"
@@ -47,4 +48,10 @@ check_one() {
 }
 check_one positive compiles
 check_one negative "conform to 'TableRowContent'"
+# the second negative: a bare `if` in a widget bundle. Apple's own builder has no overload for one —
+# its two `buildOptional` forms (SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:21949 and :21970)
+# take the marker intersection and a `W: Widget`, neither of which an `if` without `#available`
+# produces — so the `if` reaches the type checker as `any Widget` and is refused. The widget API is
+# iOS 14 and this tree targets iOS 6, so the check is about the builder and not about availability.
+check_one negative-widget-bundle "cannot conform to 'Widget'" "-disable-availability-checking"
 exit $status

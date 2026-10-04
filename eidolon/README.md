@@ -386,6 +386,15 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   Имена в журнале: `Window.presentedWindowContent(forPresented:)`, `OpenWindowAction(id:)` и
   `OpenWindowAction(value:)` — последнее потому, что iOS 6 и не передаёт окну значение.
 
+- Проверка на «виджет-бандл безусловно не собирается» лежит в `eidolon/tools/tabletests/` и говорит
+  честно, что именно она доказывает: `if` без `#available` доходит до проверки типов как `any Widget`, и
+  `Widget` existential не отвечает, — а не то, что его ловит недоступная перегрузка. Недоступной перегрузки
+  `buildOptional` в интерфейсе 26.2 нет вовсе: у `WidgetBundleBuilder` есть две формы
+  (`arm64e-apple-ios.swiftinterface:21949` и `:21970`), обе доступные, и ни одна не берёт такой `if`. Сама
+  недоступная — `extension WidgetBundleBuilder : Sendable` (`:21942-21943`), и она помечена как
+  недоступная, как и помечена у нас. Мутант (убрать общую форму `buildOptional`) показал, что проверка
+  не различает: отказ остаётся тем же, так что проверка ловит «`if` не собирается», а не «нет перегрузки».
+
 - Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
   `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
   (там только `Sendable`). Поэтому имена, которые несут нашу дорожку, — наши: `keyframes`,

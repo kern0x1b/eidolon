@@ -97,8 +97,10 @@ public struct WidgetBundleBuilder {
 
 /// The builder is Sendable in 26.2 (`arm64e-apple-ios.swiftinterface:21943`), and a result builder is a
 /// value the system may hold across threads.
-@available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
-@available(tvOS, unavailable)
+/// The conformance is `@available(*, unavailable)` in 26.2
+/// (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:21942-21943`): a result builder that the
+/// system may hold across threads is not one SwiftUI gives out.
+@available(*, unavailable)
 extension WidgetBundleBuilder: Sendable {}
 
 /// The marker the interface's `buildLimitedAvailability` returns. It is underscored, so it is the
