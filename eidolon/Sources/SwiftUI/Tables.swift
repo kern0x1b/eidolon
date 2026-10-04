@@ -1,12 +1,5 @@
 import UIKit
 
-/// The two arms of an `if` in a builder, kept apart until the builder asks which one it got. The
-/// shape and the storage enum are the ones OpenSwiftUI uses (MIT, commit b13f093dcc71).
-public struct _ConditionalTableContent<TrueContent, FalseContent> {
-    @frozen public enum Storage { case trueContent(TrueContent), falseContent(FalseContent) }
-    public let storage: Storage
-}
-
 public struct _AnyTableColumn<Row> {
     let title: String
     let cell: (Row) -> any View
@@ -124,9 +117,15 @@ public struct TableColumnBuilder<RowValue: Identifiable, Sort> {
     @_disfavoredOverload
     public static func buildIf<C>(_ content: C?) -> C?
         where RowValue == C.TableRowValue, C: TableColumnContent, C.TableColumnSortComparator == Never { content }
-    public static func buildLimitedAvailability<C: TableColumnContent>(_ content: C) -> C where C.TableRowValue == RowValue, C.TableColumnSortComparator == Sort { content }
+    public static func buildLimitedAvailability<C: TableColumnContent>(_ content: C) -> _AnyTableColumnContent<RowValue, Sort>
+        where C.TableRowValue == RowValue, C.TableColumnSortComparator == Sort { _AnyTableColumnContent(content) }
     @_disfavoredOverload
-    public static func buildLimitedAvailability<C: TableColumnContent>(_ content: C) -> C where C.TableRowValue == RowValue, C.TableColumnSortComparator == Never { content }
+    public static func buildLimitedAvailability<C: TableColumnContent>(_ content: C) -> _AnyTableColumnContent<RowValue, Never>
+        where C.TableRowValue == RowValue, C.TableColumnSortComparator == Never { _AnyTableColumnContent(content) }
+    /// The `if #unavailable` case: there are no columns, so the empty set is what the builder is left with.
+    public static func buildLimitedAvailability() -> _AnyTableColumnContent<RowValue, Sort> {
+        _AnyTableColumnContent(EmptyTableColumnContent<RowValue, Sort>())
+    }
 }
 
 public protocol TableRowContent {
@@ -156,6 +155,36 @@ public struct TableForEachContent<Data: RandomAccessCollection, RowContent: Tabl
         self.data = data; self.content = content
     }
     public var _rows: [Data.Element] { Array(data) }
+}
+
+/// A row content of any concrete type, which is what a builder hands on when it wraps one -- the table
+/// row counterpart of the `AnyView` a view builder produces.
+public struct _AnyTableRowContent<Value: Identifiable>: TableRowContent {
+    public typealias TableRowValue = Value
+    public typealias TableRowBody = Never
+    // the rows are projected where the wrapper is made: an existential cannot say which value it holds,
+    // and the builder hands this on to whatever is built next
+    public let _rows: [Value]
+    init<C: TableRowContent>(_ content: C) where C.TableRowValue == Value { _rows = content._rows }
+}
+
+public struct _AnyTableColumnContent<RowValue: Identifiable, Sort>: TableColumnContent {
+    public typealias TableRowValue = RowValue
+    public typealias TableColumnSortComparator = Sort
+    public typealias TableColumnBody = Never
+    public let _columns: [_AnyTableColumn<RowValue>]
+    init<C: TableColumnContent>(_ content: C) where C.TableRowValue == RowValue, C.TableColumnSortComparator == Sort {
+        _columns = content._columns
+    }
+}
+
+/// No columns at all: what an `if #unavailable` leaves the builder with.
+public struct EmptyTableColumnContent<RowValue: Identifiable, Sort>: TableColumnContent {
+    public typealias TableRowValue = RowValue
+    public typealias TableColumnSortComparator = Sort
+    public typealias TableColumnBody = Never
+    public init() {}
+    public var _columns: [_AnyTableColumn<RowValue>] { [] }
 }
 
 public struct EmptyTableRowContent<Value: Identifiable>: TableRowContent {
@@ -193,7 +222,12 @@ public struct TableRowBuilder<Value: Identifiable> {
         where Value == T.TableRowValue, T: TableRowContent, F: TableRowContent, T.TableRowValue == F.TableRowValue {
         _ConditionalContent(storage: .falseContent(second))
     }
-    public static func buildLimitedAvailability<C: TableRowContent>(_ content: C) -> C where C.TableRowValue == Value { content }
+    public static func buildLimitedAvailability<C: TableRowContent>(_ content: C) -> _AnyTableRowContent<Value>
+        where C.TableRowValue == Value { _AnyTableRowContent(content) }
+    /// The `if #unavailable` case: no rows, so the empty set is what the builder is left with.
+    public static func buildLimitedAvailability() -> _AnyTableRowContent<Value> {
+        _AnyTableRowContent(EmptyTableRowContent<Value>())
+    }
 }
 
 public protocol TableStyle {}
@@ -227,7 +261,6 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
     }
     public var body: AnyView {
         if UIDevice.current.userInterfaceIdiom == .pad { _Unsupported.pendingNote("Table columns on iPad") }
-        let first = columns._columns.first
         // the app sorts from the binding, the table only shows the order it is given
         var ordered = rows._rows
         if let sortOrder {
@@ -259,7 +292,7 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
         if sortOrder == nil { return AnyView(list) }
         // the titles, then the rows they sort
         return AnyView(VStack(spacing: 0) {
-            TableHeader(columns: columns._columns, sortOrder: sortOrder)
+            TableHeader(columns: shown, sortOrder: sortOrder)
             list
         })
     }

@@ -10,6 +10,9 @@ rm -rf $O/obj $O/mods; mkdir -p $O/obj $O/mods
 $SWIFTC $SWFLAGS -parse-as-library -wmo -module-name SwiftUI -emit-module -emit-module-path $O/mods/SwiftUI.swiftmodule \
   -c Sources/SwiftUI/*.swift -o $O/obj/SwiftUI.o
 echo "built SwiftUI"
+# the two typecheck gates: each resolves eidolon/out/mods and exits non-zero on failure
+"$PWD/tools/tabletests/run.sh"
+"$PWD/tools/tabtests/run.sh"
 $LLVM/bin/clang -target armv7-apple-ios -miphoneos-version-min=6.0 -isysroot $SDK -fobjc-arc -Wno-deprecated-declarations -c Demo/device/gesture.m -o $O/obj/gesture.o
 $SWIFTC $SWFLAGS -parse-as-library -wmo -module-name EidolonDemo -I $O/mods -import-objc-header Demo/device/bridge.h -c Demo/*.swift -o $O/obj/EidolonDemo.o
 echo "built Demo"

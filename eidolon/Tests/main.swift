@@ -2914,6 +2914,28 @@ func aTableDrawsTheColumnsTheAppLeftVisible() {
     var customization = TableColumnCustomization<TwoColumnCase>()
     customization.order = [rows[1].id, rows[0].id]
     customization.visibility = [rows[0].id: false, rows[1].id: true]
+    // the property itself, which the engine test is the first live check of
+    let table = Table(of: TwoColumnCase.self,
+                      columnCustomization: Binding(get: { customization }, set: { _ in })) {
+        TableColumn("first") { (row: TwoColumnCase) in Color.red }
+        TableColumn("second") { (row: TwoColumnCase) in Color.blue }.alignment(.trailing)
+    } rows: {
+        ForEach(rows) { TableRow($0) }
+    }
+    check(table.visibleColumns.count == 1, "of the two columns the app left one, the table draws one")
+    check(table.visibleColumns.first?.columnAlignment == .trailing, "and the column keeps the alignment it was given")
+    customization.resetOrder()
+    check(customization.order.isEmpty, "resetOrder empties the order the app had")
+
+    // a hidden column must lose its title and its sort key too: the header is built from the same list
+    var order = [KeyPathComparator(\TwoColumnCase.title)]
+    let sorted = _Probe(SortedTwoColumnTableCase(rows: rows, customization: customization,
+                                                sortOrder: Binding(get: { order }, set: { order = $0 })),
+                        width: 320, height: 480)
+    _ = frames(sorted)
+    check(!labels(of: sorted.hostView).contains("first"), "a hidden column keeps neither its title nor its sort key")
+    check(labels(of: sorted.hostView).contains("second"), "and the column the app left is the one the header shows")
+
     let probe = _Probe(TwoColumnTableCase(rows: rows, customization: customization), width: 320, height: 480)
     _ = frames(probe)
     check(colors(of: probe.hostView).count > 0, "the table draws rows for the column it kept")
@@ -2921,6 +2943,21 @@ func aTableDrawsTheColumnsTheAppLeftVisible() {
     check(colors(of: probe.hostView).contains(UIColor.blue), "the column it kept is the one the app left")
     customization.resetOrder()
     check(customization.order.isEmpty, "resetOrder empties the order the app had")
+}
+
+struct SortedTwoColumnTableCase: View {
+    let rows: [TwoColumnCase]
+    let customization: TableColumnCustomization<TwoColumnCase>
+    @Binding var sortOrder: [KeyPathComparator<TwoColumnCase>]
+    var body: some View {
+        Table(of: TwoColumnCase.self, sortOrder: $sortOrder,
+              columnCustomization: Binding(get: { customization }, set: { _ in })) {
+            TableColumn("first") { (row: TwoColumnCase) in Color.red }
+            TableColumn("second", value: \.title)
+        } rows: {
+            ForEach(rows) { TableRow($0) }
+        }
+    }
 }
 
 func colors(of view: UIView) -> [UIColor] {
@@ -2932,6 +2969,55 @@ func colors(of view: UIView) -> [UIColor] {
     }
     return found
 }
+
+// The builders and the plumbing under them: a conditional column, a conditional row, and the rows a
+// table collects. WRITTEN, NOT RUN until the emulator lands (emulate-launch, 7e035ac0).
+struct BuilderRow: Identifiable { let id: Int }
+
+struct BuilderColumnCase: View {
+    let rows: [BuilderRow]
+    @Binding var showWide: Bool
+    var body: some View {
+        Table(of: BuilderRow.self) {
+            if showWide {
+                TableColumn("wide", value: \.id)
+            } else {
+                TableColumn("narrow", value: \.id)
+            }
+        } rows: {
+            ForEach(rows) { row in
+                if row.id % 2 == 0 {
+                    TableRow(row)
+                }
+            }
+        }
+    }
+}
+
+func theBuildersTakeAConditionalColumnAndRow() {
+    let rows = [BuilderRow(id: 0), BuilderRow(id: 1), BuilderRow(id: 2)]
+    // buildEither is the builder's conditional form, and the result is column content either way
+    let either: _ConditionalContent<TableColumn<String, Never, Text, Text>, TableColumn<String, Never, Text, Text>> =
+        .init(storage: .trueContent(TableColumn("wide", value: \.id)))
+    check(either.storage.isTrueContent, "buildEither keeps the arm the condition took")
+    let columnContent: any TableColumnContent = either
+    check(columnContent._columns.count == 1, "and the conditional column contributes its one column")
+    // the row builder's own conditional form, and the rows a table would collect
+    let rowEither: _ConditionalContent<TableRow<BuilderRow>, TableRow<BuilderRow>> =
+        .init(storage: .trueContent(TableRow(rows[0])))
+    check(rowEither.storage.isTrueContent, "the row builder's conditional keeps its arm")
+    let even: [BuilderRow] = rows.filter { $0.id % 2 == 0 }
+    equal(even.map { $0.id }, [0, 2], "and the rows the builder kept are the ones the condition allowed")
+    let holder = BuilderShow()
+    let probe = _Probe(BuilderColumnCase(rows: rows, showWide: Binding(get: { holder.show }, set: { holder.show = $0 })),
+                      width: 320, height: 480)
+    _ = frames(probe)
+    holder.show = false
+    probe.flush()
+    check(labels(of: probe.hostView).contains("narrow"), "the column the condition took is the one the table shows")
+}
+
+final class BuilderShow { var show = true; init() {} }
 
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
