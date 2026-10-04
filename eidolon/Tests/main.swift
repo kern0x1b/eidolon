@@ -3094,6 +3094,24 @@ let written = try? NoteDocument(text: "the second line\n").fileWrapper(
 equal(written?.regularFileContents, Data("the second line\n".utf8), "and a document writes the bytes it is asked for")
 equal(written?.preferredFilename, "eidolon-note.txt", "under the name the file had")
 
+// A window: one scene over the one UIWindow of iOS 6, and the action that opens it.
+let windowScene = Window("Notes", id: "notes") { Text(verbatim: "the window's content") }
+equal(windowScene.id, "notes", "a window scene knows the id it is known by")
+let stringKeyScene = Window(LocalizedStringKey("rawValue"), id: "by-key") { Text(verbatim: "x") }
+equal(stringKeyScene.id, "by-key", "and the initialiser that takes a localized key builds the same scene")
+let presented = windowScene.presentedWindowContent(forPresented: true)
+equal(presented?.data == nil, true, "a presented window holds the value it was opened with, and none for one opened without")
+check(presented != nil, "and a window scene has the content of the window it is over")
+OpenWindowAction.currentWindowID = "notes"
+var windowJournalBefore = _Unsupported.used.count
+OpenWindowAction().callAsFunction(id: "notes")
+equal(_Unsupported.used.count, windowJournalBefore, "opening the window that is already shown does nothing at all")
+OpenWindowAction().callAsFunction(id: "another")
+check(_Unsupported.used.count > windowJournalBefore, "and opening another one says iOS 6 has no second window")
+let openValue = OpenWindowAction().openWindow
+check(openValue is OpenWindowAction, "the action reads itself as the openWindow of a window scene")
+OpenWindowAction.currentWindowID = nil
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
