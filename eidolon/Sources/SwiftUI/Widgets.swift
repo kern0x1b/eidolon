@@ -185,3 +185,20 @@ struct EmptyWidget: Widget {
     associatedtype Body: WidgetConfiguration
     var body: Body { get }
 }
+
+// MARK: - a widget that says "not on this platform"
+
+// A configuration that is behind an availability, which is what a widget bundle's `if #available`
+// branch needs. Apple's shape from the SDK of 26.2
+// (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:9248`): a `@frozen` struct of
+// `WidgetConfiguration`, `@available(iOS 16.1, macOS 13.0, watchOS 9.1, *)` and unavailable on tvOS.
+//
+// The availability is kept, and it means what it means there: on iOS 6 there is no widget host at all, so
+// this configuration — like every other in this file — is never asked for a body.
+@available(iOS 16.1, macOS 13.0, watchOS 9.1, *)
+@available(tvOS, unavailable)
+@frozen public struct LimitedAvailabilityConfiguration: WidgetConfiguration {
+    public typealias Body = EmptyWidgetConfiguration
+    public var body: Body { let empty = EmptyWidgetConfiguration(); return empty }
+    public init() {}
+}
