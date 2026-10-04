@@ -75,10 +75,10 @@ def main():
     for name in CLASSES:
         bucket = buckets[name]
         total += len(bucket)
-        print(f'{name:18} {len(bucket):4}')
+        print(f'{name:18} {len(bucket):4}  gap rows')
         for example in bucket[:3]:
             print(f'    {example}')
-    print(f'{"total":18} {total:4}   over {len(rows)} rows, in {len(CLASSES)} classes')
+    print(f'{"total":18} {total:4}  gap rows   over {len(rows)} gap rows, in {len(CLASSES)} classes')
     if total != len(rows):
         print('# the classes do not cover every row', file=sys.stderr)
         sys.exit(1)
@@ -86,10 +86,9 @@ def main():
         with open(sys.argv[3], 'w') as out:
             out.write(f'# every row of {os.path.basename(sys.argv[1])}, one class each, in the order the '
                       f'classes are meant to be read\n')
-            out.write('# class\trow\n')
-            for name in CLASSES:
-                for row in buckets[name]:
-                    out.write(f'{name}\t{row}\n')
+            out.write('# row\tclass\n')
+            for row in rows:
+                out.write(f'{row}\t{classify(row)}\n')
         print(f'wrote {sys.argv[3]}')
 
 

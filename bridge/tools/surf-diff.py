@@ -163,10 +163,10 @@ def main():
         else:
             other.add(row)                           # the same name, but not the same declaration
     gained = only_new
-    print(f'|O| = {len(old)}')
-    print(f'|N| = {len(new)}')
-    print(f'|O\\N| = {len(only_old)}   moved {len(moved)}  attribute {len(attribute)}  other {len(other)}')
-    print(f'|N\\O| = {len(gained)}   gained')
+    print(f'|O| = {len(old)}   surface rows in OLD')
+    print(f'|N| = {len(new)}   surface rows in NEW')
+    print(f'|O\\N| = {len(only_old)}   |O\\N| rows: moved {len(moved)}  attribute {len(attribute)}  other {len(other)}')
+    print(f'|N\\O| = {len(gained)}   |N\\O| rows: gained')
     for label, rows in (('moved', moved), ('attribute', attribute), ('other', other)):
         for owner, kind, name in sorted(rows)[:3]:
             homes = '; '.join(f'{h[1]}:{h[2]} in {h[0]}' for h in sorted(table.get(name, ()), key=lambda h: (str(h[1]), h[2]))[:2])
@@ -176,7 +176,7 @@ def main():
     disjoint = not (parts[0] & parts[1] or parts[0] & parts[2] or parts[1] & parts[2])
     ok = (len(old) - len(new) == len(only_old) - len(only_new)
           and union == only_old and disjoint and (moved | attribute | other) == only_old)
-    print(f'identity: |O|-|N| = {len(old) - len(new)}, '
+    print(f'identity over surface rows (not gap rows): |O|-|N| = {len(old) - len(new)}, '
           f'|O\\N| - |N\\O| = {len(only_old) - len(only_new)}, '
           f'classes: {len(moved)} + {len(attribute)} + {len(other)} = {len(moved | attribute | other)}')
     if not ok:
