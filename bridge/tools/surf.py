@@ -12,7 +12,7 @@ Then: gaps.py <ours.tsv> <surface-26.2.tsv> says what of it this tree does not d
 import re, sys, os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from braces import braces
+from owners import walk
 
 SDK = os.environ.get('APPLE_26_SDK') or os.path.expanduser(
     '~/Git/projects/ios/charon/.agent-work/sdk-26.2/iPhoneOS26.2.sdk')
@@ -38,76 +38,39 @@ def strip_ns(text):
 
 def scan(path, out):
     lines = open(path).read().split('\n')
-    depth = 0
-    owner = None
-    in_block = in_multiline = hashes = 0
-    pending = []          # @attribute lines above the declaration
-    for line in lines:
+    pending = []          # the @attribute lines above the declaration
+    for number, line, owner in walk(lines):
         s = line.strip()
         if not s or s.startswith('#'):
             pending = []
             continue
-        if depth == 0:
-            m = re.match(r'(?:public |open |package )?(?:final )?(?:@frozen )?(?:indirect )?(?:struct|class|enum|protocol|actor|typealias)\s+(\w+)', s)
-            if m is None:
-                m = re.match(r'extension ((?:SwiftUI|SwiftUICore)\.)?([\w.]+)', s)
-                if m:
-                    pending = []
-                    attrs = pending
-                    # the whole extended name, and a member of `Anchor.Source` belongs to `Anchor.Source`
-                    # the whole extended name, with a module dropped and nothing else: a member of
-                    # `Anchor.Source` belongs to `Anchor.Source`, and not to `Anchor`
-                    # the type list says which type this band owns, matched on the last component so
-                    # `Anchor.Source` is matched by `Anchor`; the owner keeps the whole name
-                    extended = m.group(2)
-                    last = extended.split('.')[-1]
-                    owner = extended if ('{' in s and (extended in want or last in want)) else None
-                else:
-                    pending = [s] if s.startswith('@') else []
-                opened, closed, in_block, in_multiline, hashes = braces(s, in_block, in_multiline, hashes)
-                depth += opened - closed
-                continue
-            owner = m.group(1) if m.group(1) in want else None
-            if owner:
-                out.append((owner, 'type', strip_ns(s)))
-            pending = [s] if s.startswith('@') else []
-            opened, closed, in_block, in_multiline, hashes = braces(s, in_block, in_multiline, hashes)
-            depth += opened - closed
+        if owner is None:
+            if s.startswith('@'):
+                pending = s
             continue
-        # inside a section
-        dead = any(re.search(r'@available\(iOS,\s*unavailable', a) for a in pending)
-        if owner and not dead and s not in ('get', 'set', '}', '{') and not s.startswith('//'):
-            body = s
-            if '{' in body:
-                body = body[:body.index('{')]
-            body = body.strip()
-            if not body or body in ('{',):
-                pass
-            elif re.match(r'^(public |open |package )?(static )?(final )?(mutating )?(indirect )?(struct|class|enum|protocol|actor|typealias)\s', body) and not re.search(r'\bfunc\b', body):
-                out.append((owner, 'type', strip_ns(body)))
-            elif re.search(r'\bfunc (\w+)', body):
-                fn = re.search(r'\bfunc (\w+)', body)
-                args = re.search(r'\((.*?)\)(\s*(async\s*)?(throws\s*)?->|$)', body)
-                out.append((owner, 'func', fn.group(1) + '(' + (args.group(1) if args else '') + ')'))
-            elif re.search(r'\binit\b', body):
-                out.append((owner, 'init', strip_ns(body)))
-            elif re.search(r'\bvar (\w+)', body):
-                vn = re.search(r'\bvar (\w+)', body)
-                out.append((owner, 'var', vn.group(1)))
-            elif re.search(r'\b(let|case) (\w+)', body):
-                vn = re.search(r'\b(?:let|case) (\w+)', body)
-                out.append((owner, 'const', vn.group(1)))
-            elif re.search(r'\bsubscript\b', body):
-                out.append((owner, 'subscript', 'subscript'))
-        if s.startswith('@'):
-            pending = [s]
-        else:
+        # a type of ours, or a type nested in one: matched on the last component, and the owner keeps
+        # the whole path, so a member of `Image.ResizingMode` is never filed under `Image`
+        # a type of ours, or anything nested in one: `Image` in `want` admits `Image.ResizingMode`
+        # and `Anchor.Source`, and never a type that is neither
+        if not (owner.split('.', 1)[0] in want):
+            continue
+        if re.search(r'@available\(iOS,\s*unavailable', pending or ''):
             pending = []
-        opened, closed, in_block, in_multiline, hashes = braces(s, in_block, in_multiline, hashes)
-        depth += opened - closed
-        if depth == 0:
-            owner = None
-            pending = []
+            continue
+        body = s[:s.index('{')] if '{' in s else s
+        if not body:
+            continue
+        for pattern, kind, group in ((r'\bsubscript\b', 'subscript', 0),
+                                     (r'\binit\b', 'init', 0),
+                                     (r'\bfunc (\w+)', 'func', 1),
+                                     (r'\bvar (\w+)', 'var', 1),
+                                     (r'\bcase (\w+)', 'const', 1),
+                                     (r'\b(?:struct|class|enum|protocol|actor|typealias)\s+(\w+)', 'type', 1)):
+            m = re.search(pattern, body)
+            if m:
+                out.append((owner, kind, m.group(group) if group else 'subscript' if kind == 'subscript' else 'init'))
+                break
+        pending = []
 
 
 out = []
