@@ -17,9 +17,13 @@ status=0
 xmake -P eidolon emulate -d iPhone4,1 -r 6.1.3 -s "${SECONDS_BUDGET:-240}" -t 1500 \
     run /usr/libexec/EidolonTests > "$out/run.log" 2>&1 || status=$?
 cat "$out/run.log"
-folder=$(sed -n 's/^run folder //p' "$out/run.log" | tail -1)
+# The run's own files, named by the run's verdict and not by a line on the console: the verdict
+# carries the absolute paths of what the test binary wrote, and the installed addon writes it, so this
+# works whichever addon is in use. An older console line is used only when no verdict names a file.
+folder=$(python3 -c 'import glob,json,sys,os; vs=sorted(glob.glob(os.path.expanduser("~/.charon/emulator/images.noindex")+"/*/iPhone4,1_*/run/verdict.json"), key=os.path.getmtime); print(json.load(open(vs[-1])).get("stdout","").rsplit("/results/",1)[0] if vs else "")' 2>/dev/null || true)
+[ -n "$folder" ] || folder=$(sed -n 's/^run folder //p' "$out/run.log" | tail -1)
 if [ -z "$folder" ] || [ ! -d "$folder/results" ]; then
-  echo "the run left no results folder; its log is $out/run.log" >&2
+  echo "the run named no results folder; its log is $out/run.log" >&2
   exit 1
 fi
 cp -R "$folder/results/." "$out/"
