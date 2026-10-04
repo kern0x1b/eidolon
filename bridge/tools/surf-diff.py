@@ -1,64 +1,78 @@
 #!/usr/bin/env python3
-"""surf-diff.py: what a rewrite of the extractor lost, keyed, not by totals.
+"""surf-diff.py: what a rewrite of the extractor lost, as sets, not as totals.
 
-A row is keyed by the leaf member name, so a member that moved from `Image` to `Image.ResizingMode` is
-the same row with another owner, not a loss. Every row the old extraction has and the new one does not
-lands in one of four classes, and the counts have to add up to the difference between the two files:
+A row is a `(owner, leaf member name)` pair. The old extraction's owner column is wrong for every member
+of a type nested in one — that is what the rewrite fixes — so a row that is in both files under a
+different owner is a *move*, and it is paired by the leaf name **and** the line the interface declares it
+on, because a bare name has several homes and only the line says which one moved.
 
-  a  moved       the same member name is in the new file under another owner — the nesting fix at work
-  b  available   a static or a member of a `where` extension whose `@available` annotation is the only
-                 thing that made the old extractor drop it
-  c  attribute   a member of a block with more than one attribute line above it, and `pending` kept only
-                 the last one
-  d  other       everything else, with three example lines each so it can be read
+The classes are sets, and they are checked against the sets they are supposed to partition:
+
+    |O| - |N| == |O\\N| - |N\\O|
+    O\\N == moved + attribute + other
+    N\\O == gained
 
 Usage: surf-diff.py OLD.tsv NEW.tsv
 """
 import collections
+import glob
 import os
 import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from owners import walk, is_declaration
+from owners import walk
 
 SDK26 = os.environ.get('APPLE_26_SDK') or os.path.expanduser(
     '~/Git/projects/ios/charon/.agent-work/sdk-26.2/iPhoneOS26.2.sdk')
 INTERFACES = []
 for pattern in (f'{SDK26}/System/Library/Frameworks/*/Modules/*.swiftmodule/arm64e-apple-ios.swiftinterface',
                  f'{SDK26}/usr/lib/swift/*.swiftmodule/arm64e-apple-ios.swiftinterface'):
-    import glob
     for path in sorted(glob.glob(pattern)):
         INTERFACES.append(path)
 
+NOISE = re.compile(r'^(?:@[\w.]+(?:\([^)]*\))?\s*|@\w+)*\s*'
+                   r'(?:public |open |package |internal |private |fileprivate |final |indirect |mutating |static |'
+                   r'nonisolated |@frozen\s*|@inlinable\s*|@usableFromInline\s*|@_alwaysEmitIntoClient\s*|'
+                   r'@MainActor\s*|@preconcurrency\s*|_Concurrency\.\w+\s*|_disfavoredOverload\s*|'
+                   r'@backDeployed\s*|convenience\s*|required\s*|mutating\s*|override\s*)*')
+
+
+def leaf(text):
+    """the member name a row names, whether the column holds a bare name or a whole declaration"""
+    stripped = NOISE.sub('', text.strip(), count=1).strip()
+    for pattern in (r'\bcase\s+(\w+)', r'\bfunc\s+(\w+)', r'\bvar\s+(\w+)', r'\blet\s+(\w+)',
+                    r'\binit\b', r'\bsubscript\b',
+                    r'\b(?:struct|class|enum|protocol|actor|typealias)\s+(\w+)'):
+        m = re.search(pattern, stripped)
+        if m:
+            return m.group(1) if m.groups() else ('init' if 'init' in pattern else 'subscript')
+    return stripped.split('(')[0].split(':')[0].split('{')[0].strip()
+
 
 def read(path):
-    out = []
+    """a set of (owner, kind, leaf) and the leaf-name multiset, both keyed so a move is visible"""
+    rows = set()
     for line in open(path):
         parts = line.rstrip('\n').split('\t')
         if len(parts) == 3:
-            out.append(tuple(parts))
-    return out
+            rows.add((parts[0], parts[1], leaf(parts[2])))
+    return rows
 
 
 _INDEX = None
 
 
 def index():
-    """one pass over every interface: leaf member name -> [(owner, file, line, text, attributes above)]
-
-    The first version walked every interface again for every lost name, and 298 names over twenty
-    interfaces is a job that does not finish. One pass, then a dict lookup per name.
-    """
+    """one pass over every interface: leaf name -> {(owner, file, line, text, attributes above it)}"""
     global _INDEX
     if _INDEX is not None:
         return _INDEX
-    _INDEX = collections.defaultdict(list)
+    _INDEX = collections.defaultdict(set)
     for path in INTERFACES:
-        lines = open(path, errors='replace').read().split('\n')
         attrs = 0
-        for number, line, owner in walk(lines):
+        for number, line, owner in walk(open(path, errors='replace').read().split('\n')):
             stripped = line.strip()
             if not stripped or stripped.startswith('//'):
                 continue
@@ -70,73 +84,58 @@ def index():
                             r'\binit\b'):
                 m = re.search(pattern, stripped)
                 if m:
-                    _INDEX[m.group(1) if m.groups() else 'init'].append(
+                    _INDEX[m.group(1) if m.groups() else 'init'].add(
                         (owner, os.path.basename(path), number, stripped[:70], attrs))
                     break
             attrs = 0
     return _INDEX
 
 
-def interface_lines(name):
-    """the declarations of a member name, from the one pass"""
-    return index().get(name, [])
-
-
 def main():
     old, new = read(sys.argv[1]), read(sys.argv[2])
-    new_leaves = {leaf(owner, text) for owner, _, text in new}
-    new_by_leaf = collections.defaultdict(set)
-    for owner, _, text in new:
-        new_by_leaf[leaf(owner, text)].add(owner)
-    classes = collections.defaultdict(list)
-    for owner, kind, text in old:
-        name = leaf(owner, text)
-        if name in new_leaves:
-            if owner not in new_by_leaf[name]:
-                classes['a moved'].append((name, owner, sorted(new_by_leaf[name]), ''))
-            continue
-        hits = interface_lines(name)
-        if not hits:
-            classes['d other'].append((name, owner, '', '(no declaration of that name in the interfaces)'))
-        elif any('@available' in h[3] and h[1] != owner for h in hits) or any(h[4] > 1 for h in hits):
-            classes['b available' if any('@available' in h[3] and h[1] != owner for h in hits)
-                     else 'c attribute'].append((name, owner, [f'{h[1]}:{h[2]}' for h in hits[:2]], hits[0][3]))
+    only_old, only_new = old - new, new - old
+    table = index()
+    # where each name sits in the NEW file, by (name, file, line) — the pairing that says "moved" is the
+    # same declaration at another owner, not merely the same name
+    new_leaves_by_line = collections.defaultdict(set)
+    for owner, kind, name in new:
+        for home_owner, file, number, _, _ in table.get(name, ()):
+            new_leaves_by_line[(name, file, number)].add(owner)
+    # one pass, and the three classes partition |O\N| exactly
+    moved, attribute, other = set(), set(), set()
+    for row in only_old:
+        owner, kind, name = row
+        homes = table.get(name, set())
+        if any('@available' in text and at > 1 for _, _, _, text, at in homes):
+            attribute.add(row)                       # (c) a block with more than one attribute above it
+        elif any('@available' in text for _, _, _, text, _ in homes):
+            other.add(row)                           # an @available the old extractor dropped
+        elif not homes:
+            other.add(row)                           # no declaration of that name in the interfaces
+        elif any(new_leaves_by_line.get((name, h[1], h[2]), set()) - {owner} for h in homes):
+            moved.add(row)                           # (a) the same declaration, at another owner
         else:
-            classes['d other'].append((name, owner, [f'{h[1]}:{h[2]}' for h in hits[:2]], hits[0][3]))
-    new_only = {leaf(o, x) for o, _, x in new} - {leaf(o, x) for o, _, x in old}
-    total = 0
-    for key in sorted(classes):
-        rows = classes[key]
-        total += len(rows)
-        print(f'{key:12} {len(rows):5}')
-        for row in rows[:3]:
-            print(f'             {row[0]}  was under {row[1]}  now {row[2] or "-"}  {row[3][:50]}')
-    print(f'{"rows only in NEW":12} {len(new_only):5}')
-    print(f'{"TOTAL":12} {total:5}   (lost {len(old) - len(new)}, gained {len(new) - len(old)}, '
-          f'which must be {len(new_only) - (len(new) - len(old))})')
-    if total + (len(new) - len(old)) != len(new_only):
-        print('# the classes do not add up to the difference between the files', file=sys.stderr)
+            other.add(row)                           # the same name, but not the same declaration
+    gained = only_new
+    print(f'|O| = {len(old)}')
+    print(f'|N| = {len(new)}')
+    print(f'|O\\N| = {len(only_old)}   moved {len(moved)}  attribute {len(attribute)}  other {len(other)}')
+    print(f'|N\\O| = {len(gained)}   gained')
+    for label, rows in (('moved', moved), ('attribute', attribute), ('other', other)):
+        for owner, kind, name in sorted(rows)[:3]:
+            homes = '; '.join(f'{h[1]}:{h[2]} in {h[0]}' for h in sorted(table.get(name, ()), key=lambda h: (str(h[1]), h[2]))[:2])
+            print(f'  {label:10} {owner}#{name:22} {homes}')
+    parts = (moved, attribute, other)
+    union = moved | attribute | other
+    disjoint = not (parts[0] & parts[1] or parts[0] & parts[2] or parts[1] & parts[2])
+    ok = (len(old) - len(new) == len(only_old) - len(only_new)
+          and union == only_old and disjoint and (moved | attribute | other) == only_old)
+    print(f'identity: |O|-|N| = {len(old) - len(new)}, '
+          f'|O\\N| - |N\\O| = {len(only_old) - len(only_new)}, '
+          f'classes: {len(moved)} + {len(attribute)} + {len(other)} = {len(moved | attribute | other)}')
+    if not ok:
+        print('# the classes do not add up', file=sys.stderr)
         sys.exit(1)
-
-
-DECL_NOISE = re.compile(r'^(?:@[\w.]+(?:\([^)]*\))?\s*)*(?:public |open |package |internal |private |final |indirect |'
-                         r'@frozen|@inlinable|@usableFromInline|@_alwaysEmitIntoClient|nonisolated|MainActor|'
-                         r'preconcurrency|static|mutating|_disfavoredOverload|_Concurrency\.\w+|\s)+')
-
-
-def leaf(owner, text):
-    """the member name a row names, whether the column holds a bare name or a whole declaration"""
-    if not text.startswith(('@', 'public', 'open', 'package', 'nonisolated', 'self', 'internal',
-                           'private', 'final', 'static', 'mutating', 'indirect', '_Concurrency')):
-        return text.split('(')[0].split(':')[0].strip()
-    stripped = text.strip()
-    for pattern in (r'\bcase\s+(\w+)', r'\bfunc\s+(\w+)', r'\bvar\s+(\w+)', r'\blet\s+(\w+)',
-                    r'\binit\b', r'\bsubscript\b',
-                    r'\b(?:struct|class|enum|protocol|actor|typealias)\s+(\w+)'):
-        m = re.search(pattern, stripped)
-        if m:
-            return m.group(1) if m.groups() else ('init' if 'init' in pattern else 'subscript')
-    return ''.join(DECL_NOISE.findall(stripped) and [] or []) or stripped.split('(')[0].split(':')[0].strip()
 
 
 if __name__ == '__main__':
