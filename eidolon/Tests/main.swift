@@ -3061,6 +3061,39 @@ if let layer = layerOf(drawn) {
     check(layer.isOpaque, "and opaque, as the options the framework answers with say")
 } else { check(false, "a drawing group has a layer of its own") }
 
+// A document: a real file, opened through the group and read back.
+final class NoteDocument: FileDocument {
+    static var readableContentTypes: [String] { ["public.text", "public.data"] }
+    static var writableContentTypes: [String] { ["public.text"] }
+    var text: String
+
+    init(text: String = "") { self.text = text }
+
+    required init(configuration: FileDocumentReadConfiguration<NoteDocument>) throws {
+        self.text = String(data: configuration.file, encoding: .utf8) ?? ""
+    }
+
+    func fileWrapper(configuration: FileDocumentWriteConfiguration<NoteDocument>) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(text.utf8))
+    }
+}
+
+let noteDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
+let noteURL = noteDirectory.appendingPathComponent("eidolon-note.txt")
+try? Data("the first line\n".utf8).write(to: noteURL)
+let noteGroup = DocumentGroup<NoteDocument, Text>(newDocument: NoteDocument()) { configuration in
+    Text(verbatim: configuration.document.text)
+}
+let openedNote = try? noteGroup.open(noteURL)
+check(openedNote != nil, "a document group opens a file the release has handed over")
+let readBack = try? NoteDocument(configuration: FileDocumentReadConfiguration<NoteDocument>(
+    contentType: NoteDocument.readableContentTypes[0], file: Data(contentsOf: noteURL), fileURL: noteURL))
+equal(readBack?.text, "the first line\n", "and the document reads what the file holds")
+let written = try? NoteDocument(text: "the second line\n").fileWrapper(
+    configuration: FileDocumentWriteConfiguration<NoteDocument>(contentType: "public.text", originalURL: noteURL))
+equal(written?.regularFileContents, Data("the second line\n".utf8), "and a document writes the bytes it is asked for")
+equal(written?.preferredFilename, "eidolon-note.txt", "under the name the file had")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
