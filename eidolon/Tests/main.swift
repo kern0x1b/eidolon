@@ -3112,6 +3112,32 @@ let openValue = OpenWindowAction().openWindow
 check(openValue is OpenWindowAction, "the action reads itself as the openWindow of a window scene")
 OpenWindowAction.currentWindowID = nil
 
+// A widget: a configuration, a bundle, and the builder that collects the bundle's members. iOS 6.1.3
+// has no widget host, so nothing here is ever shown — as in an app with no widget extension.
+struct ClockConfiguration: WidgetConfiguration {
+    var body: some WidgetConfiguration { EmptyWidgetConfiguration() }
+}
+struct ClockWidget: Widget {
+    var body: some WidgetConfiguration { ClockConfiguration() }
+}
+struct NotesWidget: Widget {
+    var body: some WidgetConfiguration { EmptyWidgetConfiguration() }
+}
+struct MyWidgets: WidgetBundle {
+    @WidgetBundleBuilder
+    var body: some Widget {
+        ClockWidget()
+        NotesWidget()
+    }
+}
+let emptyConfiguration = EmptyWidgetConfiguration()
+check(EmptyWidgetConfiguration() is WidgetConfiguration, "an empty widget configuration is a widget configuration")
+let bundleBody = MyWidgets().body
+check(bundleBody is Widget, "a bundle's body is the widget its builder collected")
+let configuration = ClockWidget().body
+check(configuration is WidgetConfiguration, "and a widget's body is the configuration it names")
+check(!(bundleBody is EmptyWidgetConfiguration), "and a bundle with two widgets is not the empty one")
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
