@@ -65,3 +65,25 @@ then mostly a statement about two different corpora rather than about a lost ext
 Read `moved` there as "this leaf name is declared at another owner", not as "the rewrite moved it", and
 read `other` as the interesting part: `Animatable#_makeAnimatable` (underscored machinery the interfaces
 declare and this tree does not) and two bare `subscript` rows the old file names and the new one does not.
+
+## Two things to know before you measure with this
+
+**`bridge/fw/` is a generated, git-ignored copy, and the authority is the SDK path `surf.py` reads.** The
+directory is not in the repository and not in any `.gitignore` inside it: `git check-ignore -v bridge/fw`
+names **`.git/info/exclude:13`**, so it is excluded per clone — and in a worktree it is a **symlink**,
+`bridge/fw -> ../../../../bridge/fw`, into another checkout's generated tree. Nothing measured from it is
+a fact about this repository, and a `git clean -xdf` in the wrong place takes it with everything else.
+The authority is named in the extractor: `surf.py` takes `SDK` from `$APPLE_26_SDK`, defaulting to
+`~/Git/projects/ios/charon/.agent-work/sdk-26.2/iPhoneOS26.2.sdk`, and `surf-diff.py` reads the same root
+for its `arm64e-apple-ios.swiftinterface` index. **A surface number is only comparable with another taken
+from the same SDK root**, so `APPLE_26_SDK` is the variable to set rather than a path to edit; and where
+the two disagree, the extractor's is right and `bridge/fw` is a convenience for the tools that want a
+framework tree rather than interfaces.
+
+**Patches 0006–0008 of the earlier series carry `wip:` subjects, and that history is exported rather than
+rewritten.** Reading an exported patch as a claim about what ran would be wrong, and the series is not
+amended to hide it: amending an exported series breaks every reference to it, and the honest form is the
+commit's own message beside a note that says what it means. So: **read a series as a whole.** A `wip:`
+commit says in its own subject line that its work did not run, and the commit that follows it is the one
+that measured it. This series has no `wip:` subject, and `eidolon/AGENTS.md` asks for none — plain
+imperative subject, no type prefix, no scope tag.
