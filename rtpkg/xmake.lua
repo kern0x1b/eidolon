@@ -9,15 +9,19 @@ set_allowedplats("iphoneos")
 set_allowedarchs("iphoneos|armv7")
 set_defaultplat("iphoneos")
 set_defaultarchs("iphoneos|armv7")
-add_requires("charon@swift-runtime", {alias = "swift-runtime"})
+-- Built with the backports: Styx's own weak import (_CFRunLoopTimerSetTolerance) and the runtime's are answered by the library
+-- the program carries, and the runtime built so hands its lifted headers to the port, which then has to carry it.
+add_requires("charon@swift-runtime", {alias = "swift-runtime", configs = {backports = true}})
 add_requires("charon@libcxx", {alias = "libcxx"})
-add_requires("charon@styx", {alias = "styx"})
+add_requires("charon@styx", {alias = "styx", configs = {backports = true}})
+add_requires("charon@apple-backports", {alias = "apple-backports", configs = {coredata = true}})
 -- libc++ and the runtime link apple-compat, and the build scripts link it too: required here so `xmake where` names it
 add_requires("charon@apple-compat", {alias = "apple-compat"})
 
 target("eidolonrt")
     add_rules("@addon/charon/daemon", "@addon/charon/swift")
-    add_packages("styx")
+    add_packages("styx", "apple-backports")
+    set_values("charon.libraries", "apple-backports")
     add_files("main.swift")
     add_frameworks("Foundation", "CoreData")
     set_values("charon.control", "control")
