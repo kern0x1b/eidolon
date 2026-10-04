@@ -163,7 +163,7 @@ public struct GroupElementsOfContent<Subviews: View, Content: View>: View {
     public var body: Never { neverBody(Self.self) }
     let subviews: Subviews
     let transformed: Content
-    public var childViews: [any View] { [subviews, transformed] }
+    var childViews: [any View] { [subviews, transformed] }
 }
 
 // A ForEach over a container's children, which is what `ForEach(subviews:content:)` is: the rows are
