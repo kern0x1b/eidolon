@@ -12,7 +12,11 @@ The classes are sets, and they are checked against the sets they are supposed to
     O\\N == moved + attribute + other
     N\\O == gained
 
-Usage: surf-diff.py OLD.tsv NEW.tsv
+Usage: surf-diff.py [--allow-empty-new] OLD.tsv NEW.tsv
+
+Both files must have three tab-separated columns per row: owner, kind, name. A file of any other shape is
+a hard error naming the file, the expected three and the count found - a wrong-shaped file read as the
+empty set would make every identity below hold at zero.
 """
 import collections
 import glob
@@ -51,13 +55,43 @@ def leaf(text):
     return stripped.split('(')[0].split(':')[0].split('{')[0].strip()
 
 
-def read(path):
-    """a set of (owner, kind, leaf) and the leaf-name multiset, both keyed so a move is visible"""
-    rows = set()
-    for line in open(path):
-        parts = line.rstrip('\n').split('\t')
-        if len(parts) == 3:
+COLUMNS = 3
+
+
+class ReadError(Exception):
+    """a file that is not the shape the diff reads, named rather than read as nothing"""
+
+
+def read(path, allow_empty=False):
+    """A set of (owner, kind, leaf) keyed so a move is visible.
+
+    A row is only read when the line has exactly three tab-separated columns, and a line that does not is
+    a **hard error**: the sets partition what was read, so a file of the wrong shape read as the empty set
+    makes |O| - |N| == |O\\N| - |N\\O| true whatever the file holds - 0 == 0 - and the classes below it
+    partition an empty |O\\N| exactly. That is the silent green this refuses. The three artifacts in
+    bridge/tools are three different shapes (see surftool/README.md), and pairing the wrong two must stop
+    here rather than print a partition of nothing.
+    """
+    rows, bad = set(), []
+    with open(path) as handle:
+        for number, line in enumerate(handle, 1):
+            if not line.strip():
+                continue
+            parts = line.rstrip('\n').split('\t')
+            if len(parts) != COLUMNS:
+                bad.append((number, len(parts)))
+                continue
             rows.add((parts[0], parts[1], leaf(parts[2])))
+    if bad:
+        number, found = bad[0]
+        raise ReadError(
+            f'{path}: line {number} has {found} tab-separated column(s), the {COLUMNS} this diff reads are '
+            f'owner/kind/name; {len(bad)} line(s) in all (first at line {number}). Refusing to read the file '
+            f'as the empty set: the partition below would hold vacuously. Use the artifact that has three '
+            f'columns (see bridge/tools/surftool/README.md for what each one is).')
+    if not rows and not allow_empty:
+        raise ReadError(f'{path}: no rows. A NEW file of no rows is a hard error, because |O| - |N| == '
+                        f'|O\\N| - |N\\O| then holds at 0 == 0. Pass --allow-empty-new to mean it.')
     return rows
 
 
@@ -92,7 +126,19 @@ def index():
 
 
 def main():
-    old, new = read(sys.argv[1]), read(sys.argv[2])
+    args = [a for a in sys.argv[1:] if a != '--allow-empty-new']
+    if len(args) != 2:
+        print(f'usage: {sys.argv[0]} [--allow-empty-new] OLD.tsv NEW.tsv   (three columns each: owner/kind/name)',
+              file=sys.stderr)
+        sys.exit(2)
+    try:
+        old, new = read(args[0]), read(args[1], allow_empty='--allow-empty-new' in sys.argv[1:])
+    except ReadError as error:
+        print(str(error), file=sys.stderr)
+        sys.exit(1)
+    if not old:
+        print(f'{args[0]}: no rows either, so there is nothing to diff. Refusing.', file=sys.stderr)
+        sys.exit(1)
     only_old, only_new = old - new, new - old
     table = index()
     # where each name sits in the NEW file, by (name, file, line) — the pairing that says "moved" is the
