@@ -177,3 +177,35 @@ extension ForEach where Content: View {
         self.init(data: ForEachSubviewCollection(children: identified, content: content), id: \.id, content: content)
     }
 }
+
+// A Group over the children a container holds: the app's transform is applied to each subview, and
+// the group and what it made of them are laid out together, which is what
+// `GroupElementsOfContent` is for.
+extension Group {
+    public init<Base: View, Result: View>(subviews view: Base,
+                                          @ViewBuilder transform: @escaping (SubviewsCollection) -> Result)
+        where Content == GroupElementsOfContent<Base, Result> {
+        let children: [any View] = view is GroupView ? (view as! GroupView).childViews : [view]
+        let collection = SubviewsCollection(children.map { Subview($0) })
+        self.init { GroupElementsOfContent(subviews: view, transformed: transform(collection)) }
+    }
+}
+
+// A section over the children a container holds: the children become the section's rows, and the
+// section is what a table, a list and a stack read as a group of rows with an identity.
+extension Section where Parent == EmptyView, Footer == EmptyView, Content == SubviewGroup {
+    public init(subviews: SubviewsCollection) {
+        self.init(header: EmptyView(), content: SubviewGroup(subviews: subviews), footer: EmptyView())
+    }
+}
+
+/// The rows a `Section` was given as subviews: each one is a view of its own, and the group keeps them
+/// in the order the container held them.
+public struct SubviewGroup: View, PrimitiveView, GroupView {
+    public typealias Body = Never
+    public var body: Never { neverBody(Self.self) }
+    public let subviews: SubviewsCollection
+    public init(subviews: SubviewsCollection) { self.subviews = subviews }
+    public var childViews: [any View] { subviews.map { $0.content } }
+}
+
