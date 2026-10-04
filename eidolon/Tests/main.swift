@@ -2826,6 +2826,73 @@ check(multi.indices != one.indices, "a set of ranges is not one range, in the na
 if case .multiSelection = multi.indices {} else { check(false, "and it is the multiSelection of those two names") }
 if case .selection = one.indices {} else { check(false, "and one range is the selection of the same enum") }
 
+// Tab values: a tab bar over tab content shows a tab per element, and a selection carries the value.
+// WRITTEN, NOT RUN: the engine tests need the emulator, and `xmake emulate` is not in this tree yet
+// (emulate-launch, 7e035ac0). Compile-checked only, like every test here until then.
+struct TabValueCase: Identifiable, Hashable { var id: String { folder }; let folder: String; let unread: Int }
+
+struct FolderTab: TabContent {
+    let box: TabValueCase
+    var body: some TabContent {
+        TabContentList([box], view: { _ in AnyView(Color.gray) }, named: { AnyHashable($0) })
+    }
+}
+
+struct TabValueCaseView: View {
+    let boxes: [TabValueCase]
+    @Binding var selected: TabValueCase?
+    var body: some View {
+        TabView(selection: $selected) {
+            ForEach<[TabValueCase], TabValueCase.ID, FolderTab>(boxes) { FolderTab(box: $0) }
+        }
+    }
+}
+
+func tabValuesNameOneTabPerElement() {
+    let boxes = [TabValueCase(folder: "Inbox", unread: 2), TabValueCase(folder: "Sent", unread: 0)]
+    let named = ForEach<[TabValueCase], TabValueCase.ID, FolderTab>(boxes) { FolderTab(box: $0) }.namedRows
+    equal(named.count, 2, "a ForEach of tab content is one tab per element")
+    equal(named.map { $0.value }, [AnyHashable(boxes[0]), AnyHashable(boxes[1])], "and each tab is named by its element")
+    // a content that does not name its tabs yields one tab it does not name, and a tab bar matches an
+    // unnamed tab by its position, the way an untagged page already is here
+    // a content that does not name its tabs yields one tab it does not name, and a tab bar matches an
+    // unnamed tab by its position, the way an untagged page already is here
+    let one = TabContentList([boxes[0]], view: { _ in AnyView(Color.gray) }, named: { AnyHashable($0) }).namedRows
+    equal(one.count, 1, "one element is one tab")
+    equal(one.first?.value, AnyHashable(boxes[0]), "named by the element, which is the tab's value")
+    check(one[0].view is AnyView, "and it carries the view the tab stands for")
+}
+
+func findTabBar(_ view: UIView) -> UITabBarController? {
+    if let bar = view as? UITabBarController { return bar }
+    return nil
+}
+
+final class TabValueSelection {
+    var selected: TabValueCase?
+    init() {}
+}
+func aTabBarsSelectionCarriesTheTabValue() {
+    let boxes = [TabValueCase(folder: "Inbox", unread: 2), TabValueCase(folder: "Sent", unread: 0)]
+    let holder = TabValueSelection()
+    let probe = _Probe(TabValueCaseView(boxes: boxes,
+                                        selected: Binding(get: { holder.selected }, set: { holder.selected = $0 })),
+                      width: 320, height: 480)
+    _ = frames(probe)
+    var controllers: [UITabBarController] = []
+    var stack: [UIView] = [probe.hostView]
+    while let current = stack.popLast() {
+        for child in current.subviews {
+            if let child = child as? UIView, let bar = findTabBar(child) { controllers.append(bar) }
+            stack.append(child)
+        }
+    }
+    check(!controllers.isEmpty, "a tab bar over tab content is a UITabBarController")
+    equal(controllers.first?.viewControllers?.count ?? 0, boxes.count, "with one controller per element")
+    let items = controllers.first?.tabBar.items ?? []
+    equal(items.map { $0.tag }, [0, 1], "and the release's own tag is the tab's position")
+}
+
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")

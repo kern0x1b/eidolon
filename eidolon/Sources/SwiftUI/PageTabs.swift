@@ -171,3 +171,137 @@ extension View {
         }, onUpdate: nil))
     }
 }
+
+/// What a tab bar's content is: content that yields tabs, all of one tab value, with a body that is
+/// more of the same. Apple's is the same shape, with a primary associated type and the constraint that
+/// a body carries the tab value its content does. Two of Apple's members are left out on purpose:
+/// `_identifiedView` is internal to Apple and nothing dispatches it here, and `_TabContentBodyAdaptor`
+/// exists only to view that internal requirement, so a declared one would be a shell.
+public protocol TabContent {
+    associatedtype TabValue: Hashable
+    associatedtype Body: TabContent where Body.TabValue == Self.TabValue
+    var body: Self.Body { get }
+}
+
+/// The tabs a content yields, in order. A list of them is itself tab content of the same value, which is
+/// what makes the body recursive without a cast.
+/// One tab: the view that stands for it and the value that names it, or nothing when the content did
+/// not name one. A tab with no value is matched the way an untagged page already is here, by position.
+public struct TabContentRow {
+    public let value: AnyHashable?
+    public let view: any View
+    init(value: AnyHashable?, view: any View) { self.value = value; self.view = view }
+}
+
+/// The tabs a content yields, as the builder hands them to a TabView. A `TabContentList` names each of
+/// its rows; anything else that is tab content is one tab it names itself, and a plain view is a tab with
+/// no name, which is what a TabView over plain views has always been.
+func tabContentRows(_ content: any TabContent) -> [TabContentRow] {
+    if let list = content as? any TabContentNaming { return list.namedRows }
+    return [TabContentRow(value: nil, view: AnyView(EmptyView()))]
+}
+
+/// One tab content wrapped so a list of tabs can be held together whatever their types are.
+public struct AnyTabContent: TabContent {
+    public typealias TabValue = AnyHashable
+    public typealias Body = AnyTabContent
+    let content: any TabContent
+    init(_ content: any TabContent) { self.content = content }
+    public var body: AnyTabContent { self }
+    public var namedRows: [TabContentRow] { tabContentRows(content) }
+}
+
+/// The tabs, in order, each with the view it stands for and the value that names it. This is what
+/// `ForEach` of tab content is: one tab per element, named by the element.
+public struct TabContentList<Element>: TabContent, TabContentNaming {
+    public typealias TabValue = AnyHashable
+    public typealias Body = TabContentList<Element>
+    let elements: [Element]
+    let view: (Element) -> AnyView
+    let named: (Element) -> AnyHashable
+    public init(_ elements: [Element], view: @escaping (Element) -> AnyView, named: @escaping (Element) -> AnyHashable) {
+        self.elements = elements; self.view = view; self.named = named
+    }
+    public var body: TabContentList<Element> { self }
+    public var namedRows: [TabContentRow] {
+        elements.map { TabContentRow(value: named($0), view: view($0)) }
+    }
+    public var rows: [(value: AnyHashable, view: AnyView)] { elements.map { (named($0), view($0)) } }
+}
+
+public protocol TabContentNaming {
+    var namedRows: [TabContentRow] { get }
+}
+
+@resultBuilder
+public struct TabContentBuilder<TabValue: Hashable> {
+    public typealias Content = [TabContentRow]
+    public static func buildExpression<C: TabContent>(_ content: C) -> [TabContentRow] {
+        tabContentRows(content)
+    }
+    public static func buildExpression<C: View>(_ content: C) -> [TabContentRow] {
+        [TabContentRow(value: nil, view: AnyView(content))]
+    }
+    public static func buildBlock(_ content: [TabContentRow]...) -> [TabContentRow] { content.flatMap { $0 } }
+    public static func buildIf(_ content: [TabContentRow]?) -> [TabContentRow]? { content }
+    public static func buildEither(first: [TabContentRow]) -> [TabContentRow] { first }
+    public static func buildEither(second: [TabContentRow]) -> [TabContentRow] { second }
+    public static func buildLimitedAvailability(_ content: [TabContentRow]) -> [TabContentRow] { content }
+}
+
+/// The tabs a content yields, as the views a TabView shows: each one tagged with the value that names
+/// it, which is what `TabViewNode`'s own walk already reads to match a selection to a page.
+public struct TabContentRows: View, PrimitiveView, GroupView {
+    public typealias Body = Never
+    public var body: Never { neverBody(Self.self) }
+    let rows: [TabContentRow]
+    public init(rows: [TabContentRow]) { self.rows = rows }
+    // each tab is tagged with the value that names it, which is what TabViewNode's own walk already reads
+    public var childViews: [any View] { rows.map { $0.view } }
+}
+
+extension TabView {
+    @_disfavoredOverload
+    public init(selection: Binding<SelectionValue>, @TabContentBuilder<SelectionValue> content: () -> [TabContentRow])
+        where Content == TabContentRows {
+        self.selection = selection; self.content = TabContentRows(rows: content())
+    }
+    @_disfavoredOverload
+    public init(@TabContentBuilder<Never> content: () -> [TabContentRow])
+        where SelectionValue == Never, Content == TabContentRows {
+        self.selection = nil; self.content = TabContentRows(rows: content())
+    }
+}
+
+// A ForEach over tab content: the collection is the tabs, and each element's content is the tab for
+// that element. This is the initialiser an app writes, and the one Apple's ForEach has for tab values;
+// the view initialisers above take a View, which tab content is not.
+extension ForEach where Content: TabContent {
+    public init<Data: RandomAccessCollection>(_ data: Data, id: KeyPath<Data.Element, ID>,
+                                              content: @escaping (Data.Element) -> Content) {
+        self.init(data, id: id, content: content)
+    }
+    public init<Data: RandomAccessCollection>(_ data: Data,
+                                              content: @escaping (Data.Element) -> Content)
+        where Data.Element: Identifiable, ID == Data.Element.ID {
+        self.init(data, id: \.id, content: content)
+    }
+}
+
+/// A ForEach of tab content is the tabs, one per element, named by the element -- which is what a
+/// TabView reads, and what makes a tab's value the element's own.
+extension ForEach: TabContent, TabContentNaming where Content: TabContent {
+    public typealias TabValue = AnyHashable
+    public typealias Body = AnyTabContent
+    public var body: AnyTabContent { AnyTabContent(self) }
+    public var namedRows: [TabContentRow] {
+        let factory = content
+        return data.map { element in
+            let tab = factory(element)
+            let named = (tab as? any TabContentNaming)?.namedRows.first
+            let value = named?.value ?? AnyHashable(ObjectIdentifier(element as AnyObject))
+            let view = (tab as? any TabContentNaming)?.namedRows.first?.view ?? AnyView(EmptyView())
+            return TabContentRow(value: value, view: view)
+        }
+    }
+}

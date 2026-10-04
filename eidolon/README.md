@@ -109,6 +109,8 @@
 
 `GeometryProxy.containerCornerInsets` отдаёт нулевые отступы: на iOS 6 ни один контейнер не рисуется со скруглёнными углами, скруглять нечего. У `LayoutSubview` и `LayoutSubviews` `==` объявлены явно, а у `GridItem`, `GridItem.Size`, `ScrollPosition` и `ScrollDismissesKeyboardMode` — через синтез компилятора: в отличие от `@frozen` типов Apple, наш модуль не печатает выведенные равенства в своём интерфейсе, и `bridge/api-diff.py` видит их как `__derived_struct_equals`.
 
+`TabContent` повторяет объявление Apple 26.2 (`TabValue`, рекурсивное `Body`) без двух его внутренних членов: `_identifiedView` — внутренний член, который здесь никто не вызывает, а `_TabContentBodyAdaptor` существует только чтобы показать этот вызов; объявить их без потребителя было бы пустышкой. Инициализаторы `TabView` с `TabContent`-содержимым здесь не изолированы по `MainActor`, как у Apple: остальные инициализаторы `TabView` в модуле тоже не изолированы, иначе каждый вызов `TabView` требовал бы изолированного контекста.
+
 Значения окружения, которых у iOS 6 нет как настройки (`accessibilityReduceMotion`, `accessibilityReduceTransparency`, `accessibilityDifferentiateWithoutColor`, `accessibilityShowButtonShapes`, `accessibilitySwitchControlEnabled`, `accessibilityQuickActionsEnabled`, `accessibilityLargeContentViewerEnabled`, `isLuminanceReduced`, `supportsMultipleWindows`), читаются как «выключено»: человек не мог их включить. `dynamicTypeSize` всегда `.large`. `monospacedDigit()` ничего не меняет: цифры системного шрифта iOS 6 и так одной ширины.
 
 **Заглушек нет.** Последние четыре — доступность — сделаны на средствах iOS 6: `accessibilityRepresentation`
