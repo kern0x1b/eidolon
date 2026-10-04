@@ -343,10 +343,12 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
 - `RasterizationOptions` — вложенный, как в обоих SDK: `_RendererConfiguration.RasterizationOptions`
   (`arm64e-apple-ios.swiftinterface:17490` и в 26.2 то же), семь хранимых свойств и `init()`. Значений по
   умолчанию **ни один интерфейс не даёт**, и на хосте его не прочитать: тип член underscored-структуры и на
-  публичной поверхности macOS его нет (`import SwiftUI; print(RasterizationOptions().maxDrawableCount)` →
-  `error: cannot find 'RasterizationOptions' in scope`). Поэтому значения — свои, и они свои у релиза:
-  главный поток, не непрозрачный, поверх того что под ним, в нелинейном цветовом режиме, drawables сколько
-  рисует релиз (`maxDrawableCount = 0`) и посылать вниз нечего.
+  публичной поверхности macOS его нет — **это было неверно**: подчёркнутое имя в Swift публичное, и
+  `.agent-work/host/hostrenderer.swift` его читает. Замерено на фреймворке macOS 27: `colorMode` nonLinear,
+  `rendersAsynchronously` false, `isOpaque` **true**, `drawsPlatformViews` **true**,
+  `prefersDisplayCompositing` false, `maxDrawableCount` **3**, `rbColorMode` nil. Внешний тип назван так,
+  как его объявляет SDK, — `_RendererConfiguration`, без замены. В слой `CALayer` iOS 6 доходят три из семи:
+  рисовать ли в главном потоке, непрозрачен ли слой и масштаб растеризации.
   Каждое из них — то, что у `CALayer` iOS 6 есть: асинхронная отрисовка и масштаб растеризации едут в слой,
   а `colorMode`, `rbColorMode`, `drawsPlatformViews`, `prefersDisplayCompositing`, `maxDrawableCount` и
   `isOpaque` — ключей, которых у слоя нет, и они остаются на порте. `drawingGroup` собирает эти значения

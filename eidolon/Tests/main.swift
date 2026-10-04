@@ -3037,10 +3037,10 @@ func aViewThatStandsForAGroupIsThatGroup() {
 var raster = _RendererConfiguration.RasterizationOptions()
 check(raster.colorMode == .nonLinear, "a layer is rasterised with the non-linear colour mode by default")
 check(!raster.rendersAsynchronously, "and drawn on the main thread by default")
-check(!raster.isOpaque, "and over what is behind it, not over an opaque fill")
-check(!raster.drawsPlatformViews, "and platform views are not drawn into it")
+check(raster.isOpaque, "and opaque, which is what the framework's own default is")
+check(raster.drawsPlatformViews, "and platform views are drawn into it, as the framework's own default is")
 check(!raster.prefersDisplayCompositing, "and the system does not composite it by preference")
-equal(raster.maxDrawableCount, 0, "with as many drawables as the release draws, which no SDK and no host states")
+equal(raster.maxDrawableCount, 3, "and three drawables, which is what the framework's own default is")
 equal(raster.rbColorMode, nil, "and no colour mode the release would send down, which iOS 6 has no key for")
 raster.isOpaque = true
 raster.prefersDisplayCompositing = true
@@ -3058,6 +3058,7 @@ _ = frames(drawn)
 if let layer = layerOf(drawn) {
     check(layer.shouldRasterize, "a drawing group rasterises the layer of iOS 6")
     check(layer.rasterizationScale == UIScreen.main.scale, "at the scale of the screen")
+    check(layer.isOpaque, "and opaque, as the options the framework answers with say")
 } else { check(false, "a drawing group has a layer of its own") }
 
 print("\(checks - failures)/\(checks) checks passed")

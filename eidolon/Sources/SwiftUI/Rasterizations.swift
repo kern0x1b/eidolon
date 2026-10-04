@@ -6,15 +6,15 @@ import CoreGraphics
 // (`arm64e-apple-ios.swiftinterface:17490`) and the one of 26.2 — so it is nested here too, and the
 // interface spells the seven properties and `init()` and gives no initial value for any of them.
 //
-// The values `init()` uses are therefore the port's, and are the release's own: a layer of iOS 6 drawn
-// on the main thread, not opaque, over what is behind it, in the non-linear colour mode, with as many
-// drawables as the release draws and no colour mode to send down. `maxDrawableCount` is 0 for that last
-// reason and nothing else: no SDK, and no host — `RasterizationOptions` is a member of an underscored
-// type and is not on macOS's public surface, so there was nothing to measure and nothing to invent
-// either.
-/// The configuration of the release that draws a view. Apple spells it `_RendererConfiguration`; the
-/// type is here without the underscore so that a name an SDK does not declare is not published, and
-/// the nesting is the one Apple uses.
+// The seven defaults are the framework's own, read off it on the host with
+// `.agent-work/host/hostrenderer.swift` (an underscored name is public in Swift, so the type is in
+// scope there): colorMode nonLinear, rendersAsynchronously false, isOpaque true, drawsPlatformViews
+// true, prefersDisplayCompositing false, maxDrawableCount 3, rbColorMode nil. An earlier version of
+// this file had three of the seven wrong and claimed no source existed; the measurement was there.
+/// The configuration of the release that draws a view. This is Apple's own name, exactly: both the
+/// SDK of 16.4 (`arm64e-apple-ios.swiftinterface:17488`) and the one of 26.2 declare
+/// `_RendererConfiguration` with `RasterizationOptions` nested in it. An underscored name in Swift is
+/// public, so the host can be asked for the defaults, and it answers — see the seven values below.
 public struct _RendererConfiguration {
     public struct RasterizationOptions {
         public var colorMode: ColorRenderingMode
@@ -31,10 +31,10 @@ public struct _RendererConfiguration {
             colorMode = .nonLinear
             rbColorMode = nil
             rendersAsynchronously = false
-            isOpaque = false
-            drawsPlatformViews = false
+            isOpaque = true
+            drawsPlatformViews = true
             prefersDisplayCompositing = false
-            maxDrawableCount = 0
+            maxDrawableCount = 3
         }
     }
 }
@@ -47,7 +47,11 @@ extension _RendererConfiguration.RasterizationOptions {
     /// the two `CALayer` of iOS 6 has, and a colour mode or a drawable count is a key it does not, so
     /// those do not reach it.
     func applied(to layer: CALayer) {
+        // of the seven, three reach a `CALayer` of iOS 6: whether it is drawn on the main thread,
+        // whether it is opaque, and the scale it is rasterised at. A colour mode, a drawable count and
+        // a preference for the system's compositing are keys that layer has none of.
         layer.drawsAsynchronously = rendersAsynchronously
+        layer.isOpaque = isOpaque
         layer.rasterizationScale = 0
         layer.rasterizationScale = UIScreen.main.scale
     }
