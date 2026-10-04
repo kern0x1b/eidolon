@@ -386,14 +386,17 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   Имена в журнале: `Window.presentedWindowContent(forPresented:)`, `OpenWindowAction(id:)` и
   `OpenWindowAction(value:)` — последнее потому, что iOS 6 и не передаёт окну значение.
 
-- Проверка на «виджет-бандл безусловно не собирается» лежит в `eidolon/tools/tabletests/` и говорит
-  честно, что именно она доказывает: `if` без `#available` доходит до проверки типов как `any Widget`, и
-  `Widget` existential не отвечает, — а не то, что его ловит недоступная перегрузка. Недоступной перегрузки
-  `buildOptional` в интерфейсе 26.2 нет вовсе: у `WidgetBundleBuilder` есть две формы
-  (`arm64e-apple-ios.swiftinterface:21949` и `:21970`), обе доступные, и ни одна не берёт такой `if`. Сама
-  недоступная — `extension WidgetBundleBuilder : Sendable` (`:21942-21943`), и она помечена как
-  недоступная, как и помечена у нас. Мутант (убрать общую форму `buildOptional`) показал, что проверка
-  не различает: отказ остаётся тем же, так что проверка ловит «`if` не собирается», а не «нет перегрузки».
+- Проверка на «виджет-бандл безусловно не собирается» лежит в `eidolon/tools/tabletests/`: `if` без
+  `#available` доходит до проверки типов как `any Widget`, а existential не отвечает `Widget`, и сборка
+  отказана. Недоступной перегрузки `buildOptional` в интерфейсе 26.2 нет вовсе: у `WidgetBundleBuilder` есть
+  две формы (`arm64e-apple-ios.swiftinterface:21949` и `:21970`), обе доступные, и ни одна не берёт такой
+  `if`. Сама недоступная — `extension WidgetBundleBuilder : Sendable` (`:21942-21943`), и она помечена так
+  же, как у нас. **Мутант, который различает, — обратный тому, что был проверен сначала:** не убирать
+  перегрузку, а добавить
+  `static func buildOptional(_ widget: (any Widget)?) -> some Widget`. С ней проверка компилируется, и
+  `tabletests/run.sh` выходит с 1: `negative-widget-bundle: FAIL -- expected a rejection naming cannot
+  conform to 'Widget', got: it compiled`; без неё — выход 0 и отказ. Оба прогона в
+  `eidolon/host/runs/`. То есть проверка сторожит ровно то, что сторожит форма SDK, и может стать красной.
 
 - Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
   `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
