@@ -386,6 +386,16 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   Имена в журнале: `Window.presentedWindowContent(forPresented:)`, `OpenWindowAction(id:)` и
   `OpenWindowAction(value:)` — последнее потому, что iOS 6 и не передаёт окну значение.
 
+- Две проверки на iPad 2 оказались не проверками, а моими утверждениями о том, чего API не обещает.
+  `EnvironmentValues.tint` — хранимое `var tint: UIColor?` без значения по умолчанию, и пишут его четыре
+  модификатора (`ListExtras.swift:461`, `MoreTypes.swift:134`, `TextExtras.swift:139`,
+  `Toolbars.swift:253`), ни один при импорте; проверка же обходила дерево и спрашивала, есть ли хоть где
+  фон не `.clear`, то есть отвечала на другой вопрос. Теперь вид записывает, что прочитал, и проверяется
+  оно. `SymbolVariants.contains` — включение в множество (`flags.contains(other.flags) && (shape == other.shape
+  || other.shape == nil)`, `SymbolVariants.swift:355`): пустое множество — подмножество любого, поэтому
+  `fill.contains(.none)` истинно, и так же оно и у Apple; проверка читала включение как тождество. Теперь
+  тождество и включение проверяются отдельно, обе стороны равенства записаны.
+
 - Проверка на «виджет-бандл безусловно не собирается» лежит в `eidolon/tools/tabletests/`: `if` без
   `#available` доходит до проверки типов как `any Widget`, а existential не отвечает `Widget`, и сборка
   отказана. Недоступной перегрузки `buildOptional` в интерфейсе 26.2 нет вовсе: у `WidgetBundleBuilder` есть

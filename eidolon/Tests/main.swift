@@ -2667,22 +2667,24 @@ _Probe.advanceAnimations(to: 0.6)
 check(completed > 0, "and does when it is")
 
 // environment values that have something to correspond to on iOS 6, and the anchors of a preference
+/// What a view read out of the environment, recorded by the view itself: a check that asks the tree
+/// instead cannot tell the environment's answer from a background the engine drew.
 struct TintReader: View {
     @Environment(\.tintColor) var tint
     @Environment(\.symbolRenderingMode) var symbols
     @Environment(\.isHoverEffectEnabled) var hovering
+    static var read: [Color?] = []
     var body: some View {
-        Color.clear.overlay(tint ?? Color.clear)
+        let value = tint
+        TintReader.read.append(value)
+        return AnyView(Color.clear)
     }
 }
-func tintOf(_ probe: _Probe) -> UIColor? {
-    var found: UIColor?
-    func walk(_ v: UIView) { if let c = v.backgroundColor, c != .clear { found = found ?? c }; v.subviews.forEach(walk) }
-    walk(probe.hostView)
-    return found
-}
-check(tintOf(_Probe(TintReader(), width: 10, height: 10)) == nil, "nothing is tinted until an app tints it")
-check(tintOf(_Probe(TintReader().accentColor(.blue), width: 10, height: 10)) != nil, "and an accent colour is the tint colour")
+_ = frames(_Probe(TintReader(), width: 10, height: 10))
+check(TintReader.read.first ?? .some(.clear) == nil, "nothing is tinted until an app tints it")
+TintReader.read = []
+_ = frames(_Probe(TintReader().accentColor(.blue), width: 10, height: 10))
+check(TintReader.read.first == .some(.blue), "and an accent colour is the tint colour the view reads")
 
 // an anchor of a whole array and of an optional value: the two ways a preference value collects
 // more than one anchor
@@ -2721,8 +2723,12 @@ check(plainScroller?.showsVerticalScrollIndicator == false, "and the view's own 
 // SymbolVariants: the flags, their combinations and the name a variant gives a symbol — the whole
 // type is OpenSwiftUI's, and this checks it says what its own documentation says.
 check(SymbolVariants.none == SymbolVariants.none, "the empty variant is one value")
-check(!SymbolVariants.fill.contains(.none), "and the filled one is not the empty one")
+check(SymbolVariants.fill != SymbolVariants.none, "and the filled one is not the empty one")
 check(SymbolVariants.fill.contains(.fill), "a filled variant contains fill")
+// `contains` is a subset test, and the empty variant is a subset of every one of them, so a filled
+// variant does contain the empty one — that is what the flags are, not a defect in the vendored code
+check(SymbolVariants.fill.contains(.none), "and contains the empty one, as an empty set is a subset of any")
+check(!SymbolVariants.none.contains(.fill), "where the empty one does not contain a filled")
 check(SymbolVariants.circle.contains(.circle), "and a circle variant contains circle")
 check(!SymbolVariants.circle.contains(.square), "but not a square one")
 check(SymbolVariants.fill.circle.contains(.fill) && SymbolVariants.fill.circle.contains(.circle),
