@@ -398,6 +398,27 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   conform to 'Widget', got: it compiled`; без неё — выход 0 и отказ. Оба прогона в
   `eidolon/host/runs/`. То есть проверка сторожит ровно то, что сторожит форма SDK, и может стать красной.
 
+- Одиннадцать типов, доступных на iOS, которые мы **не носим**, и по какой причине каждая. Проверено по
+  интерфейсу 26.2 (`iPhoneOS26.2.sdk/System/Library/Frameworks/SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface`
+  и `…/WidgetKit.swiftmodule/…`), а не по догадке:
+  - `ContentOffset` (`:11480`) — внутри `extension SwiftUI._ScrollViewGestureProvider`, подчёркнутое;
+  - `Direction` (`:11595`) — сам интерфейс пишет его как `_PagingViewConfig.Direction`, тоже подчёркнутое;
+  - `Tree` (`:6541`) — `Root: SwiftUICore._VariadicView_Root`, ограничение на подчёркнутое;
+  - `Cache` (`:18090`) — внутри `extension SwiftUI.GridLayout`, а разметку ведёт другая полоса;
+  - `TypedPayloadError` (`:17049`) — интерфейс пишет его `Foundation.NSUserActivity.TypedPayloadError`,
+    то есть это тип Foundation, а не SwiftUI;
+  - `Data` (`:11125`) — `public typealias Data = Content.Data`, вложенный, а не имя уровня модуля;
+  - `UIHostingConfiguration` (`:10542`) — публичный и на iOS, но `UIKit.UIContentConfiguration` есть с
+    iOS 14, а порт собирает под iOS 6: отвечать протоколу, которого у платформы нет, нельзя;
+  - `SwiftUIAttributes` (`:7696`) — то же с `Foundation.AttributeScope` (iOS 15);
+  - `AligningContentProviderLayout` (`:11541`) — публичный, без аннотаций, но это `Layout`, а
+    раскладки ведёт другая полоса;
+  - `Property` — это `_ViewDebug.Property`, член подчёркнутой структуры, то есть отладочная машинерия;
+  - `Renderer` — вложен в `_RendererConfiguration` (`:14472`) и **носится** вложенным, в
+    `Rasterizations.swift`, вместе с `RasterizationOptions` и `BackgroundTask`;
+  - `LimitedAvailabilityConfiguration` (`:9248`) — **носится**, см. выше.
+  Из четырнадцати носимых три: `Renderer`, `BackgroundTask`, `LimitedAvailabilityConfiguration`.
+
 - Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
   `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
   (там только `Sendable`). Поэтому имена, которые несут нашу дорожку, — наши: `keyframes`,
