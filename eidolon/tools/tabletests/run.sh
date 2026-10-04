@@ -13,7 +13,7 @@ source ./pkg-env.sh
 # snippet that passed. Say so and fail.
 if [ -z "${SWIFTC:-}" ] || [ ! -x "${SWIFTC:-}" ]; then
   echo "tabletests: no swiftc: pkg-env.sh set SWIFTC='${SWIFTC:-}'" >&2
-  echo "tabletests: run this from a tree with eidolon/xmake-global, after eidolon/build.sh" >&2
+  echo "tabletests: install rtpkg's packages into the shared store, then run eidolon/build.sh, after eidolon/build.sh" >&2
   exit 2
 fi
 cd "$ROOT/eidolon"

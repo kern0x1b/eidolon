@@ -480,18 +480,15 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
 
 ## Как собрать в рабочей копии ревью
 
-`eidolon/xmake-global` — это локальная установка charon (`.xmake/packages` с `charon@swift-runtime`,
-`charon@styx` и `charon@libcxx`), и её **нет в git**. `pkg-env.sh` читает `$STUDY/xmake-global`, поэтому в
-рабочей копии без неё `build.sh` падает на `awk: can't open file /manifest.txt`. Симлинк — всё, что нужно:
+Пакеты берутся из общего хранилища xmake, и `pkg-env.sh` спрашивает путь к каждому у самого xmake
+(`xmake where` в `rtpkg`), поэтому рабочей копии ничего не нужно, кроме установки этих пакетов на машине:
 
 ```
-ln -s <путь к eidolon>/xmake-global <рабочая копия>/xmake-global
+(cd rtpkg && xmake f -p iphoneos -a armv7 -y)
 ```
 
-где `<путь к eidolon>` — любая копия этого репозитория, где каталог есть; на машине флота это
-`$HOME/Git/projects/ios/eidolon`. `local.env` нужен только для `run-emu.sh` и `snapshots.sh`, а не для
-сборки. Проверки таблиц (`eidolon/tools/tabletests/run.sh`) читают `eidolon/out/mods`, который пишет
-`eidolon/build.sh`.
+`local.env` нужен только для `run-emu.sh` и `snapshots.sh`, а не для сборки. Проверки таблиц
+(`eidolon/tools/tabletests/run.sh`) читают `eidolon/out/mods`, который пишет `eidolon/build.sh`.
 
 ## Ограничения окружения
 

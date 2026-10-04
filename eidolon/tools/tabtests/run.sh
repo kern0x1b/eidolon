@@ -9,7 +9,7 @@ cd "$ROOT"
 source ./pkg-env.sh
 if [ -z "${SWIFTC:-}" ] || [ ! -x "${SWIFTC:-}" ]; then
   echo "tabtests: no swiftc: pkg-env.sh set SWIFTC='${SWIFTC:-}'" >&2
-  echo "tabtests: run this from a tree with eidolon/xmake-global, after eidolon/build.sh" >&2
+  echo "tabtests: install rtpkg's packages into the shared store, then run eidolon/build.sh, after eidolon/build.sh" >&2
   exit 2
 fi
 cd "$ROOT/eidolon"
