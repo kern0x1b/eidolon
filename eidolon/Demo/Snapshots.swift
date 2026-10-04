@@ -514,22 +514,40 @@ func writeSnapshots(to folder: String) {
             tree += "\nnavigation depth \(probe.navigationDepth)"
             probe.hostView.removeFromSuperview()
         }
-        try? tree.write(toFile: folder + "/" + scenario.name + ".txt", atomically: true, encoding: .utf8)
+        // A scenario that cannot be written is a failure of the run, not a scenario quietly missing from
+        // it: the comparison against the references is the assertion, and a swallowed write would make
+        // it pass over a scenario that was never rendered.
+        do {
+            try tree.write(toFile: folder + "/" + scenario.name + ".txt", atomically: true, encoding: .utf8)
+        } catch {
+            logProbe("snapshot \(scenario.name) tree NOT written: \(error)")
+            continue
+        }
         logProbe(String(format: "snapshot %@ tree %d lines in %.0f ms", scenario.name, tree.components(separatedBy: "\n").count, Date().timeIntervalSince(started) * 1000))
         guard run.images else { continue }
         let imageStarted = Date()
         let size = CGSize(width: scenario.width, height: scenario.height)
         UIGraphicsBeginImageContextWithOptions(size, true, 1)
-        guard let context = UIGraphicsGetCurrentContext() else { continue }
+        guard let context = UIGraphicsGetCurrentContext() else {
+            logProbe("snapshot \(scenario.name) image NOT drawn: no context")
+            continue
+        }
         UIColor.white.setFill()
         context.fill(CGRect(origin: .zero, size: size))
         probe.hostView.layer.render(in: context)
         let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
-        if let data = image?.pngData() {
-            try? data.write(to: URL(fileURLWithPath: folder + "/" + scenario.name + ".png"))
-            logProbe(String(format: "snapshot %@ image %d bytes in %.0f ms", scenario.name, data.count, Date().timeIntervalSince(imageStarted) * 1000))
+        guard let data = image?.pngData() else {
+            logProbe("snapshot \(scenario.name) image NOT drawn: no image")
+            continue
         }
+        do {
+            try data.write(to: URL(fileURLWithPath: folder + "/" + scenario.name + ".png"))
+        } catch {
+            logProbe("snapshot \(scenario.name) image NOT written: \(error)")
+            continue
+        }
+        logProbe(String(format: "snapshot %@ image %d bytes in %.0f ms", scenario.name, data.count, Date().timeIntervalSince(imageStarted) * 1000))
     }
     logProbe("snapshots done")
     // The bundle that was asked for them is done, so the application is: in the emulator

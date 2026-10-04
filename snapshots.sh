@@ -22,13 +22,27 @@ if [ -z "$folder" ] || [ ! -d "$folder/results/eidolon-snapshots" ]; then
   echo "no snapshots were written; the launch log is $out/launch.log" >&2
   exit 1
 fi
-cp "$folder"/results/eidolon-snapshots/* "$out/shots/" 2>/dev/null || true
+cp "$folder"/results/eidolon-snapshots/* "$out/shots/"
 cp "$folder"/verdict.json "$out/" 2>/dev/null || true
 grep -a "snapshot\|snapshots done" "$folder/results/app.stdout" 2>/dev/null || true
 [ "$status" -ne 0 ] && { echo "the launch failed, exit=$status" >&2; exit "$status"; }
+# The scenarios the run owes, not the ones it produced: a scenario the application did not render is
+# a missing file, and a loop over what arrived would compare 36 of 37 and pass. comm names the
+# difference, and a difference is the run's failure.
+ls "$out"/shots/*.txt >/dev/null 2>&1 || { echo "no scenario was rendered; the launch log is $out/launch.log" >&2; exit 1; }
+ls eidolon/Snapshots/reference/*.txt | xargs -n1 basename | sort > "$out/wanted"
+if [ -n "$ONLY" ]; then grep -x "$ONLY.txt" "$out/wanted" > "$out/wanted.one" && mv "$out/wanted.one" "$out/wanted"; fi
+ls "$out"/shots/*.txt | xargs -n1 basename | sort > "$out/got"
+if ! missing=$(comm -23 "$out/wanted" "$out/got") || [ -n "$missing" ]; then
+  echo "these scenarios were not rendered: $(echo "$missing" | tr '\n' ' ')" >&2
+  exit 1
+fi
+if extra=$(comm -13 "$out/wanted" "$out/got") && [ -n "$extra" ]; then
+  echo "the run wrote scenarios there are no references for: $(echo "$extra" | tr '\n' ' ')" >&2
+  exit 1
+fi
 fail=0
 for shot in "$out"/shots/*.txt; do
-  [ -e "$shot" ] || { echo "no snapshots were written" >&2; exit 1; }
   base=$(basename "$shot"); reference=eidolon/Snapshots/reference/$base
   if [ ! -e "$reference" ] || [ "$accept" = --accept ]; then
     cp "$shot" "$reference"; echo "reference $base written"
