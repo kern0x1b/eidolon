@@ -64,6 +64,16 @@ for path in files:
                         out.append((owner, 'const', name, os.path.basename(path)))
                         out.append((owner, 'var', name, os.path.basename(path)))
                         out.append((owner, 'func', name, os.path.basename(path)))
+            elif re.search(r'\bextension\s+([\w.]+)\s*:\s*(\w+)', s):
+                # a conformance declares what the compiler synthesises from it, and no line of ours
+                # shows those members: Hashable is hash(into:) and hashValue, Equatable is ==
+                conformed, protocols = re.search(r'\bextension\s+([\w.]+)\s*:\s*([\w, ]+)', s).groups()
+                owner = conformed.split('.')[-1]
+                if 'Hashable' in protocols:
+                    out.append((owner, 'func', 'hash', os.path.basename(path)))
+                    out.append((owner, 'var', 'hashValue', os.path.basename(path)))
+                if 'Equatable' in protocols:
+                    out.append((owner, 'func', '==', os.path.basename(path)))
             elif re.search(r'\bsubscript\b', body):
                 out.append((owner, 'subscript', 'subscript', os.path.basename(path)))
             elif re.search(KIND + r'\s+(\w+)', body):
