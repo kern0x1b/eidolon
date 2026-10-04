@@ -57,3 +57,14 @@ extension _RendererConfiguration.RasterizationOptions {
     }
 }
 
+
+/// The renderer a view is drawn with, nested in the same place Apple nests it
+/// (`_RendererConfiguration` of the SDK of 16.4, `arm64e-apple-ios.swiftinterface:14472`): the default
+/// one, or a rasterised one with the options. The type carries no availability annotation, so it is
+/// available on iOS 6 like the rest of its neighbours, and the two cases are Apple's.
+extension _RendererConfiguration {
+    public enum Renderer {
+        case `default`
+        indirect case rasterized(RasterizationOptions = .init())
+    }
+}

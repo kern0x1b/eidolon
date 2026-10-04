@@ -14,7 +14,7 @@ import CoreGraphics
 @available(tvOS, unavailable)
 public protocol Widget {
     associatedtype Body: WidgetConfiguration
-    @WidgetConfigurationBuilder var body: Body { get }
+    var body: Body { get }
 }
 
 /// What a widget is told: a family it is laid out for, a schedule it updates on. Apple's shape from the
@@ -23,7 +23,7 @@ public protocol Widget {
 @available(tvOS, unavailable)
 public protocol WidgetConfiguration {
     associatedtype Body: WidgetConfiguration
-    @WidgetConfigurationBuilder var body: Body { get }
+    var body: Body { get }
 }
 
 /// A bundle of widgets, which is what an extension's entry point is. Apple's shape from the same file
@@ -51,63 +51,58 @@ public protocol WidgetBundle {
 @_functionBuilder
 @available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
 @available(tvOS, unavailable)
-public struct WidgetConfigurationBuilder {
-    public static func buildExpression<Content>(_ content: Content) -> Content where Content: WidgetConfiguration { content }
-    public static func buildBlock() -> some WidgetConfiguration { EmptyWidgetConfiguration() }
-    public static func buildBlock<Content>(_ content: Content) -> some WidgetConfiguration where Content: WidgetConfiguration { content }
-    public static func buildBlock<First, Second>(_ first: First, _ second: Second) -> some WidgetConfiguration
-        where First: WidgetConfiguration, Second: WidgetConfiguration { first }
-    public static func buildBlock<First, Second, Third>(_ first: First, _ second: Second, _ third: Third) -> some WidgetConfiguration
-        where First: WidgetConfiguration, Second: WidgetConfiguration, Third: WidgetConfiguration { first }
-    public static func buildOptional(_ configuration: (WidgetConfiguration)?) -> some WidgetConfiguration {
-        _configuration(configuration ?? EmptyWidgetConfiguration())
+public struct WidgetBundleBuilder {
+    // the six functions of the SDK's own builder, at
+    // `arm64e-apple-ios.swiftinterface:7114-7142` and nothing else: the multi-member `buildBlock`
+    // overloads and the `buildEither` pair a previous version of this file carried are not Apple's
+    public static func buildExpression<Content>(_ content: Content) -> Content where Content: Widget { content }
+    public static func buildBlock() -> some Widget { WidgetBox(wrapped: EmptyWidget()) }
+    public static func buildBlock<Content>(_ content: Content) -> some Widget where Content: Widget { content }
+    public static func buildOptional(_ widget: (any Widget & _LimitedAvailabilityWidgetMarker)?) -> some Widget {
+        // an existential does not answer `Widget`, so the branch goes through a box that does
+        return WidgetBox(wrapped: AnyWidget())
     }
-    public static func buildEither<First, Second>(first: First) -> some WidgetConfiguration where First: WidgetConfiguration { first }
-    public static func buildEither<First, Second>(second: Second) -> some WidgetConfiguration where Second: WidgetConfiguration { second }
-    public static func buildLimitedAvailability(_ content: AnyWidgetConfiguration) -> some WidgetConfiguration { content }
+
+    public static func buildOptional<W>(_ widget: W?) where W: Widget {
+        WidgetBox(wrapped: widget)
+    }
+    public static func buildLimitedAvailability(_ widget: some Widget) -> any Widget & _LimitedAvailabilityWidgetMarker {
+        AnyLimitedAvailabilityWidget(erasing: widget)
+    }
 }
 
-/// One configuration whatever it is: an existential does not conform to `WidgetConfiguration` on its own,
-/// and a builder that hands one out has to put it in something that does.
+/// The marker the interface's `buildLimitedAvailability` returns. It is underscored, so it is the
+/// port's own and internal: nothing outside can name it, and nothing outside needs to.
 @available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
 @available(tvOS, unavailable)
-struct _Configuration: WidgetConfiguration {
+/// The marker the interface's own `buildOptional` and `buildLimitedAvailability` name in their
+/// signatures, so it is public here as it is there: an underscored name in Swift is public, and a
+/// public function cannot name a type that is not.
+@available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
+@available(tvOS, unavailable)
+public protocol _LimitedAvailabilityWidgetMarker: Widget {}
+
+/// The marker the interface's `buildLimitedAvailability` hands back, boxed so the existential the
+/// signature names can be one. Internal, because the name is underscored and nothing outside names it.
+@available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
+@available(tvOS, unavailable)
+struct AnyLimitedAvailabilityWidget: _LimitedAvailabilityWidgetMarker {
     typealias Body = EmptyWidgetConfiguration
     var body: Body { let empty = EmptyWidgetConfiguration(); return empty }
-}
-
-@available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
-@available(tvOS, unavailable)
-private func _configuration(_ configuration: any WidgetConfiguration) -> some WidgetConfiguration {
-    let boxed = _Configuration(); return boxed
-}
-
-@_functionBuilder
-@available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
-@available(tvOS, unavailable)
-public struct WidgetBundleBuilder {
-    public static func buildExpression<Content>(_ content: Content) -> Content where Content: Widget { content }
-    public static func buildBlock() -> some Widget { EmptyWidget() }
-    public static func buildBlock<Content>(_ content: Content) -> some Widget where Content: Widget { content }
-    public static func buildBlock<First, Second>(_ first: First, _ second: Second) -> some Widget
-        where First: Widget, Second: Widget { EmptyWidget() }
-    public static func buildBlock<First, Second, Third>(_ first: First, _ second: Second, _ third: Third) -> some Widget
-        where First: Widget, Second: Widget, Third: Widget { EmptyWidget() }
-    public static func buildOptional(_ widget: Widget?) -> some Widget { _widget(_erased(widget)) }
-    public static func buildEither<First, Second>(first: First) -> some Widget where First: Widget { first }
-    public static func buildEither<First, Second>(second: Second) -> some Widget where Second: Widget { second }
+    var erased: (any Widget)?
+    init(erasing widget: some Widget) { erased = widget }
 }
 
 /// A widget's configuration that is behind an availability, which the interface builds through
 /// `buildLimitedAvailability(_:)`.
 @available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
 @available(tvOS, unavailable)
-public struct AnyWidgetConfiguration: WidgetConfiguration {
+struct AnyWidgetConfiguration: WidgetConfiguration {
     public typealias Body = EmptyWidgetConfiguration
     /// What the availability hid, when the configuration it was given is still around.
     var erased: (any WidgetConfiguration)?
     public var body: Body { let empty = EmptyWidgetConfiguration(); return empty }
-    public init(_ configuration: any WidgetConfiguration) { erased = configuration }
+    init(_ configuration: any WidgetConfiguration) { erased = configuration }
     public init() {}
 }
 
@@ -124,9 +119,16 @@ struct AnyWidget: Widget {
     var body: Body { let empty = EmptyWidgetConfiguration(); return empty }
 }
 
+/// A widget with the one it wraps, for a branch that may have none. The type is generic, so each call
+/// has one underlying type and the widget it was given survives.
 @available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
 @available(tvOS, unavailable)
-private func _erased(_ widget: Widget?) -> some Widget { AnyWidget() }
+struct WidgetBox<Wrapped>: Widget where Wrapped: Widget {
+    typealias Body = EmptyWidgetConfiguration
+    var body: Body { let empty = EmptyWidgetConfiguration(); return empty }
+    /// The widget the branch found, nil for the branch that found none.
+    var wrapped: Wrapped?
+}
 
 /// The widget an empty bundle holds. The port's own: Apple's `buildBlock()` answers `some Widget`, and a
 /// bundle with nothing in it still has to be a widget.

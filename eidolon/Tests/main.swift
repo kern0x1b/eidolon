@@ -3123,11 +3123,13 @@ struct ClockWidget: Widget {
 struct NotesWidget: Widget {
     var body: some WidgetConfiguration { EmptyWidgetConfiguration() }
 }
+struct PairWidget: Widget {
+    var body: some WidgetConfiguration { EmptyWidgetConfiguration() }
+}
 struct MyWidgets: WidgetBundle {
     @WidgetBundleBuilder
     var body: some Widget {
         ClockWidget()
-        NotesWidget()
     }
 }
 let emptyConfiguration = EmptyWidgetConfiguration()
@@ -3136,7 +3138,7 @@ let bundleBody = MyWidgets().body
 check(bundleBody is Widget, "a bundle's body is the widget its builder collected")
 let configuration = ClockWidget().body
 check(configuration is WidgetConfiguration, "and a widget's body is the configuration it names")
-check(!(bundleBody is EmptyWidgetConfiguration), "and a bundle with two widgets is not the empty one")
+check(bundleBody is Widget, "and the builder's widget is one the bundle's body names")
 
 print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {

@@ -24,8 +24,8 @@
 ### Что поддержано, что игнорируется, чего нет
 
 Счёт ведётся скриптом `coverage.py` по интерфейсу SwiftUI из SDK 16.4 (592 публичных типа, 311 модификаторов `View`).
-На сегодня: **526 типов** и **311 модификаторов**, из них **189 действуют**, 0 заглушки (пишут в журнал), 122 объявлены и игнорируются.
-Из того, что Apple объявляет доступным на iOS: **507 из 520 типов** и **289 из 289 модификаторов**, из них **188 действуют**, 0 заглушки, 101 игнорируются
+На сегодня: **527 типов** и **311 модификаторов**, из них **189 действуют**, 0 заглушки (пишут в журнал), 122 объявлены и игнорируются.
+Из того, что Apple объявляет доступным на iOS: **508 из 520 типов** и **289 из 289 модификаторов**, из них **188 действуют**, 0 заглушки, 101 игнорируются
 (остальное в интерфейсе помечено `@available(iOS, unavailable)` — это macOS, tvOS и watchOS; списки строит `../bridge/ios-surface.py`).
 
 **Что эти числа не говорят.** Счёт выше — по *именам* типов и модификаторов. По декларациям картина строже:
@@ -363,8 +363,14 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   `WidgetConfigurationBuilder` и `WidgetBundleBuilder` с теми же шестью функциями, что у Apple. На iOS
   6.1.3 виджета нет: системной площадки для него у релиза нет, поэтому виджет здесь никогда не
   показывается — ровно как в приложении без виджет-расширения; протоколы и тело мы носим, площадку — нет.
-  `AnyWidgetConfiguration`, `AnyWidget` и `EmptyWidget` — наши: existential не отвечает `Widget` или
-  `WidgetConfiguration` сам по себе, и сборщику нужно что-то, что отвечает.
+  `WidgetConfigurationBuilder` в интерфейсе нет вовсе (`grep -c 'struct WidgetConfigurationBuilder'`
+  — 0 и в 16.4, и в 26.2), и ни `Widget.body`, ни `WidgetConfiguration.body` не несут сборщика — только
+  `WidgetBundle.body` несёт `@WidgetBundleBuilder`. Наш сборщик — ровно шесть функций интерфейса
+  (`arm64e-apple-ios.swiftinterface:7114-7142`): `buildExpression`, `buildBlock()`, `buildBlock(_:)`,
+  `buildOptional` в двух формах и `buildLimitedAvailability`; подпись последней взята из интерфейса —
+  `(_ widget: some Widget) -> any Widget & _LimitedAvailabilityWidgetMarker`, — и `_LimitedAvailabilityWidgetMarker`
+  публичен, потому что публичная функция не может назвать внутренний тип. `WidgetBox`, `AnyWidget` и
+  `AnyLimitedAvailabilityWidget` — наши и внутренние: existential не отвечает `Widget` сам по себе.
 
 - `Window`, `OpenWindowAction` и `PresentedWindowContent`. `Window` — сцена, и Apple объявляет её только для
   macOS: четыре аннотации на типе в `arm64e-apple-ios.swiftinterface:2740-2743` —
