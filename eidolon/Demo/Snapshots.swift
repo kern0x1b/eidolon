@@ -493,10 +493,9 @@ func snapshotCases() -> [SnapshotCase] {
 }
 
 func writeSnapshots(to folder: String) {
+    guard let run = snapshotRun else { return }
     try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true, attributes: nil)
-    let wantsImages = FileManager.default.fileExists(atPath: "/var/charon/snapshots.png")
-    let only = try? String(contentsOfFile: "/var/charon/snapshots.only", encoding: .utf8)
-    let filter = only?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let filter = run.only
     for scenario in snapshotCases() where filter == nil || filter!.isEmpty || scenario.name == filter {
         let started = Date()
         let probe = _Probe(scenario.view, width: scenario.width, height: scenario.height)
@@ -517,7 +516,7 @@ func writeSnapshots(to folder: String) {
         }
         try? tree.write(toFile: folder + "/" + scenario.name + ".txt", atomically: true, encoding: .utf8)
         logProbe(String(format: "snapshot %@ tree %d lines in %.0f ms", scenario.name, tree.components(separatedBy: "\n").count, Date().timeIntervalSince(started) * 1000))
-        guard wantsImages else { continue }
+        guard run.images else { continue }
         let imageStarted = Date()
         let size = CGSize(width: scenario.width, height: scenario.height)
         UIGraphicsBeginImageContextWithOptions(size, true, 1)
@@ -533,4 +532,8 @@ func writeSnapshots(to folder: String) {
         }
     }
     logProbe("snapshots done")
+    // The run is over, so the application is: on a phone the script watches for the line above, and in
+    // the emulator `xmake emulate launch ... until-exit` holds the guest until this process is gone and
+    // then takes the last frame. A scenario still wanted on screen is the one run with /var/charon/show.
+    exit(0)
 }

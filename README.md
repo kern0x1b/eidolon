@@ -72,8 +72,11 @@ exists.
   installed into the shared xmake store (`cd rtpkg && xmake f -p iphoneos -a armv7 -y`): `swift-runtime`, `libcxx`,
   `apple-compat`, `styx`, the iOS SDK, `llvm`, `ld64` and `ldid`. `pkg-env.sh` asks xmake where each is
   (`xmake where`). An app that only uses Eidolon takes it as the package `charon@eidolon` instead.
-- To run the tests and rendered scenarios: an iOS 6 firmware root file system from Charon, and an emulator lab that
-  provides `scripts/ilemu.sh` and the helper scripts `run-emu.sh` and `run-app.sh` call. Point `EMULATOR_LAB` at it.
+- To run the tests and rendered scenarios: the Charon emulator (Shade), which `xmake emulate` drives — the port in
+  `eidolon/` builds the demo app, the snapshot bundle and the test binary as packages, and the emulator image,
+  the device and the release are named on the command line (`-d iPhone4,1 -r 6.1.3`). The addon must be one that has
+  `xmake emulate launch` (Charon v0.8.14 or later); `CHARON_ADDON` names it, and `CHARON_REPO` a Charon checkout to
+  take the packages from.
 - To measure on hardware: an iPhone 4S or an iPad 2 on iOS 6.1.3, reached through Charon's device tooling
   (`CHARON_MODULES` names the `modules` directory of a Charon checkout).
 
@@ -83,6 +86,7 @@ Machine-local paths go in `local.env` (git-ignored); nothing personal is tracked
 
 ```bash
 eidolon/build.sh        # module, demo app, tests and probe -> eidolon/out/EidolonDemo.app
+xmake -P eidolon f -p iphoneos -a armv7 -y   # the same, as a Charon port: the app and the tests as packages
 ```
 
 The build begins with `eidolon/coverage.py --check`, which refuses to continue if the ledger and the code disagree.
@@ -91,13 +95,16 @@ Everything is compiled with availability checking **on**, against the same Swift
 ## Usage
 
 ```bash
-cd eidolon
-../run-emu.sh t1 out/EidolonDemo.app EidolonTests   # the engine tests, in the emulator
-../snapshots.sh [--accept]                          # rendered scenarios against tree references
-../perf.sh                                          # in-app timings of deeply nested layouts
-python3 coverage.py --check                         # the ledger, checked against the code
-../bridge/prepare-fw.sh && ../bridge/api-surface.sh # the typed API diff against Apple's interface
+../run-emu.sh                                           # the engine tests, in the emulator
+../snapshots.sh [--accept]                              # rendered scenarios against tree references
+../perf.sh                                              # in-app timings of deeply nested layouts
+xmake -P eidolon emulate -d iPhone4,1 -r 6.1.3 launch space.kern0x1b.eidolon.demo
+python3 coverage.py --check                             # the ledger, checked against the code
+../bridge/prepare-fw.sh && ../bridge/api-surface.sh     # the typed API diff against Apple's interface
 ```
+
+`xmake emulate launch` starts the application the way SpringBoard does, so it reaches
+`application:didFinishLaunchingWithOptions:`; the engine tests are a console binary and go through `xmake emulate run`.
 
 `bridge/guest-abi-check.sh` builds the module for arm64 with library evolution and links a sample app compiled against
 Apple's interface with it, to prove that the symbols such an app needs are all there.
@@ -106,7 +113,7 @@ Apple's interface with it, to prove that the symbols such an app needs are all t
 
 | Path | Holds |
 | --- | --- |
-| `eidolon/` | the module (`Sources/SwiftUI`), the demo app, the engine tests, the probe, the snapshot references and the coverage ledger |
+| `eidolon/` | the module (`Sources/SwiftUI`), the demo app, the engine tests, the probe, the snapshot references, the coverage ledger, and the Charon port (`xmake.lua`, `control`, `Info.plist`) that builds the app, the snapshot bundle and the tests as packages for `xmake emulate` |
 | `bridge/` | the guest-ABI check, the typed API diff against Apple's interface, and the name lists both use |
 | `combine/` | build and run scripts for the upstream OpenCombine test suite on iOS 6, with its results (Styx's ancestor; Styx carries its own now) |
 | `rtpkg/` | the small xmake project that installs the runtime packages |

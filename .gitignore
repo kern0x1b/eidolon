@@ -13,6 +13,8 @@ local.env
 
 # Machine-local work areas and installed packages (several gigabytes, reproducible)
 /xmake-global/
+/.xmake/
+/build/
 /charon-main/
 /src/
 /runs.noindex/
@@ -29,6 +31,8 @@ local.env
 **/runs.noindex/
 /rtpkg/build/
 /rtpkg/.xmake/
+/eidolon/.xmake/
+/eidolon/xmake-addons.lock
 /rtpkg/*.log
 /rtpkg/xmake-addons.lock
 *.o

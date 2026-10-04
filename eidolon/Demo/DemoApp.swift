@@ -132,8 +132,9 @@ struct ContentView: View {
             if FileManager.default.fileExists(atPath: "/var/charon/perf.on") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { runPerf() }
             }
-            if FileManager.default.fileExists(atPath: "/var/charon/snapshots.on") {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { writeSnapshots(to: "/var/charon/eidolon-snapshots") }
+            if snapshotRun != nil {
+                let folder = "/var/charon/eidolon-snapshots"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { writeSnapshots(to: folder) }
             }
         }
     }
@@ -142,6 +143,23 @@ struct ContentView: View {
 func loadBackports() {
     probe("backports: UISwipeActionsConfiguration \(NSClassFromString("UISwipeActionsConfiguration") != nil ? "present" : "absent")")
 }
+
+/// What the run renders: the scenarios, one of them only, and whether each is drawn as an image. A key
+/// of the bundle's own Info.plist says it, which is how the emulator's image says it - the snapshot
+/// bundle is the same program built as another application, and xmake emulate launch starts that one -
+/// and /var/charon says it on a phone, where the files are put there by hand. nil is no snapshot run.
+let snapshotRun: (only: String?, images: Bool)? = {
+    guard Bundle.main.object(forInfoDictionaryKey: "EidolonSnapshots") != nil
+        || FileManager.default.fileExists(atPath: "/var/charon/snapshots.on") else {
+        return nil
+    }
+    let only = (try? String(contentsOfFile: "/var/charon/snapshots.only", encoding: .utf8))
+        ?? (Bundle.main.object(forInfoDictionaryKey: "EidolonSnapshotOnly") as? String)
+    let name = only?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let images = Bundle.main.object(forInfoDictionaryKey: "EidolonSnapshotImages") != nil
+        || FileManager.default.fileExists(atPath: "/var/charon/snapshots.png")
+    return (name?.isEmpty == false ? name : nil, images)
+}()
 
 // /var/charon/gesture names a scenario whose real touches are run once it is on screen (a phone only).
 func runDeviceGesture(_ name: String) {

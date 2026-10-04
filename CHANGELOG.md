@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A Charon port in `eidolon/` (`xmake.lua`, `control`, `Info.plist`): the demo application, the snapshot bundle and
+  the engine tests as Debian packages, so `xmake emulate` installs them into an emulated iOS 6 image, SpringBoard
+  launches the application (`xmake emulate launch`, which reaches `application:didFinishLaunchingWithOptions:`) and
+  the tests run as the guest's first process (`xmake emulate run`). The snapshot bundle is the same program built as a
+  second application, which is what tells it to render the scenarios: a key of its own Info.plist, where a port says
+  what it wants in the guest.
 - The SwiftUI API on the UIKit of iOS 6 (armv7): state and data flow, stacks, grids, lists, forms, tables,
   navigation, sheets, dialogs, search, gestures, animation, shapes and paths, `Canvas`, accessibility and the UIKit
   bridges, with a ledger of what is implemented, ignored or simplified that the build checks.
