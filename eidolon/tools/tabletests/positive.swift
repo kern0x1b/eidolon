@@ -68,3 +68,24 @@ func editableList(_ items: Binding<[Row]>) {
     }
     _ = (withId, plain, selected)
 }
+
+// The table half: the columns the app left visible, in its order, and a column's own alignment.
+func tableColumnsAreCustomisable() {
+    var rows = [Row(id: 0, name: "a")]
+    var customization = TableColumnCustomization<Row>()
+    // the i-th column is the column of the row order[i]: the second column first, the first hidden
+    customization.order = [rows[1].id, rows[0].id]
+    customization.visibility = [rows[0].id: false, rows[1].id: true]
+    let table = Table(of: Row.self, columnCustomization: Binding(get: { customization },
+                                                            set: { customization = $0 })) {
+        TableColumn("id") { (row: Row) in Text("\(row.id)") }
+        TableColumn("name", value: \.name).alignment(.trailing)
+    } rows: {
+        ForEach(rows) { TableRow($0) }
+    }
+    check(table.visibleColumns.count == 1, "of the two columns the app left one, the table draws one")
+    check(table.visibleColumns.first?.columnAlignment == .trailing, "and the column keeps the alignment it was given")
+    customization.resetOrder()
+    check(customization.order.isEmpty, "resetOrder empties the order the app had")
+    _ = rows
+}

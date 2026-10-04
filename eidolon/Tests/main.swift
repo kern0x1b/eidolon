@@ -2853,10 +2853,6 @@ func tabValuesNameOneTabPerElement() {
     let named = ForEach<[TabValueCase], TabValueCase.ID, FolderTab>(boxes) { FolderTab(box: $0) }.namedRows
     equal(named.count, 2, "a ForEach of tab content is one tab per element")
     equal(named.map { $0.value }, [AnyHashable(boxes[0]), AnyHashable(boxes[1])], "and each tab is named by its element")
-    // a content that does not name its tabs yields one tab it does not name, and a tab bar matches an
-    // unnamed tab by its position, the way an untagged page already is here
-    // a content that does not name its tabs yields one tab it does not name, and a tab bar matches an
-    // unnamed tab by its position, the way an untagged page already is here
     let one = TabContentList([boxes[0]], view: { _ in AnyView(Color.gray) }, named: { AnyHashable($0) }).namedRows
     equal(one.count, 1, "one element is one tab")
     equal(one.first?.value, AnyHashable(boxes[0]), "named by the element, which is the tab's value")
@@ -2891,6 +2887,50 @@ func aTabBarsSelectionCarriesTheTabValue() {
     equal(controllers.first?.viewControllers?.count ?? 0, boxes.count, "with one controller per element")
     let items = controllers.first?.tabBar.items ?? []
     equal(items.map { $0.tag }, [0, 1], "and the release's own tag is the tab's position")
+}
+
+// A table draws the columns the app left visible, in the order the app gave, with the column's own
+// alignment. WRITTEN, NOT RUN: the engine tests need the emulator and `xmake emulate` is not in this
+// tree yet (emulate-launch, 7e035ac0). The typecheck pair cannot show this red: it checks that the
+// declaration compiles, not that the body reads it, which is what this test is for.
+struct TwoColumnCase: Identifiable, Hashable { var id: Int; let title: String }
+
+struct TwoColumnTableCase: View {
+    let rows: [TwoColumnCase]
+    let customization: TableColumnCustomization<TwoColumnCase>
+    var body: some View {
+        Table(of: TwoColumnCase.self,
+              columnCustomization: Binding(get: { customization }, set: { _ in })) {
+            TableColumn("first") { (row: TwoColumnCase) in Color.red }
+            TableColumn("second") { (row: TwoColumnCase) in Color.blue }.alignment(.trailing)
+        } rows: {
+            ForEach(rows) { TableRow($0) }
+        }
+    }
+}
+
+func aTableDrawsTheColumnsTheAppLeftVisible() {
+    let rows = [TwoColumnCase(id: 0, title: "a"), TwoColumnCase(id: 1, title: "b")]
+    var customization = TableColumnCustomization<TwoColumnCase>()
+    customization.order = [rows[1].id, rows[0].id]
+    customization.visibility = [rows[0].id: false, rows[1].id: true]
+    let probe = _Probe(TwoColumnTableCase(rows: rows, customization: customization), width: 320, height: 480)
+    _ = frames(probe)
+    check(colors(of: probe.hostView).count > 0, "the table draws rows for the column it kept")
+    check(!colors(of: probe.hostView).contains(UIColor.red), "and not for the column the app hid")
+    check(colors(of: probe.hostView).contains(UIColor.blue), "the column it kept is the one the app left")
+    customization.resetOrder()
+    check(customization.order.isEmpty, "resetOrder empties the order the app had")
+}
+
+func colors(of view: UIView) -> [UIColor] {
+    var found: [UIColor] = []
+    var stack: [UIView] = [view]
+    while let current = stack.popLast() {
+        if let back = current.backgroundColor { found.append(back) }
+        stack.append(contentsOf: current.subviews)
+    }
+    return found
 }
 
 print("\(checks - failures)/\(checks) checks passed")

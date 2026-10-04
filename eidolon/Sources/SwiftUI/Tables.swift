@@ -12,9 +12,11 @@ public struct _AnyTableColumn<Row> {
     let cell: (Row) -> any View
     let sortKey: AnyKeyPath?
     let readKey: ((Row) -> any Comparable)?
+    public let columnAlignment: TableColumnAlignment
     init(title: String, cell: @escaping (Row) -> any View, sortKey: AnyKeyPath? = nil,
-         readKey: ((Row) -> any Comparable)? = nil) {
+         readKey: ((Row) -> any Comparable)? = nil, columnAlignment: TableColumnAlignment = .automatic) {
         self.title = title; self.cell = cell; self.sortKey = sortKey; self.readKey = readKey
+        self.columnAlignment = columnAlignment
     }
 }
 
@@ -23,6 +25,14 @@ public protocol TableColumnContent {
     associatedtype TableColumnSortComparator
     associatedtype TableColumnBody
     var _columns: [_AnyTableColumn<TableRowValue>] { get }
+    /// A column's own alignment, which is what the table draws it with. It is a requirement and not an
+    /// extension member, because the table reaches it through the protocol and an extension member would
+    /// not be dispatched.
+    func alignment(_ alignment: TableColumnAlignment) -> Self
+}
+
+extension TableColumnContent {
+    public func alignment(_ alignment: TableColumnAlignment) -> Self { self }
 }
 
 public struct TableColumn<RowValue: Identifiable, Sort, Content: View, Label: View>: TableColumnContent, View, PrimitiveView {
@@ -36,19 +46,23 @@ public struct TableColumn<RowValue: Identifiable, Sort, Content: View, Label: Vi
     let cell: (RowValue) -> Content
     let sortKey: AnyKeyPath?
     let readKey: ((RowValue) -> any Comparable)?
+    let columnAlignment: TableColumnAlignment
     public var _columns: [_AnyTableColumn<RowValue>] {
-        [_AnyTableColumn(title: title, cell: { cell($0) }, sortKey: sortKey, readKey: readKey)]
+        [_AnyTableColumn(title: title, cell: { cell($0) }, sortKey: sortKey, readKey: readKey,
+                         columnAlignment: alignment)]
     }
+    /// The alignment the app gave this column, kept so the table draws it with.
+    var alignment: TableColumnAlignment { columnAlignment }
     public func width(_ width: CGFloat? = nil) -> Self { self }
     public func width(min: CGFloat? = nil, ideal: CGFloat? = nil, max: CGFloat? = nil) -> Self { self }
 }
 
 extension TableColumn where Sort == Never, Label == Text {
     public init(_ titleKey: LocalizedStringKey, @ViewBuilder content: @escaping (RowValue) -> Content) {
-        title = titleKey.text; cell = content; sortKey = nil; readKey = nil
+        title = titleKey.text; cell = content; sortKey = nil; readKey = nil; columnAlignment = .automatic
     }
     public init<S: StringProtocol>(_ title: S, @ViewBuilder content: @escaping (RowValue) -> Content) {
-        self.title = String(title); cell = content; sortKey = nil; readKey = nil
+        self.title = String(title); cell = content; sortKey = nil; readKey = nil; columnAlignment = .automatic
     }
 }
 
@@ -58,12 +72,14 @@ extension TableColumn where Sort == Never, Label == Text, Content == Text {
         cell = { Text($0[keyPath: value]) }
         sortKey = value as AnyKeyPath
         readKey = { $0[keyPath: value] as any Comparable }
+        columnAlignment = .automatic
     }
     public init<S: StringProtocol>(_ title: S, value: KeyPath<RowValue, String>) {
         self.title = String(title)
         cell = { Text($0[keyPath: value]) }
         sortKey = value as AnyKeyPath
         readKey = { $0[keyPath: value] as any Comparable }
+        columnAlignment = .automatic
     }
 }
 
@@ -194,16 +210,20 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
     var selection: SelectionBox?
     var sortOrder: Binding<[KeyPathComparator<Value>]>?
     var customizationBehavior: TableColumnCustomizationBehavior = .all
-    var columnCustomization: TableColumnCustomizationIdentified?
-    struct TableColumnCustomizationIdentified { var order: [String]; var visibility: [String: Bool] }
-    var defaultColumnAlignment = TableColumnAlignment.automatic
+    /// What the table reads: the order the app gave and the columns it hid, by the title a column has
+    /// here. The app's own `TableColumnCustomization<Value>` is projected into this, so the type the
+    /// table stores needs no constraint on the element's identifier.
+    struct ColumnVisibility { var order: [String] = []; var hidden: [String] = [] }
+    var columnCustomization: ColumnVisibility?
+
     /// The columns the table draws: the app's order, and only the ones it leaves visible.
-    var visibleColumns: [_AnyTableColumn<Value>] {
+    public var visibleColumns: [_AnyTableColumn<Value>] {
         let all = columns._columns
         guard let customization = columnCustomization, customizationBehavior.contains(.visibility) else { return all }
-        let ordered = customization.order.compactMap { id in all.first { $0.title == id } }
-        let kept = ordered.isEmpty ? all : ordered
-        return kept.filter { customization.visibility[$0.title] ?? true }
+        let hidden = Set(customization.hidden)
+        let kept = all.filter { !hidden.contains($0.title) }
+        let ordered = customization.order.compactMap { title in kept.first { $0.title == title } }
+        return ordered.isEmpty ? kept : ordered
     }
     public var body: AnyView {
         if UIDevice.current.userInterfaceIdiom == .pad { _Unsupported.pendingNote("Table columns on iPad") }
@@ -226,9 +246,15 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
                 }
             }
         }
+        let shown = visibleColumns
         var list = List { ForEach(ordered) { row -> AnyView in
-            guard let first else { return AnyView(EmptyView()) }
-            return AnyView(first.cell(row))
+            guard let first = shown.first else { return AnyView(EmptyView()) }
+            let cell = first.cell(row)
+            switch first.columnAlignment.horizontal {
+            case .leading: return AnyView(HStack { AnyView(cell); Spacer() })
+            case .trailing: return AnyView(HStack { Spacer(); AnyView(cell) })
+            default: return AnyView(cell)
+            }
         } }
         if sortOrder == nil { return AnyView(list) }
         // the titles, then the rows they sort
@@ -300,6 +326,22 @@ extension Group: TableColumnContent where Content: TableColumnContent {
 extension Table {
     public init(of type: Value.Type, @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows) {
         self.init(columns: columns, rows: rows)
+    }
+    public init(of type: Value.Type, columnCustomization: Binding<TableColumnCustomization<Value>>,
+                @TableColumnBuilder<Value, Never> columns: () -> Columns, @TableRowBuilder<Value> rows: () -> Rows)
+        where Value.ID: Codable {
+        self.init(columns: columns, rows: rows)
+        let given = columnCustomization.wrappedValue
+        // the i-th column is the column of the row order[i], so the order and the visibility are read as
+        // positions: what an app hides is the column of the row it named
+        var titles: [String] = []
+        var hiddenTitles: [String] = []
+        let drawn: [_AnyTableColumn<Value>] = self.columns._columns
+        for (index, id) in given.order.enumerated() where index < drawn.count {
+            titles.append(drawn[index].title)
+            if given.visibility[id] == false { hiddenTitles.append(drawn[index].title) }
+        }
+        self.columnCustomization = ColumnVisibility(order: titles, hidden: hiddenTitles)
     }
     // The sorted family: the binding is the app's own, the table reads it and writes the order a tap
     // on a sortable column's header asks for -- the same column again with the order turned, or that
@@ -522,7 +564,7 @@ public struct TableColumnAlignment: Hashable {
     public typealias ID = Value.ID
     public var visibility: [ID: Bool]
     public var order: [ID]
-    init() { visibility = [:]; order = [] }
+    public init() { visibility = [:]; order = [] }
     public mutating func resetOrder() { order = [] }
     public func encode(to encoder: any Encoder) throws {
         // the order, and the visibility of each column by the identifier the column carries: the ids are

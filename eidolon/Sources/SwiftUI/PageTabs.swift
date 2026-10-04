@@ -213,7 +213,7 @@ public struct AnyTabContent: TabContent {
 
 /// The tabs, in order, each with the view it stands for and the value that names it. This is what
 /// `ForEach` of tab content is: one tab per element, named by the element.
-public struct TabContentList<Element>: TabContent, TabContentNaming {
+public struct TabContentList<Element: Hashable>: TabContent, TabContentNaming {
     public typealias TabValue = AnyHashable
     public typealias Body = TabContentList<Element>
     let elements: [Element]

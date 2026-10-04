@@ -1,7 +1,7 @@
 import SwiftUI
 
 // A value that is not Hashable cannot name a tab, so this must not compile.
-struct Untagged { let folder: String }
+struct Untagged { let folder: String }   // not Hashable, so a tab value is not a value here
 
 struct MailTab: TabContent {
     let folder: String
