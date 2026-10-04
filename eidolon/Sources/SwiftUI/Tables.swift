@@ -193,6 +193,18 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
     let columns: Columns
     var selection: SelectionBox?
     var sortOrder: Binding<[KeyPathComparator<Value>]>?
+    var customizationBehavior: TableColumnCustomizationBehavior = .all
+    var columnCustomization: TableColumnCustomizationIdentified?
+    struct TableColumnCustomizationIdentified { var order: [String]; var visibility: [String: Bool] }
+    var defaultColumnAlignment = TableColumnAlignment.automatic
+    /// The columns the table draws: the app's order, and only the ones it leaves visible.
+    var visibleColumns: [_AnyTableColumn<Value>] {
+        let all = columns._columns
+        guard let customization = columnCustomization, customizationBehavior.contains(.visibility) else { return all }
+        let ordered = customization.order.compactMap { id in all.first { $0.title == id } }
+        let kept = ordered.isEmpty ? all : ordered
+        return kept.filter { customization.visibility[$0.title] ?? true }
+    }
     public var body: AnyView {
         if UIDevice.current.userInterfaceIdiom == .pad { _Unsupported.pendingNote("Table columns on iPad") }
         let first = columns._columns.first
@@ -466,5 +478,57 @@ struct TableHeader<Value: Identifiable>: View {
         guard let sortOrder, let read = column.readKey, key != nil else { return AnyView(title) }
         let comparator = KeyPathComparator<Value>(existing: key!, read: read)
         return AnyView(Button(action: { sortOrder.wrappedValue = comparator.ordering(sortOrder.wrappedValue, after: comparator) }) { title })
+    }
+}
+
+/// What a table lets an app do with its columns. On iOS 6 a table is the release's own table view: its
+/// columns cannot be dragged into a new order and their widths are not the app's to set, so `visibility`
+/// is the one that reaches the engine -- a column that is not visible is not drawn -- and the other two
+/// are the values an app passes and the release has nowhere to show.
+public struct TableColumnCustomizationBehavior: OptionSet {
+    public let rawValue: UInt
+    public init(rawValue: UInt) { self.rawValue = rawValue }
+    public static let reorder = TableColumnCustomizationBehavior(rawValue: 1 << 0)
+    public static let resize = TableColumnCustomizationBehavior(rawValue: 1 << 1)
+    public static let visibility = TableColumnCustomizationBehavior(rawValue: 1 << 2)
+    public static let all: TableColumnCustomizationBehavior = [.reorder, .resize, .visibility]
+}
+
+/// How a column's content sits in the column, and how numbers line up under a numbering system.
+public struct TableColumnAlignment: Hashable {
+    let horizontal: HorizontalAlignment?
+    let numbering: String?
+    init(horizontal: HorizontalAlignment?, numbering: String?) {
+        self.horizontal = horizontal; self.numbering = numbering
+    }
+    public static var automatic: TableColumnAlignment { TableColumnAlignment(horizontal: nil, numbering: nil) }
+    public static var leading: TableColumnAlignment { TableColumnAlignment(horizontal: .leading, numbering: nil) }
+    public static var center: TableColumnAlignment { TableColumnAlignment(horizontal: .center, numbering: nil) }
+    public static var trailing: TableColumnAlignment { TableColumnAlignment(horizontal: .trailing, numbering: nil) }
+    public static var numeric: TableColumnAlignment { TableColumnAlignment(horizontal: .trailing, numbering: nil) }
+    public static func numeric(_ numberingSystem: String) -> TableColumnAlignment {
+        TableColumnAlignment(horizontal: .trailing, numbering: numberingSystem)
+    }
+    public static func == (a: TableColumnAlignment, b: TableColumnAlignment) -> Bool {
+        a.horizontal == b.horizontal && a.numbering == b.numbering
+    }
+    public func hash(into hasher: inout Hasher) { hasher.combine(String(describing: horizontal)); hasher.combine(numbering) }
+    public var hashValue: Int { var h = Hasher(); hash(into: &h); return h.finalize() }
+}
+
+/// Which columns a table shows, and in what order: the app's own list, written back when the user
+/// changes it. The table reads the order for the columns it draws and the ids for which are visible.
+@frozen public struct TableColumnCustomization<Value: Identifiable> where Value.ID: Codable {
+    public typealias ID = Value.ID
+    public var visibility: [ID: Bool]
+    public var order: [ID]
+    init() { visibility = [:]; order = [] }
+    public mutating func resetOrder() { order = [] }
+    public func encode(to encoder: any Encoder) throws {
+        // the order, and the visibility of each column by the identifier the column carries: the ids are
+        // the element's own type, so this is Codable wherever the element's is
+        var container = encoder.singleValueContainer()
+        try container.encode(order)
+        try container.encode(Set(visibility.filter { !$0.value }.keys))
     }
 }
