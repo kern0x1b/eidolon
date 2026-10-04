@@ -243,6 +243,17 @@ extension GaugeStyle where Self == AccessoryCircularGaugeStyle {
     public static var accessoryCircularCapacity: AccessoryCircularGaugeStyle { AccessoryCircularGaugeStyle() }
 }
 
+// The two names Apple puts on GaugeStyle itself (arm64-apple-ios.swiftinterface:3237 for the circular
+// one): the port aliases the styles above, and the statics have to be on the type it names, or they are
+// not there at all.
+extension GaugeStyle where Self == AccessoryCircularGaugeStyle {
+    public static var circular: AccessoryCircularGaugeStyle { AccessoryCircularGaugeStyle() }
+}
+
+extension GaugeStyle where Self == DefaultGaugeStyle {
+    public static var linear: DefaultGaugeStyle { DefaultGaugeStyle() }
+}
+
 // Form
 
 public protocol FormStyle {
