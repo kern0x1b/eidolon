@@ -398,7 +398,7 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   conform to 'Widget', got: it compiled`; без неё — выход 0 и отказ. Оба прогона в
   `eidolon/host/runs/`. То есть проверка сторожит ровно то, что сторожит форма SDK, и может стать красной.
 
-- Одиннадцать типов, доступных на iOS, которые мы **не носим**, и по какой причине каждая. Проверено по
+- Десять типов, доступных на iOS, которые мы **не носим**, и по какой причине каждая. Проверено по
   интерфейсу 26.2 (`iPhoneOS26.2.sdk/System/Library/Frameworks/SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface`
   и `…/WidgetKit.swiftmodule/…`), а не по догадке:
   - `ContentOffset` (`:11480`) — внутри `extension SwiftUI._ScrollViewGestureProvider`, подчёркнутое;
@@ -413,11 +413,14 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
   - `SwiftUIAttributes` (`:7696`) — то же с `Foundation.AttributeScope` (iOS 15);
   - `AligningContentProviderLayout` (`:11541`) — публичный, без аннотаций, но это `Layout`, а
     раскладки ведёт другая полоса;
-  - `Property` — это `_ViewDebug.Property`, член подчёркнутой структуры, то есть отладочная машинерия;
+  - `Property` — это `_ViewDebug.Property`, член подчёркнутой структуры, то есть отладочная машинерия
+    (`SwiftUICore.swiftmodule/arm64e-apple-ios.swiftinterface:14901`, внутри `public enum _ViewDebug`; в
+    интерфейсе SwiftUI его нет, там только `SwiftUICore._ViewDebug.Data` в `:21897` как тип возврата);
   - `Renderer` — вложен в `_RendererConfiguration` (`:14472`) и **носится** вложенным, в
     `Rasterizations.swift`, вместе с `RasterizationOptions` и `BackgroundTask`;
   - `LimitedAvailabilityConfiguration` (`:9248`) — **носится**, см. выше.
-  Из четырнадцати носимых три: `Renderer`, `BackgroundTask`, `LimitedAvailabilityConfiguration`.
+  Из четырнадцати носимых три: `Renderer`, `BackgroundTask`, `LimitedAvailabilityConfiguration`, и
+  `Property` в списке — десятый неперенесённый.
 
 - Дорожка ключевых кадров — наше чтение, а не 26.2: в `SwiftUICore.swiftinterface:5542`
   `public struct _ResolvedKeyframes<Value> { }` пуст, и членов нет ни у него, ни у `_ResolvedKeyframe`
@@ -434,6 +437,21 @@ Combine — пакет `charon@styx` 2026.09.20 (форк OpenCombine, моду�
 
 - `Double` и `Float` отвечают `Animatable` сами собой (`animatableData` — сам тип), как у Apple: без этого дорожку
   ключевых кадров нельзя построить над числом.
+
+## Как собрать в рабочей копии ревью
+
+`eidolon/xmake-global` — это локальная установка charon (`.xmake/packages` с `charon@swift-runtime`,
+`charon@styx` и `charon@libcxx`), и её **нет в git**. `pkg-env.sh` читает `$STUDY/xmake-global`, поэтому в
+рабочей копии без неё `build.sh` падает на `awk: can't open file /manifest.txt`. Симлинк — всё, что нужно:
+
+```
+ln -s <путь к eidolon>/xmake-global <рабочая копия>/xmake-global
+```
+
+где `<путь к eidolon>` — любая копия этого репозитория, где каталог есть; на машине флота это
+`$HOME/Git/projects/ios/eidolon`. `local.env` нужен только для `run-emu.sh` и `snapshots.sh`, а не для
+сборки. Проверки таблиц (`eidolon/tools/tabletests/run.sh`) читают `eidolon/out/mods`, который пишет
+`eidolon/build.sh`.
 
 ## Ограничения окружения
 

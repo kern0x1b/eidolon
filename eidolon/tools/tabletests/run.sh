@@ -53,5 +53,10 @@ check_one negative "conform to 'TableRowContent'"
 # take the marker intersection and a `W: Widget`, neither of which an `if` without `#available`
 # produces — so the `if` reaches the type checker as `any Widget` and is refused. The widget API is
 # iOS 14 and this tree targets iOS 6, so the check is about the builder and not about availability.
-check_one negative-widget-bundle "cannot conform to 'Widget'" "-disable-availability-checking"
+# a bare `if` yields `any Widget`, which the available marker intersection does not take either, so
+# it is refused at the type checker — Apple's overload set refuses it too, by refusing to bind `W`
+check_one negative-widget-bundle "could not be inferred" "-disable-availability-checking"
+# and the same with a named widget type in the `if`, which is what tells the generic unavailable
+# overload from a concrete one (arm64e-apple-ios.swiftinterface:21970)
+check_one negative-widget-concrete "could not be inferred" "-disable-availability-checking"
 exit $status

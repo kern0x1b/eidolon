@@ -69,11 +69,12 @@ public struct WidgetBundleBuilder {
     public static func buildOptional<W>(_ widget: W?) where W: Widget {
         WidgetBox(wrapped: widget)
     }
-    /// The unavailable overload the interface carries at
-    /// `arm64e-apple-ios.swiftinterface:21969`, with its message: a bare `if` in a bundle is a
-    /// compile error there, and has to be here too, with `#available` around it.
+    /// The second of the interface's two forms
+    /// (`arm64e-apple-ios.swiftinterface:21970`), unavailable and **generic**, with Apple's message: a
+    /// bare `if` in a bundle — whether it yields `any Widget` or a named widget type — is a compile
+    /// error there, and has to be an error here too. The generic shape is what makes that true of both.
     @available(*, unavailable, message: "if statements in a WidgetBundleBuilder can only be used with #available clauses")
-    public static func buildOptional(_ widget: Widget?) -> any Widget & _LimitedAvailabilityWidgetMarker {
+    public static func buildOptional<W>(_ widget: W?) -> any Widget & _LimitedAvailabilityWidgetMarker where W: Widget {
         AnyLimitedAvailabilityWidget()
     }
 
