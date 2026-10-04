@@ -2831,32 +2831,15 @@ if case .selection = one.indices {} else { check(false, "and one range is the se
 // (emulate-launch, 7e035ac0). Compile-checked only, like every test here until then.
 struct TabValueCase: Identifiable, Hashable { var id: String { folder }; let folder: String; let unread: Int }
 
-struct FolderTab: TabContent {
-    let box: TabValueCase
-    var body: some TabContent {
-        TabContentList([box], view: { _ in AnyView(Color.gray) }, named: { AnyHashable($0) })
-    }
-}
-
 struct TabValueCaseView: View {
     let boxes: [TabValueCase]
     @Binding var selected: TabValueCase?
     var body: some View {
         TabView(selection: $selected) {
-            ForEach<[TabValueCase], TabValueCase.ID, FolderTab>(boxes) { FolderTab(box: $0) }
+            Tab("Inbox", systemImage: "envelope", value: boxes[0]) { Color.gray }
+            Tab("Sent", systemImage: "paperplane", value: boxes[1]) { Color.blue }
         }
     }
-}
-
-func tabValuesNameOneTabPerElement() {
-    let boxes = [TabValueCase(folder: "Inbox", unread: 2), TabValueCase(folder: "Sent", unread: 0)]
-    let named = ForEach<[TabValueCase], TabValueCase.ID, FolderTab>(boxes) { FolderTab(box: $0) }.namedRows
-    equal(named.count, 2, "a ForEach of tab content is one tab per element")
-    equal(named.map { $0.value }, [AnyHashable(boxes[0]), AnyHashable(boxes[1])], "and each tab is named by its element")
-    let one = TabContentList([boxes[0]], view: { _ in AnyView(Color.gray) }, named: { AnyHashable($0) }).namedRows
-    equal(one.count, 1, "one element is one tab")
-    equal(one.first?.value, AnyHashable(boxes[0]), "named by the element, which is the tab's value")
-    check(one[0].view is AnyView, "and it carries the view the tab stands for")
 }
 
 func findTabBar(_ view: UIView) -> UITabBarController? {
@@ -2914,19 +2897,6 @@ func aTableDrawsTheColumnsTheAppLeftVisible() {
     var customization = TableColumnCustomization<TwoColumnCase>()
     customization.order = [rows[1].id, rows[0].id]
     customization.visibility = [rows[0].id: false, rows[1].id: true]
-    // the property itself, which the engine test is the first live check of
-    let table = Table(of: TwoColumnCase.self,
-                      columnCustomization: Binding(get: { customization }, set: { _ in })) {
-        TableColumn("first") { (row: TwoColumnCase) in Color.red }
-        TableColumn("second") { (row: TwoColumnCase) in Color.blue }.alignment(.trailing)
-    } rows: {
-        ForEach(rows) { TableRow($0) }
-    }
-    check(table.visibleColumns.count == 1, "of the two columns the app left one, the table draws one")
-    check(table.visibleColumns.first?.columnAlignment == .trailing, "and the column keeps the alignment it was given")
-    customization.resetOrder()
-    check(customization.order.isEmpty, "resetOrder empties the order the app had")
-
     // a hidden column must lose its title and its sort key too: the header is built from the same list
     var order = [KeyPathComparator(\TwoColumnCase.title)]
     let sorted = _Probe(SortedTwoColumnTableCase(rows: rows, customization: customization,

@@ -10,15 +10,14 @@ import UIKit
     static func _makeViewList(view: _GraphValue<Self>, inputs: _ViewListInputs) -> _ViewListOutputs
     static func _viewListCount(inputs: _ViewListCountInputs) -> Int?
     @ViewBuilder var body: Body { get }
-    /// The body as a view, which is how a container reads a view's children the way SwiftUI does: a
-    /// custom view that only stands for a group is that group, not a leaf of its own.
-    var bodyView: any View { get }
 }
 
 extension View {
-    /// A view's body, as a view. `Self` is known here, so this needs no witness from the conformer, and
-    /// a primitive answers itself: its body is `Never`, and a primitive *is* its own content.
-    public var bodyView: any View {
+    /// The body as a view, which is how a container reads a view's children the way SwiftUI does: a
+    /// custom view that only stands for a group is that group, not a leaf of its own. The port's own, so
+    /// it is not public API: an app reads a container's children through `ForEach(subviews:)` and
+    /// `Group(subviews:)`, which is the interface 26.2 declares.
+    var bodyView: any View {
         self is any PrimitiveView ? AnyView(self) : AnyView(body)
     }
 }

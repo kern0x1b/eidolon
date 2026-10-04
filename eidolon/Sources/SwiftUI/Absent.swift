@@ -11,7 +11,7 @@ public struct PresentationDetent: Hashable {
     let customType: Any.Type?
     init(name: String, custom: Any.Type? = nil) { self.name = name; customType = custom }
     /// The height the app's type computes from the context, which is the screen on this platform.
-    public var customHeight: CGFloat? {
+    var customHeight: CGFloat? {
         guard let customType else { return nil }
         return (customType as? any CustomPresentationDetent.Type)?.height(in: Context(maxDetentValue: maxDetentValue))
     }

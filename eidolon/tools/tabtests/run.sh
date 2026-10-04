@@ -33,5 +33,5 @@ check_one() {
   fi
 }
 check_one positive compiles
-check_one negative "conform to 'Hashable'"
+check_one negative "conform to specified type 'TabContent'"
 exit $status

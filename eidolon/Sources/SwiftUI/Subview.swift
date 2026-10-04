@@ -109,8 +109,8 @@ public struct SectionConfiguration: Identifiable {
     /// The row actions a section offers -- a list's and a table's swipe actions, which the release's own
     /// table view carries on a row.
     public struct Actions {
-        public var rowActions: [any View] = []
-        public init() {}
+        var rowActions: [any View] = []
+        init() {}
     }
 
     public let id: ID
@@ -118,7 +118,7 @@ public struct SectionConfiguration: Identifiable {
     public let header: SubviewsCollection
     public let footer: SubviewsCollection
     public let content: SubviewsCollection
-    public let actions: Actions
+    let actions: Actions
     init(id: ID, containerValues: ContainerValues, header: SubviewsCollection, footer: SubviewsCollection,
          content: SubviewsCollection, actions: Actions = Actions()) {
         self.id = id
@@ -191,20 +191,20 @@ extension Group {
 
 // A section over the children a container holds: the children become the section's rows, and the
 // section is what a table, a list and a stack read as a group of rows with an identity.
-extension Section where Parent == EmptyView, Footer == EmptyView, Content == SubviewGroup {
+extension Section where Parent == EmptyView, Footer == EmptyView, Content == _SubviewGroup {
     public init(subviews: SubviewsCollection) {
-        self.init(header: EmptyView(), content: SubviewGroup(subviews: subviews), footer: EmptyView())
+        self.init(header: EmptyView(), content: _SubviewGroup(subviews: subviews), footer: EmptyView())
     }
 }
 
 /// The rows a `Section` was given as subviews: each one is a view of its own, and the group keeps them
 /// in the order the container held them.
-public struct SubviewGroup: View, PrimitiveView, GroupView {
+public struct _SubviewGroup: View, PrimitiveView, GroupView {
     public typealias Body = Never
     public var body: Never { neverBody(Self.self) }
-    public let subviews: SubviewsCollection
+    let subviews: SubviewsCollection
     public init(subviews: SubviewsCollection) { self.subviews = subviews }
-    public var childViews: [any View] { subviews.map { $0.content } }
+    var childViews: [any View] { subviews.map { $0.content } }
 }
 
 /// The children a view holds, in the order they are laid out. The engine reads a view's children the

@@ -5,7 +5,7 @@ public struct _AnyTableColumn<Row> {
     let cell: (Row) -> any View
     let sortKey: AnyKeyPath?
     let readKey: ((Row) -> any Comparable)?
-    public let columnAlignment: TableColumnAlignment
+    let columnAlignment: TableColumnAlignment
     init(title: String, cell: @escaping (Row) -> any View, sortKey: AnyKeyPath? = nil,
          readKey: ((Row) -> any Comparable)? = nil, columnAlignment: TableColumnAlignment = .automatic) {
         self.title = title; self.cell = cell; self.sortKey = sortKey; self.readKey = readKey
@@ -265,7 +265,7 @@ public struct Table<Value: Identifiable, Rows: TableRowContent, Columns: TableCo
     var columnCustomization: ColumnVisibility?
 
     /// The columns the table draws: the app's order, and only the ones it leaves visible.
-    public var visibleColumns: [_AnyTableColumn<Value>] {
+    var visibleColumns: [_AnyTableColumn<Value>] {
         let all = columns._columns
         guard let customization = columnCustomization, customizationBehavior.contains(.visibility) else { return all }
         let hidden = Set(customization.hidden)

@@ -187,7 +187,7 @@ public protocol TabContent {
 /// what makes the body recursive without a cast.
 /// One tab: the view that stands for it and the value that names it, or nothing when the content did
 /// not name one. A tab with no value is matched the way an untagged page already is here, by position.
-public struct TabContentRow {
+public struct _TabContentRow {
     public let value: AnyHashable?
     public let view: any View
     init(value: AnyHashable?, view: any View) { self.value = value; self.view = view }
@@ -196,9 +196,9 @@ public struct TabContentRow {
 /// The tabs a content yields, as the builder hands them to a TabView. A `TabContentList` names each of
 /// its rows; anything else that is tab content is one tab it names itself, and a plain view is a tab with
 /// no name, which is what a TabView over plain views has always been.
-func tabContentRows(_ content: any TabContent) -> [TabContentRow] {
+func tabContentRows(_ content: any TabContent) -> [_TabContentRow] {
     if let list = content as? any TabContentNaming { return list.namedRows }
-    return [TabContentRow(value: nil, view: AnyView(EmptyView()))]
+    return [_TabContentRow(value: nil, view: AnyView(EmptyView()))]
 }
 
 /// One tab content wrapped so a list of tabs can be held together whatever their types are.
@@ -206,9 +206,9 @@ public struct AnyTabContent<TabValue: Hashable>: TabContent {
     public typealias TabValue = TabValue
     public typealias Body = AnyTabContent<TabValue>
     let content: any TabContent
-    init<C: TabContent>(_ content: C) where C.TabValue == TabValue { self.content = content }
+    public init<C: TabContent>(_ content: C) where C.TabValue == TabValue { self.content = content }
     public var body: AnyTabContent<TabValue> { self }
-    public var namedRows: [TabContentRow] { tabContentRows(content) }
+    var namedRows: [_TabContentRow] { tabContentRows(content) }
 }
 
 /// The label a tab shows when the app does not write one: the release's own tab bar item.
@@ -223,7 +223,7 @@ public struct DefaultTabLabel: View, PrimitiveView {
 
 /// The tabs, in order, each with the view it stands for and the value that names it. This is what
 /// `ForEach` of tab content is: one tab per element, named by the element.
-public struct TabContentList<Element: Hashable>: TabContent, TabContentNaming {
+struct TabContentList<Element: Hashable>: TabContent, TabContentNaming {
     public typealias TabValue = AnyHashable
     public typealias Body = TabContentList<Element>
     let elements: [Element]
@@ -233,84 +233,77 @@ public struct TabContentList<Element: Hashable>: TabContent, TabContentNaming {
         self.elements = elements; self.view = view; self.named = named
     }
     public var body: TabContentList<Element> { self }
-    public var namedRows: [TabContentRow] {
-        elements.map { TabContentRow(value: named($0), view: view($0)) }
+    public var namedRows: [_TabContentRow] {
+        elements.map { _TabContentRow(value: named($0), view: view($0)) }
     }
     public var rows: [(value: AnyHashable, view: AnyView)] { elements.map { (named($0), view($0)) } }
 }
 
-/// A ForEach over tab content, whatever its element and id are: the one the builder has to recognise.
-public protocol ForEachProtocol: TabContent, TabContentNaming where TabValue: Hashable {}
-
-extension ForEach: ForEachProtocol where Content: TabContent, Content.TabValue: Hashable {}
-
-public protocol TabContentNaming {
-    var namedRows: [TabContentRow] { get }
+protocol TabContentNaming {
+    var namedRows: [_TabContentRow] { get }
 }
 
 @resultBuilder
 public struct TabContentBuilder<TabValue: Hashable> {
-    public typealias Content = [TabContentRow]
-    public static func buildExpression<C: TabContent>(_ content: C) -> [TabContentRow] where C.TabValue == TabValue {
+    public typealias Content = [_TabContentRow]
+    public static func buildExpression<C: TabContent>(_ content: C) -> [_TabContentRow] where C.TabValue == TabValue {
         tabContentRows(content)
     }
     /// A TabView's selection may be an optional of what its tabs carry, and then the tabs are of the
     /// wrapped value: `TabView(selection: $mailbox) { ForEach(mailboxes) { … } }` selects on a `Mailbox`.
     @_disfavoredOverload
-    public static func buildExpression<C: TabContent, V: Hashable>(_ content: C) -> [TabContentRow]
+    public static func buildExpression<C: TabContent, V: Hashable>(_ content: C) -> [_TabContentRow]
         where C.TabValue == V, TabValue == V? { tabContentRows(content) }
     /// The builder of a TabView with no selection carries no tab value of its own, so it takes tab content of
     /// any value -- which is what `TabView { ForEach(mailboxes) { … } }` is: the tabs name themselves.
     @_disfavoredOverload
-    public static func buildExpression<C: TabContent>(_ content: C) -> [TabContentRow] where TabValue == Never {
+    public static func buildExpression<C: TabContent>(_ content: C) -> [_TabContentRow] where TabValue == Never {
         tabContentRows(content)
     }
-    public static func buildExpression<C: View>(_ content: C) -> [TabContentRow] {
-        [TabContentRow(value: nil, view: AnyView(content))]
+    public static func buildExpression<C: View>(_ content: C) -> [_TabContentRow] {
+        [_TabContentRow(value: nil, view: AnyView(content))]
     }
-    /// A ForEach whose content is tab content is tab content itself, and is the tabs, one per element.
-    public static func buildExpression<C: ForEachProtocol>(_ content: C) -> [TabContentRow] {
-        tabContentRows(content)
-    }
-    public static func buildBlock(_ content: [TabContentRow]...) -> [TabContentRow] { content.flatMap { $0 } }
-    public static func buildIf(_ content: [TabContentRow]?) -> [TabContentRow]? { content }
-    public static func buildEither(first: [TabContentRow]) -> [TabContentRow] { first }
-    public static func buildEither(second: [TabContentRow]) -> [TabContentRow] { second }
-    public static func buildLimitedAvailability(_ content: [TabContentRow]) -> [TabContentRow] { content }
+
+    public static func buildBlock(_ content: [_TabContentRow]...) -> [_TabContentRow] { content.flatMap { $0 } }
+    public static func buildIf(_ content: [_TabContentRow]?) -> [_TabContentRow]? { content }
+    public static func buildEither(first: [_TabContentRow]) -> [_TabContentRow] { first }
+    public static func buildEither(second: [_TabContentRow]) -> [_TabContentRow] { second }
+    public static func buildLimitedAvailability(_ content: [_TabContentRow]) -> [_TabContentRow] { content }
 }
 
 /// The tabs a content yields, as the views a TabView shows: each one tagged with the value that names
 /// it, which is what `TabViewNode`'s own walk already reads to match a selection to a page.
-public struct TabContentRows: View, PrimitiveView, GroupView {
+public struct _TabContentRows: View, PrimitiveView, GroupView {
     public typealias Body = Never
     public var body: Never { neverBody(Self.self) }
-    let rows: [TabContentRow]
-    public init(rows: [TabContentRow]) { self.rows = rows }
+    let rows: [_TabContentRow]
+    init(rows: [_TabContentRow]) { self.rows = rows }
     // each tab is tagged with the value that names it, which is what TabViewNode's own walk already reads
-    public var childViews: [any View] { rows.map { $0.view } }
+    var childViews: [any View] { rows.map { $0.view } }
+
 }
 
 extension TabView {
     /// A binding whose own value is an optional is left to the initialiser below, which builds over what it
     /// selects on rather than over the optional.
     @_disfavoredOverload
-    public init(selection: Binding<SelectionValue>, @TabContentBuilder<SelectionValue> content: () -> [TabContentRow])
-        where Content == TabContentRows {
-        self.selection = selection; self.content = TabContentRows(rows: content())
+    public init(selection: Binding<SelectionValue>, @TabContentBuilder<SelectionValue> content: () -> [_TabContentRow])
+        where Content == _TabContentRows {
+        self.selection = selection; self.content = _TabContentRows(rows: content())
     }
     /// The same, when the selection is an optional: the builder is over what it selects on, so the tabs are
     /// of that value and the binding may hold nothing.
-    public init(selection: Binding<SelectionValue?>, @TabContentBuilder<SelectionValue> content: () -> [TabContentRow])
-        where Content == TabContentRows {
+    public init(selection: Binding<SelectionValue?>, @TabContentBuilder<SelectionValue> content: () -> [_TabContentRow])
+        where Content == _TabContentRows {
         var last = selection.wrappedValue
         let lifted = Binding<SelectionValue>(get: { last! },
                                               set: { last = $0; selection.wrappedValue = $0 })
         self.selection = lifted
-        self.content = TabContentRows(rows: content())
+        self.content = _TabContentRows(rows: content())
     }
-    public init(@TabContentBuilder<Never> content: () -> [TabContentRow])
-        where SelectionValue == Never, Content == TabContentRows {
-        self.selection = nil; self.content = TabContentRows(rows: content())
+    public init(@TabContentBuilder<Never> content: () -> [_TabContentRow])
+        where SelectionValue == Never, Content == _TabContentRows {
+        self.selection = nil; self.content = _TabContentRows(rows: content())
     }
 }
 
@@ -335,14 +328,14 @@ extension ForEach: TabContent, TabContentNaming where Content: TabContent {
     public typealias TabValue = Content.TabValue
     public typealias Body = AnyTabContent<Content.TabValue>
     public var body: AnyTabContent<Content.TabValue> { AnyTabContent(self) }
-    public var namedRows: [TabContentRow] {
+    public var namedRows: [_TabContentRow] {
         let factory = content
         return data.map { element in
             let tab = factory(element)
             let named = (tab as? any TabContentNaming)?.namedRows.first
             let value = named?.value ?? AnyHashable(ObjectIdentifier(element as AnyObject))
             let view = (tab as? any TabContentNaming)?.namedRows.first?.view ?? AnyView(EmptyView())
-            return TabContentRow(value: value, view: view)
+            return _TabContentRow(value: value, view: view)
         }
     }
 }
@@ -358,8 +351,6 @@ extension Anchor where Value: Hashable {
 public struct TabRole: Hashable {
     let name: String
     public static var search: TabRole { TabRole(name: "search") }
-    public static var bookmark: TabRole { TabRole(name: "bookmark") }
-    public static var history: TabRole { TabRole(name: "history") }
     public static var `default`: TabRole { TabRole(name: "default") }
     public static var more: TabRole { TabRole(name: "more") }
 }
@@ -380,7 +371,7 @@ extension Tab: TabContent, TabContentNaming where Value: Hashable, Content: View
     public typealias TabValue = Value
     public typealias Body = AnyTabContent<Value>
     public var body: AnyTabContent<Value> { AnyTabContent(self) }
-    public var namedRows: [TabContentRow] { [TabContentRow(value: AnyHashable(value), view: AnyView(content))] }
+    public var namedRows: [_TabContentRow] { [_TabContentRow(value: AnyHashable(value), view: AnyView(content))] }
 }
 
 extension Tab where Label == DefaultTabLabel, Value: Hashable, Content: View {

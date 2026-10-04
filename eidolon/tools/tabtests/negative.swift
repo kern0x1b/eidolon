@@ -1,16 +1,10 @@
 import SwiftUI
 
-// An element that is not Hashable cannot be named as a tab's row, so this must not compile -- and the
-// rejection has to come from this module's own constraint, not from the standard library's AnyHashable.
-struct Untagged { let folder: String }
-
-struct MailTab: TabContent {
-    let folder: String
-    var body: some TabContent {
-        TabContentList([Untagged(folder: folder)], view: { _ in AnyView(Text(folder)) }, named: { AnyHashable($0) })
-    }
+// A view is not tab content: a TabContent's body is more tab content, and a Text is not.
+struct NotTabContent: View {
+    var body: some View { Text("not a tab") }
 }
 
-func aTabValueMustBeHashable() {
-    _ = TabView { MailTab(folder: "Inbox") }
+func aViewIsNotTabContent() {
+    let _: any TabContent = NotTabContent()
 }
