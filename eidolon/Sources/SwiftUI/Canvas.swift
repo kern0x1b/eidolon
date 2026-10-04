@@ -242,7 +242,7 @@ public struct GraphicsContext {
     }
 
     public func resolve(_ text: Text) -> ResolvedText {
-        var font = text.font?.uiFont ?? environment.fontValue ?? UIFont.systemFont(ofSize: 17)
+        var font = environment.scaled(text.font?.uiFont ?? environment.fontValue ?? UIFont.systemFont(ofSize: 17))
         if environment.textScale == .secondary { font = UIFont.systemFont(ofSize: font.pointSize * Text.Scale.secondaryRatio) }
         let color = text.color?.uiColor ?? environment.foregroundColor ?? .black
         return ResolvedText(string: NSAttributedString(string: text.content, attributes: [.font: font, .foregroundColor: color]))

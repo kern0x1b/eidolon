@@ -16,6 +16,9 @@ struct RowTraits {
     var background: UIColor?
     var trailingFullSwipe = true
     var leadingFullSwipe = true
+    // what the table draws between rows, where the app has something to say about it: nil leaves the table's own line
+    var separator: Visibility?
+    var separatorTint: UIColor?
 }
 
 struct RowTraitModifier: NodeModifier {

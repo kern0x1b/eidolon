@@ -292,7 +292,10 @@ extension View {
     }
 
     public func listRowSeparator(_ visibility: Visibility, edges: VerticalEdge.Set = .all) -> some View {
-        ignored(self, "listRowSeparator", "the table of iOS 6 has one separator style for every row")
+        // a UITableView of this release draws its hairline under the row and none above it, so the top edge of the
+        // argument asks for nothing that is not already so
+        if !edges.contains(.bottom) { _Unsupported.note("listRowSeparator(edges:)", "a table of iOS 6 draws no line above a row, so a request for the top edge alone is what the release already does") }
+        return _ModifiedView(content: self, modifier: RowTraitModifier(apply: { $0.separator = visibility }))
     }
 }
 

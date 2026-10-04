@@ -45,7 +45,7 @@ extension View {
         }, onUpdate: nil))
     }
     public func fontWidth(_ width: Double?) -> some View {
-        ignored(self, "fontWidth", "the system font of iOS 6 has no width axis")
+        ignored(self, "fontWidth", "the system font of this release has no width axis: Helvetica Neue carries four faces on iOS 6.1.3 — Regular, Italic, Bold, Bold Italic — and Avenir Next Condensed is a family of its own, so a width of it would be a different typeface")
     }
     public func imageScale(_ scale: Image.Scale) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.imageScale = scale }, onUpdate: nil))

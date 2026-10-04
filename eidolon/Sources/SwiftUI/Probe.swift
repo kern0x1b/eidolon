@@ -1,5 +1,6 @@
 import UIKit
 import CoreGraphics
+import CoreImage
 
 public final class _Probe {
     let host: _HostingViewController
@@ -253,6 +254,199 @@ public final class _Probe {
     public func rowBadge(_ index: Int) -> String? {
         guard let list = listNode, index < list.rows.count else { return nil }
         return list.rows[index].traits.badge
+    }
+
+    // What stands between a row and the row below it: the table's own hairline, or the line the row draws over it — and
+    // what colour that line is.
+    public func rowSeparator(_ index: Int) -> (rowLine: Bool, coversTheTables: Bool, colour: UIColor?) {
+        guard let list = listNode, let table = list.uiView as? UITableView, index < list.rows.count else { return (false, false, nil) }
+        let row = list.rows[index]
+        _ = table.dataSource!.tableView(table, cellForRowAt: IndexPath(row: index, section: 0))
+        guard let cell = row.cell, let line = row.separatorLine, line.superview === cell else { return (false, false, nil) }
+        // what is behind the line, read from the cell itself rather than from the row's traits: a check that asks the same
+        // expression the implementation uses proves nothing
+        let behind = cell.backgroundColor ?? table.backgroundColor
+        return (true, line.backgroundColor?.isEqual(behind) ?? false, line.backgroundColor)
+    }
+
+    // The size a text is drawn at under a size category, as the screen works it out: what a font modifier and a category
+    // between them add up to. The headless tests cannot draw text, so this is where the size itself is read.
+    // What the screen drew of a filtered view: the pixel at a point of the picture the filter produced. The headless tests
+    // cannot draw text but they can read a picture, so this is where a colour filter is checked.
+    public func filteredPicture(_ index: Int = 0) -> UIImage? {
+        var pictures: [UIImage] = []
+        func walk(_ v: UIView) {
+            if let image = v as? UIImageView, let picture = image.image { pictures.append(picture) }
+            v.subviews.forEach(walk)
+        }
+        walk(host.view)
+        return pictures.indices.contains(index) ? pictures[index] : nil
+    }
+
+    public func filteredPixel(_ index: Int = 0, at point: CGPoint? = nil) -> (r: Int, g: Int, b: Int, a: Int)? {
+        guard let cgImage = filteredPicture(index)?.cgImage else { return nil }
+        let at = point ?? CGPoint(x: cgImage.width / 2, y: cgImage.height / 2)
+        guard let cropped = cgImage.cropping(to: CGRect(x: at.x, y: at.y, width: 1, height: 1)) else { return nil }
+        var bytes = [UInt8](repeating: 0, count: 4)
+        guard let context = CGContext(data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.draw(cropped, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return (Int(bytes[0]), Int(bytes[1]), Int(bytes[2]), Int(bytes[3]))
+    }
+
+    // What stands under a point of the screen, for a picture that lies over the content: the touches must still reach it.
+    public func hitViewName(at point: CGPoint) -> String? {
+        let hit = host.view.hitTest(point, with: nil)
+        return hit.map { "\(type(of: $0))" }
+    }
+
+    // Which of the two spellings of a Core Image context this release answers: Swift gives +[CIContext
+    // contextWithOptions:] and -[CIContext initWithOptions:] the same name, and only one of them is in iOS 6's Core Image.
+    public static func coreImageContextSpellings() -> String {
+        let classFactory = (CIContext.self as AnyObject).responds(to: NSSelectorFromString("contextWithOptions:"))
+        let instanceInit = CIContext.instancesRespond(to: NSSelectorFromString("initWithOptions:"))
+        let plainInit = CIContext.instancesRespond(to: NSSelectorFromString("init"))
+        return "class factory \(classFactory), initWithOptions \(instanceInit), init \(plainInit)"
+    }
+
+    // Which of the Core Image filters these modifiers are built on this release has.
+    // What each render of a filtered view was given and what came out of it, for a device where the picture has to be
+    // looked at rather than only measured.
+    public static nonisolated(unsafe) var tracesFilterRenders = false
+    public static nonisolated(unsafe) var filterRenders = 0
+    static func tracedFilterRender(_ line: String) {
+        guard tracesFilterRenders else { return }
+        filterRenders += 1
+        fputs("[probe] filter \(line)\n", stderr)
+    }
+
+    public static func coreImageFilters() -> [String] {
+        let wanted = ["CIColorControls", "CIColorMatrix", "CIColorInvert", "CILuminanceToAlpha", "CIHueRotate", "CIGaussianBlur"]
+        return wanted.filter { CIFilter(name: $0) != nil }
+    }
+
+    // The colour a row's cell is painted in, as the table itself would answer for it.
+    public func rowCellColour(_ index: Int) -> UIColor? {
+        guard let list = listNode, let table = list.uiView as? UITableView, index < list.rows.count else { return nil }
+        let cell = table.dataSource!.tableView(table, cellForRowAt: IndexPath(row: index, section: 0))
+        return cell.backgroundColor ?? table.backgroundColor
+    }
+
+    // Which of these classes this release has, and which of these selectors one of its classes answers: the reason a
+    // modifier is declared absent has to be a measurement, so a test can name what it measured and the answer stays pinned.
+    public static func releaseClasses(_ names: [String]) -> [String] { names.filter { NSClassFromString($0) != nil } }
+    public static func releaseAnswers(_ selectors: [String], on className: String) -> [String] {
+        guard let cls = NSClassFromString(className) as? NSObject.Type else { return [] }
+        return selectors.filter { cls.instancesRespond(to: NSSelectorFromString($0)) }
+    }
+
+    // The menu a long press put up, and what each of its items does: the release's own action sheet, read by title.
+    public static var shownMenu: [String] { ContextMenuKeeper.shown }
+    public static func pressMenuItem(_ index: Int) {
+        let actions = ContextMenuKeeper.shared.delegate.actions
+        if index >= 0 && index < actions.count { actions[index]() }
+    }
+
+    // What a blocking .submitScope does to the return key of a field of several lines. The editor itself cannot be
+    // built in the headless process — a UITextView sets a font, and a font traps it — so the question is put to the
+    // delegate's own decision, and the scope a screen sets is read from the environment a view of that screen sees.
+    // What a payload is copied as, as the copy does it: the pasteboard of a session that has none is not the question.
+    public static func copiedText(_ payload: [String]) -> String { pasteboardText(payload) }
+
+    public static func returnKeyBlocked(_ text: String, blocking: Bool) -> Bool {
+        TextEditorDelegate.blocked(text, blocking: blocking)
+    }
+
+    // What the share sheet of the release would be given for a payload: its items, and what they are.
+    public static func sharedItems<T>(_ payload: [T]) -> [String] {
+        activityItems(payload).map { item in
+            if let url = item as? URL { return url.absoluteString }
+            if let image = item as? UIImage { return "image \(image.size.width)x\(image.size.height)" }
+            return "\(item)"
+        }
+    }
+
+    // The background of a screen this one presented, which is what .presentationBackground paints it in. The screen is
+    // the one the engine put up, read from its own node: a sheet presented with no window to present it in is not the
+    // host's presentedViewController, and the engine knows of it either way.
+    public var presentedBackground: UIColor? {
+        var found: SheetNode?
+        func look(_ n: Node) {
+            if let sheet = n as? SheetNode, found == nil { found = sheet }
+            n.disposableChildren.forEach(look)
+        }
+        if let root = host.root { look(root) }
+        return found?.presented?.view?.backgroundColor
+    }
+
+    // Whether CoreAnimation of this release lays a compositing filter over a layer as it draws. The layer is red and the
+    // background behind it black, so a filter that mixes the two changes the pixel and a filter that is not applied leaves
+    // it red: the answer is the picture and not the setting.
+    public static func compositingFilterPaints(_ name: String) -> String {
+        guard let filter = CIFilter(name: name) else { return "absent" }
+        let size = CGSize(width: 4, height: 4)
+        var red = [UInt8](repeating: 0, count: 4)
+        red[0] = 255; red[3] = 255
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let source = CGContext(data: &red, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                     space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.makeImage() else { return "no image" }
+        let layer = CALayer()
+        layer.frame = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+        layer.contents = source
+        layer.backgroundColor = UIColor.black.cgColor
+        filter.setValue(CIImage(image: UIImage(cgImage: source)), forKey: "inputImage")
+        layer.compositingFilter = filter
+        UIGraphicsBeginImageContextWithOptions(size, true, 1)
+        layer.render(in: UIGraphicsGetCurrentContext()!)
+        let out = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        guard let cg = out?.cgImage, let cropped = cg.cropping(to: CGRect(x: 1, y: 1, width: 1, height: 1)) else { return "no picture" }
+        var pixel = [UInt8](repeating: 0, count: 4)
+        guard let read = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                   space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return "no read" }
+        read.draw(cropped, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return "\(name): \(pixel[0]),\(pixel[1]),\(pixel[2])"
+    }
+
+    // What a .submitScope set for the views inside it: the environment key is internal state, an app has no business
+    // reading it, and a text editor cannot be built in the headless process at all (a UITextView sets a font, and a font
+    // traps it), so the node the scope made is what a test asks.
+    public static func submitScopeSet<V: View>(_ view: V, width: CGFloat = 60, height: CGFloat = 60) -> Bool {
+        let probe = _Probe(view, width: width, height: height)
+        var found: Bool?
+        func look(_ node: Node) {
+            if found == nil, node.env.submitBlocksReturn { found = true }
+            node.disposableChildren.forEach(look)
+        }
+        if let root = probe.host.root { look(root) }
+        return found ?? false
+    }
+
+    // The label the engine drew for a view that carries an attributed string: where the attributes of a SwiftUI text are
+    // observed, on the string the screen actually drew.
+    public func drawnLabel() -> UILabel? {
+        var found: UILabel?
+        func walk(_ v: UIView) {
+            if let label = v as? UILabel, found == nil, label.attributedText != nil { found = label }
+            v.subviews.forEach(walk)
+        }
+        walk(host.view)
+        return found
+    }
+
+    /// The value under a key of the string the screen drew, for the key an attribute's name is (nil when this release
+    /// has no such key, which is the answer for the attributes it cannot carry).
+    public func drawnAttribute(_ name: String) -> Any? {
+        guard let key = AttributeScopes.SwiftUIAttributes.key(of: name), let text = drawnLabel()?.attributedText else { return nil }
+        return (text.attributes(at: 0, effectiveRange: nil) as NSDictionary)[key] as Any
+    }
+
+    public static func textSize(_ size: CGFloat, _ typeSize: DynamicTypeSize, _ range: ClosedRange<DynamicTypeSize>? = nil) -> CGFloat {
+        var environment = EnvironmentValues()
+        environment.sizeCategory = ContentSizeCategory(typeSize)
+        environment.dynamicTypeSizeRange = range
+        return environment.scaledSize(size)
     }
 
     public func selectRow(_ index: Int) {

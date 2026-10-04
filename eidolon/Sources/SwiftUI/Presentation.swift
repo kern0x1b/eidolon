@@ -1,6 +1,40 @@
 import UIKit
 import CoreGraphics
 
+// What a presented screen asked to be painted in, and the node that carries it: the modifier is applied inside the content
+// of the sheet, so the sheet finds the value by the same walk a list finds the traits of a row by.
+struct PresentationBackgroundModifier: NodeModifier {
+    let color: UIColor?
+    func makeModifierNode(_ content: any View, _ env: EnvironmentValues) -> Node { PresentationBackgroundNode() }
+}
+
+final class PresentationBackgroundNode: Node {
+    var child: Node?
+    var color: UIColor?
+    override var disposableChildren: [Node] { child.map { [$0] } ?? [] }
+    override func update(_ view: any View, _ env: EnvironmentValues) {
+        super.update(view, env)
+        let m = view as! ModifiedViewLike
+        color = (m.modifierValue as! PresentationBackgroundModifier).color
+        var inner = env
+        inner.presentationBackground = color
+        child = adopt(reconcile(child, m.modifiedContent, inner))
+    }
+    override func mountContents() { child?.mount() }
+}
+
+func presentationBackground(of node: Node?) -> UIColor? {
+    var found: UIColor?
+    func look(_ current: Node) {
+        if found == nil, let asked = current as? PresentationBackgroundNode { found = asked.color }
+        if found == nil {
+            for child in current.disposableChildren { look(child) }
+        }
+    }
+    if let node { look(node) }
+    return found
+}
+
 struct SheetModifier: NodeModifier {
     let isPresented: Binding<Bool>
     let content: () -> any View
@@ -29,6 +63,12 @@ final class SheetNode: Node {
                 set: { _ in })
             controller.setRootView(sheet.content(), env: inner)
             presented = controller
+            // The content of a sheet may ask for the background of the screen it is shown on. The content belongs to the
+            // screen, so it is the screen's own tree that is asked, and the screen is asked for its view first so that the
+            // content is in it: a sheet presented where there is no window to present it in is still the screen the
+            // engine put up.
+            let screen = controller.view
+            if let background = presentationBackground(of: controller.root) { screen?.backgroundColor = background }
             host.present(controller, animated: true, completion: nil)
         } else if !wants, let controller = presented {
             presented = nil

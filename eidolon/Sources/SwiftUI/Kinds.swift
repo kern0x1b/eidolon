@@ -93,13 +93,13 @@ public struct KeyboardShortcut: Equatable {
 
 extension View {
     public func keyboardShortcut(_ key: KeyEquivalent, modifiers: EventModifiers = .command) -> some View {
-        ignored(self, "keyboardShortcut", "iOS 6 has no hardware keyboard shortcuts (UIKeyCommand appeared in iOS 7)")
+        ignored(self, "keyboardShortcut", "a shortcut is a UIKeyCommand, iOS 7, and this release hands an app no key presses at all: there is no event class for them, and a text field takes what the keyboard of the system sends")
     }
     public func keyboardShortcut(_ shortcut: KeyboardShortcut) -> some View {
-        ignored(self, "keyboardShortcut", "iOS 6 has no hardware keyboard shortcuts (UIKeyCommand appeared in iOS 7)")
+        ignored(self, "keyboardShortcut", "a shortcut is a UIKeyCommand, iOS 7, and this release hands an app no key presses at all: there is no event class for them, and a text field takes what the keyboard of the system sends")
     }
     public func keyboardShortcut(_ shortcut: KeyboardShortcut?) -> some View {
-        ignored(self, "keyboardShortcut", "iOS 6 has no hardware keyboard shortcuts (UIKeyCommand appeared in iOS 7)")
+        ignored(self, "keyboardShortcut", "a shortcut is a UIKeyCommand, iOS 7, and this release hands an app no key presses at all: there is no event class for them, and a text field takes what the keyboard of the system sends")
     }
 }
 

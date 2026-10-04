@@ -66,10 +66,10 @@ extension View {
         return self
     }
     public func accessibilityAction(_ actionKind: AccessibilityActionKind = .default, _ handler: @escaping () -> Void) -> some View {
-        ignored(self, "accessibilityAction", "custom accessibility actions appeared in iOS 8; VoiceOver on iOS 6 double-taps the view itself")
+        ignored(self, "accessibilityAction", "a custom action is UIAccessibilityCustomAction, iOS 8; the accessibility of this release answers activation, increment, decrement and scroll, and VoiceOver of iOS 6 double-taps the view itself")
     }
     public func accessibilityAction<Label: View>(action: @escaping () -> Void, @ViewBuilder label: () -> Label) -> some View {
-        ignored(self, "accessibilityAction", "custom accessibility actions appeared in iOS 8; VoiceOver on iOS 6 double-taps the view itself")
+        ignored(self, "accessibilityAction", "a custom action is UIAccessibilityCustomAction, iOS 8; the accessibility of this release answers activation, increment, decrement and scroll, and VoiceOver of iOS 6 double-taps the view itself")
     }
     public func underline(_ isActive: Bool = true, pattern: Text.LineStyle.Pattern, color: Color? = nil) -> some View {
         if pattern != .solid { _Unsupported.note("Text.LineStyle.Pattern", "iOS 6 draws only solid underlines and strikethroughs") }

@@ -17,7 +17,7 @@ echo "guest module built"
 echo "sample app built against Apple's interface"
 
 /usr/bin/swiftc -target arm64-apple-ios14.0 -sdk $SDK -o $O/demo $O/app.o $O/SwiftUI.o \
-  -framework UIKit -framework Foundation -framework Combine -Xlinker -no_adhoc_codesign 2>&1 | grep -v "^ld: warning" || true
+  -framework UIKit -framework Foundation -framework Combine -framework CoreImage -Xlinker -no_adhoc_codesign 2>&1 | grep -v "^ld: warning" || true
 [ -f $O/demo ] || { echo "FAIL: приложение не слинковалось с нашей реализацией"; exit 1; }
 
 left=$(nm -u $O/demo | grep -c SwiftUI || true)

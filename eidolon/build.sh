@@ -25,7 +25,7 @@ bundle_runtime $A
 link() {
   $LLVM/bin/clang -target armv7-apple-ios -miphoneos-version-min=6.0 -isysroot $SDK -mlinker-version=956.6 -fuse-ld=$LD -o $A/$1 \
     $O/obj/$1.o $O/obj/SwiftUI.o $2 $PKGLINK $OCLINK \
-    ${3:-} -lobjc -framework Foundation -framework CoreFoundation -framework UIKit -framework CoreGraphics -framework QuartzCore -framework CoreData
+    ${3:-} -lobjc -framework Foundation -framework CoreFoundation -framework UIKit -framework CoreGraphics -framework QuartzCore -framework CoreData -framework CoreImage
 }
 # BACKPORTS_LIBS names a directory with the phone's libUIKitBackports and libFoundationBackports: the demo then weak-links them, so a phone that has the backports gives it their swipe actions and one that has not runs without
 BACKPORTS=""; [ -n "${BACKPORTS_LIBS:-}" ] && BACKPORTS="-L$BACKPORTS_LIBS ${BACKPORTS_LINK:--weak-lUIKitBackports -weak-lFoundationBackports}"

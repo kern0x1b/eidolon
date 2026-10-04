@@ -141,7 +141,7 @@ public struct RenameAction {
 
 public struct RenameButton<Label: View>: View {
     public var body: some View {
-        ignored(EmptyView(), "RenameButton", "iOS 6 has no rename affordance")
+        ignored(EmptyView(), "RenameButton", "a rename is done on a name in a text field, which this release has; what a row offers as an affordance to rename it is iOS 15")
     }
 }
 extension RenameButton where Label == SwiftUI.Label<Text, Image> {
@@ -156,7 +156,7 @@ extension TextSelectability where Self == DisabledTextSelectability { public sta
 
 extension View {
     public func textSelection<S: TextSelectability>(_ selectability: S) -> some View {
-        S.allowsSelection ? ignored(self, "textSelection", "iOS 6 labels are not selectable") : self
+        S.allowsSelection ? ignored(self, "textSelection", "a selectable label is a UITextView of this release, whose own UITextView does not answer isSelectable: the selection of a text view here is what UITextView does with its own gestures, and a view that is not a text view has none") : self
     }
 }
 
@@ -247,7 +247,7 @@ public struct DropProposal {
 }
 extension View {
     public func onDrop(of supportedContentTypes: [String], delegate: DropDelegate) -> some View {
-        ignored(self, "onDrop", "iOS 6 has no drag and drop")
+        ignored(self, "onDrop", "a drag of this release is a gesture, not a session: UIDragInteraction and UIDropInteraction are iOS 11, and the release hands an app no drag session and no preview to carry a payload in — a table of rows is moved with .onMove, and a drag of one's own is a DragGesture")
     }
 }
 
@@ -286,7 +286,7 @@ extension Font {
         public static let compressed = Width(-0.3), condensed = Width(-0.2), standard = Width(0), expanded = Width(0.2)
     }
     public func width(_ width: Width) -> Font {
-        if width != .standard { _Unsupported.note("fontWidth", "the system font of iOS 6 has no width axis") }
+        if width != .standard { _Unsupported.note("fontWidth", "the system font of this release has no width axis: Helvetica Neue carries four faces on iOS 6.1.3 — Regular, Italic, Bold, Bold Italic — and Avenir Next Condensed is a family of its own, so a width of it would be a different typeface") }
         return self
     }
 }

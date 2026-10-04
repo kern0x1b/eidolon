@@ -71,22 +71,22 @@ extension View {
         applyingToViews { $0.isAccessibilityElement = true }
     }
     public func accessibilityShowsLargeContentViewer() -> some View {
-        ignored(self, "accessibilityShowsLargeContentViewer", "iOS 6 has no large content viewer")
+        ignored(self, "accessibilityShowsLargeContentViewer", "the large content viewer is iOS 13; VoiceOver of iOS 6 reads the label of a view and nothing more of it")
     }
     public func accessibilityIgnoresInvertColors(_ active: Bool = true) -> some View {
-        ignored(self, "accessibilityIgnoresInvertColors", "iOS 6 has no colour inversion")
+        ignored(self, "accessibilityIgnoresInvertColors", "a view that keeps its colours is isAccessibilityIgnoresInvertColors, iOS 11; UIAccessibility of this release has invert-colours as one setting for the whole screen")
     }
     public func accessibilityRespondsToUserInteraction(_ responds: Bool = true) -> some View {
-        ignored(self, "accessibilityRespondsToUserInteraction", "iOS 6 has no such accessibility flag")
+        ignored(self, "accessibilityRespondsToUserInteraction", "the flag is isAccessibilityRespondsToUserInteraction, iOS 13; an element of this release is either an element or it is not, and it takes touches as a view does")
     }
     public func accessibilityInputLabels<S: StringProtocol>(_ labels: [S]) -> some View {
-        ignored(self, "accessibilityInputLabels", "iOS 6 has no voice control")
+        ignored(self, "accessibilityInputLabels", "input labels are for Voice Control, which is iOS 13; this release has no voice control to name a view for")
     }
     public func accessibilityHeading(_ level: AccessibilityHeadingLevel) -> some View {
         accessibilityAddTraits(.isHeader)
     }
     public func accessibilityAction(named name: Text, _ handler: @escaping () -> Void) -> some View {
-        ignored(self, "accessibilityAction", "custom accessibility actions appeared in iOS 8; VoiceOver on iOS 6 double-taps the view itself")
+        ignored(self, "accessibilityAction", "a custom action is UIAccessibilityCustomAction, iOS 8; the accessibility of this release answers activation, increment, decrement and scroll, and VoiceOver of iOS 6 double-taps the view itself")
     }
 }
 

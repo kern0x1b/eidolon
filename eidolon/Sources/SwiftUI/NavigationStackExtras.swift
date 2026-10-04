@@ -174,10 +174,10 @@ extension Image {
 extension View {
     @available(iOS 8.0, *)
     public func onDrag(_ data: @escaping () -> NSItemProvider) -> some View {
-        ignored(self, "onDrag", "iOS 6 has no drag and drop")
+        ignored(self, "onDrag", "a drag of this release is a gesture, not a session: UIDragInteraction and UIDropInteraction are iOS 11, and the release hands an app no drag session and no preview to carry a payload in — a table of rows is moved with .onMove, and a drag of one's own is a DragGesture")
     }
     @available(iOS 8.0, *)
     public func onDrop(of types: [String], isTargeted: Binding<Bool>?, perform: @escaping ([NSItemProvider]) -> Bool) -> some View {
-        ignored(self, "onDrop", "iOS 6 has no drag and drop")
+        ignored(self, "onDrop", "a drag of this release is a gesture, not a session: UIDragInteraction and UIDropInteraction are iOS 11, and the release hands an app no drag session and no preview to carry a payload in — a table of rows is moved with .onMove, and a drag of one's own is a DragGesture")
     }
 }

@@ -320,3 +320,101 @@ struct DynamicTypeSizeKey: EnvironmentKey { static var defaultValue: DynamicType
 extension EnvironmentValues: CustomStringConvertible {
     public var description: String { "environment(controlSize: \(controlSize), colorScheme: \(colorScheme), isEnabled: \(isEnabled))" }
 }
+
+struct SubmitBlocksReturnKey: EnvironmentKey { static var defaultValue: Bool { false } }
+
+struct PresentationBackgroundKey: EnvironmentKey { static var defaultValue: UIColor? { nil } }
+
+extension EnvironmentValues {
+    // the background a presented screen is painted in: a screen of iOS 6 is the white the release gives it, and what a
+    // .presentationBackground says takes the place of that white
+    var presentationBackground: UIColor? {
+        get { self[PresentationBackgroundKey.self] }
+        set { self[PresentationBackgroundKey.self] = newValue }
+    }
+}
+
+extension EnvironmentValues {
+    // whether the return key of a field of several lines is a submit action here, which is what a blocking .submitScope
+    // says to the views inside it
+    var submitBlocksReturn: Bool {
+        get { self[SubmitBlocksReturnKey.self] }
+        set { self[SubmitBlocksReturnKey.self] = newValue }
+    }
+}
+
+// The factor a size category scales text by, from Apple's own Dynamic Type table for the body style: 14, 15, 16, 17, 19,
+// 21 and 23 points at xSmall, small, medium, large, xLarge, xxLarge and xxxLarge, against the 17 points of the body style
+// itself (0.8235, 0.8824, 0.9412, 1, 1.1176, 1.2353, 1.3529). The table is per text style and this is the body row of it,
+// used for every style: iOS 6 draws every text size at the size it was given, and the release has no metrics that would
+// scale a caption and a title by different amounts (the README says so where the ledger names the difference).
+// How much of the text a size category is against the text of the category below the default: Apple's own table of the
+// Dynamic Type steps. iOS 6 draws every text size at the size it was given, so a category the app asks for scales the
+// font of this release by the factor the system scales its own by.
+extension ContentSizeCategory {
+    var scale: CGFloat {
+        switch self {
+        case .extraSmall: return 0.82
+        case .small: return 0.88
+        case .medium: return 0.94
+        case .large: return 1
+        case .extraLarge: return 1.12
+        case .extraExtraLarge: return 1.23
+        case .extraExtraExtraLarge: return 1.35
+        }
+    }
+    init(_ size: DynamicTypeSize) {
+        switch size {
+        case .xSmall: self = .extraSmall
+        case .small: self = .small
+        case .medium: self = .medium
+        case .large: self = .large
+        case .xLarge: self = .extraLarge
+        case .xxLarge: self = .extraExtraLarge
+        case .xxxLarge: self = .extraExtraExtraLarge
+        }
+    }
+}
+
+extension DynamicTypeSize {
+    var scale: CGFloat { ContentSizeCategory(self).scale }
+    // the other way round, for the steps of Dynamic Type a range over them is written with
+    init(_ category: ContentSizeCategory) {
+        switch category {
+        case .extraSmall: self = .xSmall
+        case .small: self = .small
+        case .medium: self = .medium
+        case .large: self = .large
+        case .extraLarge: self = .xLarge
+        case .extraExtraLarge: self = .xxLarge
+        case .extraExtraExtraLarge: self = .xxxLarge
+        }
+    }
+}
+
+struct DynamicTypeSizeRangeKey: EnvironmentKey { static var defaultValue: ClosedRange<DynamicTypeSize>? { nil } }
+
+extension EnvironmentValues {
+    // What .dynamicTypeSize(range) allows inside it: the category of the screen, held inside the range the view named.
+    var dynamicTypeSizeRange: ClosedRange<DynamicTypeSize>? {
+        get { self[DynamicTypeSizeRangeKey.self] }
+        set { self[DynamicTypeSizeRangeKey.self] = newValue }
+    }
+    // The size a text of this screen is drawn at: what the view asked for, at the size the environment's category means.
+    func scaledSize(_ size: CGFloat) -> CGFloat { size * textSizeFactor }
+
+    // the factor the text of this screen is drawn at, which is what the size category means, held inside the range a
+    // .dynamicTypeSize(range) named
+    var textSizeFactor: CGFloat {
+        let cases = DynamicTypeSize.allCases
+        let here = cases.firstIndex(of: DynamicTypeSize(sizeCategory))!
+        guard let range = dynamicTypeSizeRange else { return cases[here].scale }
+        let low = cases.firstIndex(of: range.lowerBound)!
+        let high = max(low, cases.firstIndex(of: range.upperBound)!)
+        return cases[min(max(here, low), high)].scale
+    }
+    func scaled(_ font: UIFont) -> UIFont {
+        let size = scaledSize(font.pointSize)
+        return size == font.pointSize ? font : font.withSize(size)
+    }
+}

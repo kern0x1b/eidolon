@@ -6,3 +6,25 @@ _Probe#openURL	the headless probe's test hook: it opens a URL against the probe'
 #CGRect	as CGAffineTransform
 #CGSize	as CGAffineTransform
 #TimelineViewDefaultContext	as CGAffineTransform
+_Probe#rowSeparator	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#filteredPicture	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#filteredPixel	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#hitViewName	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#rowCellColour	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#presentedBackground	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#compositingFilterPaints	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#copiedText	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#coreImageContextSpellings	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#coreImageFilters	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#pressMenuItem	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#releaseAnswers	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#releaseClasses	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#returnKeyBlocked	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#sharedItems	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#submitScopeSet	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#textSize	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#filterRenders	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#shownMenu	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#tracesFilterRenders	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#drawnAttribute	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe
+_Probe#drawnLabel	the headless probe's test hook: a test reads this off the screen the engine drew, and no interface of the modules we re-export declares a probe

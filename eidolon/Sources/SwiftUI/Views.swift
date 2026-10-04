@@ -37,7 +37,7 @@ final class TextNode: LayoutNode {
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)
         let t = view as! Text
-        var font = t.font?.uiFont ?? env.fontValue ?? UIFont.systemFont(ofSize: 17)
+        var font = env.scaled(t.font?.uiFont ?? env.fontValue ?? UIFont.systemFont(ofSize: 17))
         if t.isBold || env.textBold { font = UIFont.boldSystemFont(ofSize: font.pointSize) }
         // a secondary run is the release's own smaller label: caption 1 against body
         if env.textScale == .secondary { font = UIFont.systemFont(ofSize: font.pointSize * Text.Scale.secondaryRatio) }
@@ -198,7 +198,7 @@ final class ImageNode: LayoutNode {
         var template = image.template
         if picture == nil, image.system {
             let scale: CGFloat = env.imageScale == .small ? 0.8 : env.imageScale == .large ? 1.3 : 1
-            let points = image.isResizable ? 64 : ceil((env.fontValue?.pointSize ?? 17) * scale)
+            let points = image.isResizable ? 64 : ceil(env.scaledSize((env.fontValue?.pointSize ?? 17) * scale))
             picture = SymbolGlyphs.image(named: image.name, points: points, bold: env.textBold) ?? SymbolGlyphs.placeholder(points: points)
             if let base = picture { picture = templated(base, env.foregroundColor ?? .black) }
             template = false
@@ -357,7 +357,7 @@ final class ButtonNode: LayoutNode {
             styled = nil
             let title = findText(b.buttonLabel)?.content ?? ""
             if button.title(for: .normal) != title { button.setTitle(title, for: .normal) }
-            button.titleLabel?.font = env.fontValue ?? UIFont.boldSystemFont(ofSize: 15)
+            button.titleLabel?.font = env.scaled(env.fontValue ?? UIFont.boldSystemFont(ofSize: 15))
         } else {
             button.setTitle(nil, for: .normal)
             rebuildStyled()

@@ -47,16 +47,27 @@ extension View {
     }
 
     public func textContentType(_ type: UITextContentType?) -> some View {
-        ignored(self, "textContentType", "iOS 6 has no content types for text fields")
+        ignored(self, "textContentType", "UITextContentType is iOS 12 and a UITextField of this release has no such trait; the keyboard of a field is chosen with .keyboardType")
     }
 
     public func keyboardType(_ type: UIKeyboardType) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.input.keyboard = type }, onUpdate: nil))
     }
     public func colorScheme(_ scheme: ColorScheme) -> some View { environment(\.colorScheme, scheme) }
-    public func preferredColorScheme(_ scheme: ColorScheme?) -> some View { ignored(self, "preferredColorScheme", "iOS 6 has a single appearance") }
+    public func preferredColorScheme(_ scheme: ColorScheme?) -> some View { ignored(self, "preferredColorScheme", "this release has one appearance: every colour of the system and every sheet it puts up is the light one, and there is no second appearance to ask for — userInterfaceStyle is iOS 13") }
     public func controlSize(_ size: ControlSize) -> some View { environment(\.controlSize, size) }
-    public func dynamicTypeSize(_ size: DynamicTypeSize) -> some View { ignored(self, "dynamicTypeSize", "iOS 6 has no dynamic type") }
+    public func dynamicTypeSize(_ size: DynamicTypeSize) -> some View {
+        _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
+            environment.dynamicTypeSize = size
+            environment.sizeCategory = ContentSizeCategory(size)
+        }, onUpdate: nil))
+    }
+    public func dynamicTypeSize<T: RangeExpression>(_ range: T) -> some View where T.Bound == DynamicTypeSize {
+        let inside = DynamicTypeSize.allCases.filter { range.contains($0) }
+        let bounds = inside.isEmpty ? nil : inside.first!...inside.last!
+        _Unsupported.note("dynamicTypeSize(range)", "the range limits the size the text of the subtree is drawn at; a view that reads \\.sizeCategory inside it still reads the category that was asked for")
+        return _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { $0.dynamicTypeSizeRange = bounds }, onUpdate: nil))
+    }
     public func drawingGroup(opaque: Bool = false, colorMode: ColorRenderingMode = .nonLinear) -> some View {
         // the options are the same values `RasterizationOptions` carries, and the same two the layer of
         // iOS 6 has: a colour mode and an opaque flag are keys it has none of
@@ -68,20 +79,13 @@ extension View {
             options.applied(to: view.layer)
         }
     }
-    public func edgesIgnoringSafeArea(_ edges: Edge.Set) -> some View { ignored(self, "edgesIgnoringSafeArea", "iOS 6 has no safe area") }
-    public func ignoresSafeArea(_ regions: SafeAreaRegions = .all, edges: Edge.Set = .all) -> some View { ignored(self, "ignoresSafeArea", "iOS 6 has no safe area") }
-    public func blendMode(_ mode: BlendMode) -> some View { ignored(self, "blendMode", "CoreAnimation of iOS 6 has no layer blend modes") }
-    public func blur(radius: CGFloat, opaque: Bool = false) -> some View { ignored(self, "blur", "the canon this port links carries the backport: UIVisualEffect mixes what is behind it with a blur (apple-backports/facts/UIKit/UIVisualEffect.md), but it is a UIView, and a SwiftUI modifier has no view to put it on") }
-    public func brightness(_ amount: Double) -> some View { ignored(self, "brightness", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
-    public func contrast(_ amount: Double) -> some View { ignored(self, "contrast", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
-    public func saturation(_ amount: Double) -> some View { ignored(self, "saturation", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
-    public func grayscale(_ amount: Double) -> some View { ignored(self, "grayscale", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
-    public func colorInvert() -> some View { ignored(self, "colorInvert", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
-    public func colorMultiply(_ color: Color) -> some View { ignored(self, "colorMultiply", "the release has no layer filters; the six map onto a named compositingFilter on CALayer, which this port already sets, and none of them is drawn by it yet") }
-    public func defersSystemGestures(on edges: Edge.Set) -> some View { ignored(self, "defersSystemGestures", "iOS 6 has no system edge gestures") }
-    public func interactiveDismissDisabled(_ disabled: Bool = true) -> some View { ignored(self, "interactiveDismissDisabled", "iOS 6 modals are not interactively dismissible") }
-    public func navigationBarTitleDisplayMode(_ mode: NavigationBarItem.TitleDisplayMode) -> some View { ignored(self, "navigationBarTitleDisplayMode", "iOS 6 navigation bars have one title style") }
-    public func persistentSystemOverlays(_ visibility: Visibility) -> some View { ignored(self, "persistentSystemOverlays", "iOS 6 has no system overlays") }
+    public func edgesIgnoringSafeArea(_ edges: Edge.Set) -> some View { ignored(self, "edgesIgnoringSafeArea", "this release has no safe area to ignore: a screen is laid out below the status bar and below the navigation bar, and a UIViewController of iOS 6 has no way to be given edges to lay out under — the layout of an iOS 7 screen is not something the release can be asked for") }
+    public func ignoresSafeArea(_ regions: SafeAreaRegions = .all, edges: Edge.Set = .all) -> some View { ignored(self, "ignoresSafeArea", "this release has no safe area to ignore: a screen is laid out below the status bar and below the navigation bar, and a UIViewController of iOS 6 has no way to be given edges to lay out under — the layout of an iOS 7 screen is not something the release can be asked for") }
+    public func blendMode(_ mode: BlendMode) -> some View { ignored(self, "blendMode", "the blend is a compositing filter on the layer, and a layer of this release is not composited with one: of the filters the nineteen blend modes name, iOS 6.1.3 has CIMultiplyCompositing, CISourceAtopCompositing and CISourceOverCompositing, and a layer rendered with one of them over a black background comes out the colour of the layer, unblended (measured on the iPad 2, in _Probe.compositingFilterPaints)") }
+    public func defersSystemGestures(on edges: Edge.Set) -> some View { ignored(self, "defersSystemGestures", "the edges of this release carry no system gesture: the interactive pop of the navigation bar and the pull of the notification centre are iOS 7 and iOS 8, so there is nothing for a view to be preferred over") }
+    public func interactiveDismissDisabled(_ disabled: Bool = true) -> some View { ignored(self, "interactiveDismissDisabled", "a modal screen of this release is left with the buttons it has: there is no drag-to-dismiss of a sheet (that is iOS 13) for the modifier to turn off") }
+    public func navigationBarTitleDisplayMode(_ mode: NavigationBarItem.TitleDisplayMode) -> some View { ignored(self, "navigationBarTitleDisplayMode", "a UINavigationBar of this release centres its title and has no other style for it; the inline title is iOS 11") }
+    public func persistentSystemOverlays(_ visibility: Visibility) -> some View { ignored(self, "persistentSystemOverlays", "the home indicator is iOS 11; the status bar is the only overlay a screen of this release has, and .statusBarHidden is what changes it") }
     public func redacted(reason: RedactionReasons) -> some View {
         _ModifiedView(content: self, modifier: EnvironmentModifier(apply: { environment in
             environment.redactionReasons = environment.redactionReasons.union(reason)
@@ -94,8 +98,8 @@ extension View {
             environment.redactedDrawing = false
         }, onUpdate: nil))
     }
-    public func symbolRenderingMode(_ mode: SymbolRenderingMode) -> some View { ignored(self, "symbolRenderingMode", "iOS 6 has no SF Symbols") }
-    public func widgetAccentable(_ accentable: Bool = true) -> some View { ignored(self, "widgetAccentable", "iOS 6 has no widgets") }
+    public func symbolRenderingMode(_ mode: SymbolRenderingMode) -> some View { ignored(self, "symbolRenderingMode", "there are no SF Symbols on this release: the glyphs SymbolGlyphs draws are a fixed set with no palette and no levels to render them by") }
+    public func widgetAccentable(_ accentable: Bool = true) -> some View { ignored(self, "widgetAccentable", "a widget is a timeline entry of a home screen, iOS 14; this release has no widget and no timeline to accent") }
 }
 
 public struct SubmitTriggers: OptionSet {

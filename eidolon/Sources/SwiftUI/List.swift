@@ -163,6 +163,7 @@ final class ListRow: ContainerNode {
     var tag: AnyHashable?
     var traits = RowTraits()
     var cell: UITableViewCell?
+    var separatorLine: UIView?
     var backgroundApplied = false
     override func computeSize(_ p: ProposedSize) -> CGSize {
         let s = children.first?.sizeThatFits(ProposedSize(width: p.width, height: nil)) ?? .zero
@@ -187,10 +188,12 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
 
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         guard let node, node.prominence[section] == true, let title = node.sections[section].title else { return nil }
-        let holder = UIView(frame: CGRect(x: 0, y: 0, width: tableView.bounds.size.width, height: 40))
-        let label = UILabel(frame: CGRect(x: 20, y: 8, width: tableView.bounds.size.width - 40, height: 28))
+        // the header is text of the section, so it is drawn at the size the section's own size category means
+        let scale = node.sectionTextScales[section]
+        let holder = UIView(frame: CGRect(x: 0, y: 0, width: tableView.bounds.size.width, height: 44 * scale))
+        let label = UILabel(frame: CGRect(x: 20, y: 8, width: tableView.bounds.size.width - 40, height: 28 * scale))
         label.text = title
-        label.font = UIFont.boldSystemFont(ofSize: 22)
+        label.font = UIFont.boldSystemFont(ofSize: 22 * scale)
         label.backgroundColor = .clear
         label.textColor = UIColor(red: 0.3, green: 0.34, blue: 0.42, alpha: 1)
         label.shadowColor = .white
@@ -203,7 +206,7 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
         guard let node, section < node.sections.count, node.prominence[section] == true, node.sections[section].title != nil else {
             return UITableView.automaticDimension
         }
-        return 44
+        return 44 * (node.sectionTextScales.isEmpty ? 1 : node.sectionTextScales[min(section, node.sectionTextScales.count - 1)])
     }
 
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
@@ -239,11 +242,39 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
             row.backgroundApplied = false
         }
         cell.accessoryType = row.destination != nil ? .disclosureIndicator : .none
-        cell.accessoryView = row.traits.badge.map(badgeView)
+        cell.accessoryView = row.traits.badge.map { badgeView($0, row.content?.env.textSizeFactor ?? 1) }
         cell.selectionStyle = row.destination != nil || node.selection != nil ? .blue : .none
+        applySeparator(cell, row)
         if let selection = node.selection, let tag = row.tag, node.env.splitStage == nil {
             cell.accessoryType = selection.current().contains(tag) ? .checkmark : cell.accessoryType
         }
+    }
+
+    // The table of iOS 6 draws one hairline between every pair of rows, in the table's own colour, and a cell of that iOS
+    // has no separator inset to shorten it. A row that hides the line, or gives it another colour, therefore covers it
+    // with a line of its own — drawn where the release draws its: one point tall, at the bottom of the row, from one
+    // edge of the cell to the other.
+    func applySeparator(_ cell: UITableViewCell, _ row: ListRow) {
+        let hiding = row.traits.separator == .hidden
+        let tint = row.traits.separatorTint
+        if !hiding && tint == nil {
+            row.separatorLine?.removeFromSuperview()
+            row.separatorLine = nil
+            return
+        }
+        let line = row.separatorLine ?? {
+            let view = UIView()
+            view.isUserInteractionEnabled = false
+            cell.addSubview(view)
+            row.separatorLine = view
+            return view
+        }()
+        // what the row hides the hairline with is what the hairline was drawn over: the row's own background, or the
+        // table's where the row has none
+        line.backgroundColor = tint ?? row.traits.background ?? cell.backgroundColor ?? node?.uiView.backgroundColor
+        // one pixel of a line, where the release puts its own: the bottom of the cell, from one edge to the other
+        let thickness = 1 / UIScreen.main.scale
+        line.frame = CGRect(x: 0, y: max(0, cell.bounds.size.height - thickness), width: cell.bounds.size.width, height: thickness)
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -257,6 +288,7 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         guard let node, let row = node.row(at: indexPath) else { return }
         cell.layoutIfNeeded()
+        applySeparator(cell, row)
         let bounds = cell.contentView.bounds
         row.place(CGRect(x: bounds.origin.x + 10, y: bounds.origin.y, width: bounds.size.width - 20, height: bounds.size.height))
     }
@@ -321,6 +353,8 @@ final class ListNode: LayoutNode {
     var content: Node?
     var rows: [ListRow] = []
     var sections: [(title: String?, footer: String?, rows: [ListRow])] = []
+    // the factor the text of a section is drawn at, which is the size category of that section's own environment
+    var sectionTextScales: [CGFloat] = []
     var editable: EditableContent?
     var selection: SelectionBox?
     var prominence: [Int: Bool] = [:]
@@ -399,18 +433,22 @@ final class ListNode: LayoutNode {
             return row
         }
         var groups: [(title: String?, footer: String?, rows: [ListRow])] = []
+        var scales: [CGFloat] = []
         prominence = [:]
         var loose: [ListRow] = []
         for node in topLevel(content) {
             if let section = node as? SectionNode {
-                if !loose.isEmpty { groups.append((nil, nil, loose)); loose = [] }
+                if !loose.isEmpty { groups.append((nil, nil, loose)); scales.append(env.textSizeFactor); loose = [] }
                 groups.append((section.title, section.footer, section.flattened.map(take)))
+                scales.append(section.env.textSizeFactor)
                 prominence[groups.count - 1] = section.prominent
             } else {
                 loose.append(contentsOf: node.flattened.map(take))
             }
         }
-        if !loose.isEmpty || groups.isEmpty { groups.append((nil, nil, loose)) }
+        if !loose.isEmpty || groups.isEmpty { groups.append((nil, nil, loose)); scales.append(env.textSizeFactor) }
+        if scales.count < groups.count { scales.append(contentsOf: [CGFloat](repeating: 1, count: groups.count - scales.count)) }
+        sectionTextScales = scales
         sections = groups
         rows = groups.flatMap { $0.rows }
 
@@ -455,17 +493,17 @@ final class ListNode: LayoutNode {
     override func computeSize(_ p: ProposedSize) -> CGSize { CGSize(width: p.width ?? 320, height: p.height ?? 480) }
 }
 
-func badgeView(_ text: String) -> UIView {
+func badgeView(_ text: String, _ scale: CGFloat = 1) -> UIView {
     let label = UILabel()
     label.text = text
-    label.font = UIFont.boldSystemFont(ofSize: 14)
+    label.font = UIFont.boldSystemFont(ofSize: 14 * scale)
     label.textColor = .white
     label.textAlignment = .center
     label.backgroundColor = UIColor(red: 0.55, green: 0.6, blue: 0.7, alpha: 1)
     label.layer.cornerRadius = 10
     label.clipsToBounds = true
     let size = label.sizeThatFits(CGSize(width: 200, height: 20))
-    label.frame = CGRect(x: 0, y: 0, width: max(24, size.width + 14), height: 20)
+    label.frame = CGRect(x: 0, y: 0, width: max(24, size.width + 14), height: 20 * scale)
     return label
 }
 

@@ -4,6 +4,9 @@ import UIKit
 import Foundation
 import Observation
 
+
+import CoreImage
+
 setvbuf(stdout, nil, _IONBF, 0)
 var failures = 0
 var checks = 0
@@ -396,11 +399,11 @@ equal(changes, [4, 9], "only distinct values fire")
 
 // 17. modifiers that iOS 6 cannot express must announce themselves, not stay silent
 struct IgnoredCase: View {
-    var body: some View { Color.red.frame(width: 10, height: 10).blur(radius: 4).saturation(0.5) }
+    var body: some View { Color.red.frame(width: 10, height: 10).blendMode(.multiply).defersSystemGestures(on: .bottom) }
 }
 let ignoredProbe = _Probe(IgnoredCase(), width: 50, height: 50)
-check(_Unsupported.used.contains("blur"), "blur reported itself as ignored")
-check(_Unsupported.used.contains("saturation"), "saturation reported itself as ignored")
+check(_Unsupported.used.contains("blendMode"), "blendMode reported itself as ignored")
+check(_Unsupported.used.contains("defersSystemGestures"), "defersSystemGestures reported itself as ignored")
 equal(frames(ignoredProbe).count, 1, "the view still draws")
 
 // 19. preferences travel up to the observer
@@ -920,6 +923,7 @@ if let leaving {
     while let v = outer { if abs(v.transform.tx) > 1 || abs(v.transform.ty) > 1 { slid = true }; outer = v.superview }
     check(slid, "a push takes the old view out through the far edge")
 } else { check(false, "a pushed view stays on screen while it leaves") }
+
 
 // 37. onOpenURL, badge, scrollContentBackground, redaction
 var opened: [URL] = []
@@ -2736,11 +2740,14 @@ check(SymbolVariants.fill.circle.contains(.fill) && SymbolVariants.fill.circle.c
 check(SymbolVariants.fill != SymbolVariants.circle, "and the two are told apart")
 check(SymbolVariants.fill.square == SymbolVariants.square.fill, "the two orders of the flags agree")
 
+// The label of a press case is a colour, not a word: the cases are about what a style draws, and a Text label
+// builds a UIFont, which traps the headless test process on a device (EidolonTests aborts there), so nothing after
+// these cases was running.
 struct PlainPressCase: View {
-    var body: some View { Button(action: {}) { Text(verbatim: "Tap").padding(4) }.buttonStyle(.plain) }
+    var body: some View { Button(action: {}) { Color.red.frame(width: 20, height: 10).padding(4) }.buttonStyle(.plain) }
 }
 struct BorderedPressCase: View {
-    var body: some View { Button(action: {}) { Text(verbatim: "Tap").padding(4) }.buttonStyle(.borderedProminent) }
+    var body: some View { Button(action: {}) { Color.red.frame(width: 20, height: 10).padding(4) }.buttonStyle(.borderedProminent) }
 }
 // The press, measured: a style that takes it as an argument changes what it draws when the button goes
 // down, and a style written the Apple way is built through the same path and still compiles.
@@ -2756,14 +2763,14 @@ extension PressProbeStyle { func pressedBody(configuration: PrimitiveButtonStyle
 
 struct PressProbeCase: View {
     var body: some View {
-        Button(action: {}) { Text(verbatim: "Tap").padding(4) }
+        Button(action: {}) { Color.red.frame(width: 20, height: 10).padding(4) }
             .buttonStyle(.plain)
     }
 }
 
 struct AppleStyleCase: View {
     var body: some View {
-        Button(action: {}) { Text(verbatim: "Tap").padding(4) }
+        Button(action: {}) { Color.red.frame(width: 20, height: 10).padding(4) }
             .buttonStyle(PressProbeStyle())
     }
 }
@@ -3150,4 +3157,280 @@ print("\(checks - failures)/\(checks) checks passed")
 if !_Unsupported.used.isEmpty {
     print("ignored on this platform: \(_Unsupported.used.joined(separator: ", "))")
 }
+// a size category: the text of a subtree is drawn at the size the category means, and both spellings read back
+var seenCategory = ""
+var seenTypeSize = ""
+struct CategoryReader: View {
+    @Environment(\.sizeCategory) var category
+    @Environment(\.dynamicTypeSize) var typeSize
+    var body: some View {
+        seenCategory = "\(category)"
+        seenTypeSize = "\(typeSize)"
+        return Color.red.frame(width: 10, height: 10)
+    }
+}
+_ = _Probe(CategoryReader(), width: 50, height: 50)
+equal(seenCategory, "large", "a screen without a category is at the default one")
+check(_Probe.textSize(17, .large) == 17, "and its text is at the size it was given")
+_ = _Probe(CategoryReader().dynamicTypeSize(.xxxLarge), width: 50, height: 50)
+equal(seenCategory, "extraExtraExtraLarge", "dynamicTypeSize sets the category its subtree is drawn at")
+equal(seenTypeSize, "xxxLarge", "and the size the subtree reads back")
+check(abs(_Probe.textSize(17, .xxxLarge) - 22.95) < 0.001, "the largest category scales the release's own text by 1.35", "\(_Probe.textSize(17, .xxxLarge))")
+check(abs(_Probe.textSize(17, .xLarge) - 19.04) < 0.001, "and the step above the default scales up by 1.12")
+check(abs(_Probe.textSize(17, .xSmall) - 13.94) < 0.001, "while the steps below scale it down")
+let clamped = _Probe(CategoryReader().dynamicTypeSize(.xxxLarge).dynamicTypeSize(DynamicTypeSize.xSmall...DynamicTypeSize.xLarge), width: 50, height: 50)
+equal(seenCategory, "extraExtraExtraLarge", "a range over the sizes limits the size, not the category the subtree reads")
+check(abs(_Probe.textSize(17, .xxxLarge, DynamicTypeSize.xSmall...DynamicTypeSize.xLarge) - 19.04) < 0.001, "and the text of the subtree stops at the top of the range")
+check(abs(_Probe.textSize(17, .xSmall, DynamicTypeSize.xSmall...DynamicTypeSize.xLarge) - 13.94) < 0.001, "while it may go below the range's lower end")
+check(_Unsupported.used.contains("dynamicTypeSize(range)"), "a range says in the log that it limits the size alone")
+
+// a row's separator: the table draws its own, unless the row hides it or gives it a colour of its own
+struct SeparatorCase: View {
+    var body: some View {
+        List {
+            Color.red.frame(height: 10)
+            Color.blue.frame(height: 10).listRowSeparator(.hidden)
+            Color.green.frame(height: 10).listRowSeparatorTint(.orange)
+            // a row whose own colour is not the cell's, so a line of the default colour cannot pass for the row's
+            Color(red: 0.1, green: 0.2, blue: 0.3).frame(height: 10).listRowBackground(Color(red: 0.4, green: 0.5, blue: 0.6))
+        }
+    }
+}
+let separators = _Probe(SeparatorCase(), width: 320, height: 300)
+check(!separators.rowSeparator(0).rowLine, "a row without a separator modifier leaves the table's own hairline in the cell")
+check(separators.rowSeparator(1).rowLine && separators.rowSeparator(1).coversTheTables,
+      "a row that hides the separator draws a line of its own over the table's hairline, in the row's own colour")
+check(separators.rowSeparator(2).rowLine && !separators.rowSeparator(2).coversTheTables, "and one that tints it draws the line in that colour")
+let wanted = UIColor(red: 1.0, green: 0.584, blue: 0, alpha: 1)
+check(separators.rowSeparator(2).colour.map { $0.isEqual(wanted) } ?? false, "in the colour the row asked for", String(describing: separators.rowSeparator(2).colour))
+check(!_Probe(SeparatorCase(), width: 320, height: 300).rowSeparator(0).rowLine, "a second list starts from the table's hairline again")
+let apiRowColour = UIColor(red: 0.4, green: 0.5, blue: 0.6, alpha: 1)
+let apiOwnBackground = _Probe(List { Color.red.frame(height: 10).listRowBackground(Color(red: 0.4, green: 0.5, blue: 0.6)) },
+    width: 320, height: 300)
+let apiCellColour = apiOwnBackground.rowCellColour(0)
+check(apiCellColour.map { $0.isEqual(apiRowColour) } ?? false, "a row background of its own is the colour its cell is painted in",
+      String(describing: apiCellColour))
+check(!(apiCellColour?.isEqual(UIColor.white) ?? false), "and not the colour a cell has by default", String(describing: apiCellColour))
+
+// The colour filters, read as a pixel of the picture the filter produced, as "r, g, b, a" — and nothing at all when the
+// view has no picture. The primaries are spelled out: the system colours of SwiftUI are not the primaries, and the numbers
+// below are what Core Image of this release answers for them.
+func apiRed() -> some View { Color(red: 1, green: 0, blue: 0).frame(width: 20, height: 20) }
+func apiBlue() -> Color { Color(red: 0, green: 0, blue: 1) }
+func apiBlueBlock() -> some View { apiBlue().frame(width: 20, height: 20) }
+func apiPixel(_ view: some View) -> String? {
+    guard let pixel = _Probe(view, width: 60, height: 60).filteredPixel() else { return nil }
+    return "\(pixel.r), \(pixel.g), \(pixel.b), \(pixel.a)"
+}
+func apiNear(_ got: String?, _ want: Int, _ within: Int = 4) -> Bool {
+    guard let got, let here = Int(got.split(separator: ",").first ?? "") else { return false }
+    return abs(here - want) <= within
+}
+
+equal(apiPixel(apiRed().grayscale(1)), "127, 127, 127, 255", "grayscale(1) draws the luminance of the colour as a grey")
+equal(apiPixel(apiRed().grayscale(0)), "255, 0, 0, 255", "grayscale(0) leaves the colour alone")
+equal(apiPixel(apiRed().saturation(2)), "255, 0, 0, 255", "saturation(2) leaves a colour that is already all of its own hue")
+equal(apiPixel(apiBlueBlock().saturation(0)), "76, 76, 76, 255", "saturation(0) leaves a pixel with the luminance of the colour and nothing else")
+equal(apiPixel(apiRed().brightness(0.5)), "255, 188, 188, 255", "brightness raises a colour by half the scale")
+equal(apiPixel(apiRed().brightness(-0.5)), "188, 0, 0, 255", "and lowers it by the same")
+check(apiNear(apiPixel(apiRed().contrast(0.5)), 225, 6), "contrast(0.5) pulls a colour towards the middle of the scale",
+      String(describing: apiPixel(apiRed().contrast(0.5))))
+equal(apiPixel(apiRed().colorInvert()), "0, 255, 255, 255", "colorInvert draws the complement of the colour")
+equal(apiPixel(apiRed().colorMultiply(apiBlue())), "0, 0, 0, 255", "colorMultiply draws the colour multiplied over the view")
+equal(apiPixel(apiRed().hueRotation(.degrees(180))), "0, 255, 255, 255", "hueRotation by half a turn puts red where cyan was")
+equal(apiPixel(apiRed().hueRotation(.degrees(60))), "255, 255, 0, 255", "a turn to where yellow was on the wheel")
+equal(apiPixel(apiBlueBlock().hueRotation(.degrees(120))), "255, 0, 0, 255", "a fifth of the wheel from blue is red again")
+equal(apiPixel(apiRed().hueRotation(.degrees(360))), apiPixel(apiRed().grayscale(0)), "a whole turn of the wheel leaves a colour as it was")
+equal(apiPixel(apiRed().luminanceToAlpha()), "54, 0, 0, 54", "luminanceToAlpha puts the luminance of a colour into its alpha")
+check(apiPixel(Color(red: 1, green: 1, blue: 1).frame(width: 20, height: 20).luminanceToAlpha()) == "255, 255, 255, 255", "and white is opaque")
+
+// a blur is a picture of the view, no bigger than the view, with the colours on either side of a line mixed
+let apiBlurred = _Probe(HStack(spacing: 0) { Color(red: 1, green: 0, blue: 0); Color(red: 0, green: 0, blue: 1) }
+    .frame(width: 40, height: 20).blur(radius: 6), width: 60, height: 60)
+apiBlurred.flush()
+equal(apiBlurred.filteredPicture(0)?.size, CGSize(width: 40, height: 20), "a blurred view is a picture of its own size, blur margin and all")
+let apiBlurMiddle = apiBlurred.filteredPixel(0, at: CGPoint(x: 20, y: 10))
+check(apiBlurMiddle.map { $0.r > 30 && $0.b > 30 } ?? false, "and the middle of it is a mixture of the two colours", String(describing: apiBlurMiddle))
+let apiBlurEdge = apiBlurred.filteredPixel(0, at: CGPoint(x: 1, y: 10))
+check(apiBlurEdge.map { $0.r > 100 && $0.b < 20 } ?? false, "while the edge of it is the colour that was there, fading out", String(describing: apiBlurEdge))
+check(apiPixel(apiRed().blur(radius: 0)) == nil, "a blur of no radius changes nothing and is not drawn")
+
+// a filter that changes nothing is not drawn, and the picture takes no touches
+check(apiPixel(apiRed()) == nil, "a view without a filter has no picture of its own")
+let apiUnder = _Probe(apiRed().grayscale(1), width: 60, height: 60)
+check(apiUnder.hitViewName(at: CGPoint(x: 30, y: 30)) != nil, "a touch under a filtered view still reaches the content",
+      String(describing: apiUnder.hitViewName(at: CGPoint(x: 30, y: 30))))
+check(apiUnder.filteredPicture(0) != nil, "and the picture over it is what the screen shows")
+check(_Unsupported.used.contains("grayscale") && _Unsupported.used.contains("blur(radius:)"), "a filter says in the log what it is")
+equal(_Probe.coreImageFilters(), ["CIColorControls", "CIColorMatrix", "CIColorInvert", "CIGaussianBlur"],
+      "these modifiers are built on the Core Image filters this release has")
+check((CIContext.self as AnyObject).responds(to: NSSelectorFromString("contextWithOptions:"))
+      && !CIContext.instancesRespond(to: NSSelectorFromString("initWithOptions:")),
+      "and its context is made by the class method, which is the one iOS 6 has")
+print("[probe] CIContext spellings: " + _Probe.coreImageContextSpellings())
+print("[probe] Core Image filters: " + _Probe.coreImageFilters().joined(separator: " "))
+
+// What this release has, measured on the device the tests run on: the classes and selectors the "absent" reasons name.
+print("[probe] classes: \(_Probe.releaseClasses(["UIAccessibilityCustomAction", "UITextContentType", "UIKeyCommand", "NSItemProvider", "AVSpeechSynthesizer", "UIPointerInteraction", "UIDragInteraction", "UIDropInteraction", "UIDocumentPickerViewController", "UIContextualInteraction", "UIPreviewInteraction", "UIAccessibilityShortcut", "UIActivityViewController", "UIMenuController", "UIPasteboard", "UIDocumentInteractionController", "UIAlertView", "UICollectionView"]))")
+print("[probe] UIAccessibilityElement answers: \(_Probe.releaseAnswers(["accessibilityCustomContent", "accessibilityLabeledBy", "accessibilityLinkedGroup", "accessibilityChartDescriptor", "accessibilityFrameInContainerSpace", "accessibilityElementsHidden"], on: "UIAccessibilityElement"))")
+print("[probe] UIView answers: \(_Probe.releaseAnswers(["isAccessibilityIgnoresInvertColors", "isAccessibilityRespondsToUserInteraction", "accessibilityElementsHidden", "userInterfaceLayoutDirection", "semanticContentAttribute", "accessibilityElements"], on: "UIView"))")
+print("[probe] UIAccessibility answers: \(_Probe.releaseAnswers(["accessibilityCustomRotor", "accessibilityPerformEscape", "accessibilityShowLargeContentViewer", "accessibilityAttributedLabel"], on: "UIAccessibility"))")
+print("[probe] UITextInputTraits answers: \(_Probe.releaseAnswers(["textContentType"], on: "UITextField"))")
+print("[probe] UIWindow answers: \(_Probe.releaseAnswers(["rootViewController", "preferredStatusBarStyle", "traitCollection"], on: "UIWindow"))")
+print("[probe] UITextView answers: \(_Probe.releaseAnswers(["isSelectable", "isEditable", "textInRange", "typingAttributes"], on: "UITextView"))")
+
+// A view that can be copied or cut: a long press offers the release's own sheet, and the payload is what lands on the
+// pasteboard. A sheet needs a window, so what is checked here is the menu the engine put up and what its item does.
+struct CopyableCase: View {
+    var body: some View { Color.red.frame(width: 40, height: 20).copyable(["alpha", "beta"]) }
+}
+let copyableProbe = _Probe(CopyableCase(), width: 60, height: 60)
+copyableProbe.send(.pressRecognized, toGesture: 0)
+check(_Probe.shownMenu == ["Copy"], "a view that can be copied offers Copy on a long press", String(describing: _Probe.shownMenu))
+_Probe.pressMenuItem(0)
+equal(_Probe.copiedText(["alpha", "beta"]), "alpha\nbeta", "and what is copied is the payload, one item per line")
+equal(copyableProbe.gestureCount, 1, "and the long press is the one gesture it added")
+// what a process of this session can read of the pasteboard decides whether the copy itself can be checked here
+UIPasteboard.general.string = "written by the tests"
+if UIPasteboard.general.string == "written by the tests" {
+    _Probe.pressMenuItem(0)
+    equal(UIPasteboard.general.string, "alpha\nbeta", "and the copy is on the pasteboard of the release")
+} else {
+    print("[probe] the pasteboard of this session does not keep what is written to it: \(String(describing: UIPasteboard.general.string))")
+}
+
+struct CuttableCase: View {
+    var body: some View {
+        Color.blue.frame(width: 40, height: 20).cuttable(for: String.self) { ["cut out of the payload"] }
+    }
+}
+let cuttableProbe = _Probe(CuttableCase(), width: 60, height: 60)
+cuttableProbe.send(.pressRecognized, toGesture: 0)
+check(_Probe.shownMenu == ["Cut"], "a view that can be cut offers Cut", String(describing: _Probe.shownMenu))
+_Probe.pressMenuItem(0)
+check(UIPasteboard.general.items.isEmpty, "and what is cut goes off the pasteboard", String(describing: UIPasteboard.general.items))
+
+// .submitScope(.block) on a field of several lines: the return key runs the submit action instead of a line
+struct SubmitScopeCase: View {
+    let scope: Bool
+    init(_ scope: Bool = true) { self.scope = scope }
+    var body: some View { Color.red.frame(width: 10, height: 10).submitScope(scope) }
+}
+
+// What a view inside a .submitScope sees of it is what the environment holds under the scope, and the key is
+// internal state (Apple declares no such environment value, and the invented gate counts a public name it cannot
+// find): a test asks the node, and the decision a blocking scope makes is put with that scope in hand.
+check(_Probe.submitScopeSet(SubmitScopeCase()), "a blocking scope reaches the views inside it")
+check(!_Probe.submitScopeSet(SubmitScopeCase(false)), "and .submitScope(false) is the other way round")
+check(_Probe.returnKeyBlocked("\n", blocking: true), "a blocking scope does not let the return key add a line of its own")
+check(!_Probe.returnKeyBlocked("x", blocking: true), "while any other text goes in as it always did")
+check(!_Probe.returnKeyBlocked("\n", blocking: false), "without the scope the return key is a line as it always was")
+check(!_Probe.submitScopeSet(Color.red.frame(width: 10, height: 10)),
+      "and a screen that names no scope has nothing to block")
+
+// .presentationBackground paints the screen a sheet presents: the white the release gives it takes the colour of the
+// style, and a style that is not one colour paints nothing
+struct PresentedCase: View {
+    @State var shown = true
+    var body: some View {
+        Color.red.frame(width: 20, height: 20)
+            .sheet(isPresented: $shown) { Color.blue.presentationBackground(Color(red: 0.2, green: 0.4, blue: 0.6)) }
+    }
+}
+let presented = _Probe(PresentedCase(), width: 60, height: 60)
+let apiBackground = UIColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1)
+check(presented.presentedBackground?.isEqual(apiBackground) ?? false, "a presented screen is painted in the background its content asked for",
+      String(describing: presented.presentedBackground))
+check(_Probe(PresentedCase(), width: 60, height: 60).presentedBackground != nil, "and the sheet is what is on screen")
+struct PlainPresentedCase: View {
+    @State var shown = true
+    var body: some View {
+        Color.red.frame(width: 20, height: 20).sheet(isPresented: $shown) { Color.blue }
+    }
+}
+check(_Probe(PlainPresentedCase(), width: 60, height: 60).presentedBackground?.isEqual(UIColor.white) ?? false,
+      "and a screen that asks for nothing keeps the white of the release")
+
+// .exportableToServices: a long press puts up the share sheet of the release with what the payload holds
+struct ExportCase: View {
+    var body: some View {
+        Color.red.frame(width: 40, height: 20).exportableToServices { ["a string", URL(string: "demo://item/1")!] }
+    }
+}
+let exportProbe = _Probe(ExportCase(), width: 60, height: 60)
+check(exportProbe.gestureCount == 1, "a view that can be exported takes a long press")
+exportProbe.send(.pressRecognized, toGesture: 0)
+equal(_Probe.sharedItems(["a string", "demo://item/1"]), ["a string", "demo://item/1"], "the sheet is given what the payload holds")
+equal(_Probe.sharedItems([42]), ["42"], "and an item of a type the release cannot share is offered as its own description")
+check(_Unsupported.used.contains("exportableToServices"), "and it says that the sheet of iOS 6 has no completion")
+
+// The blend modes of SwiftUI, measured: of the filters they name, this release has three, and a layer rendered with one
+// of them comes out the colour of the layer — which is why .blendMode is declared absent rather than attached to a filter
+// that does nothing.
+let apiBlendNames = ["CIMultiplyCompositing", "CIScreenCompositing", "CIOverlayCompositing", "CIDarkenCompositing",
+                     "CILightenCompositing", "CIColorDodgeCompositing", "CIColorBurnCompositing", "CISoftLightCompositing",
+                     "CIHardLightCompositing", "CIDifferenceCompositing", "CIExclusionCompositing", "CIHueCompositing",
+                     "CISaturationCompositing", "CIColorCompositing", "CILuminosityCompositing", "CISourceAtopCompositing",
+                     "CIDestinationOverCompositing", "CIDestinationOutCompositing", "CISourceOverCompositing"]
+let apiBlends = apiBlendNames.map { _Probe.compositingFilterPaints($0) }
+equal(apiBlends.filter { !$0.hasSuffix("absent") },
+      ["CIMultiplyCompositing: 255,0,0", "CISourceAtopCompositing: 255,0,0", "CISourceOverCompositing: 255,0,0"],
+      "the release has three of the filters the blend modes name, and none of them paints over a layer")
+check(apiBlends.filter { !$0.hasSuffix("absent") }.allSatisfy { $0.hasSuffix("255,0,0") },
+      "a red layer over black stays red under every one of them, so the layer is not composited with the filter")
+
+// The attributes of a SwiftUI text: what each one names, and which key of this release's attributed string the engine
+// writes it under. That mapping is the observable part of the family and every attribute has a case for it.
+//
+// What cannot be observed here is the value on the string the *screen* drew, because reading it means resolving a text
+// and resolving a text creates a UIFont — and a font traps the headless test process on a device (measured: EidolonTests
+// aborts with Trace/BPT trap the first time a font is created, with or without a screen). So the keys are checked here
+// and the values are left to the snapshot scenarios, which draw on a screen where a font is a font and not a trap.
+let apiNSFont = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.FontAttribute.name)
+let apiNSColor = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.ForegroundColorAttribute.name)
+let apiNSBackground = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.BackgroundColorAttribute.name)
+let apiNSStrike = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.StrikethroughStyleAttribute.name)
+let apiNSUnderline = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.UnderlineStyleAttribute.name)
+let apiNSKern = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.KerningAttribute.name)
+let apiNSTracking = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.TrackingAttribute.name)
+let apiNSBaseline = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.BaselineOffsetAttribute.name)
+
+check(apiNSFont == .font, "the font attribute lands on the release's font key", String(describing: apiNSFont))
+check(apiNSColor == .foregroundColor, "the foreground colour attribute on the release's colour key", String(describing: apiNSColor))
+check(apiNSBackground == .backgroundColor, "the background colour attribute on the release's background key", String(describing: apiNSBackground))
+check(apiNSStrike == .strikethroughStyle, "the strikethrough attribute on the release's strike key", String(describing: apiNSStrike))
+check(apiNSUnderline == .underlineStyle, "the underline attribute on the release's underline key", String(describing: apiNSUnderline))
+check(apiNSKern == .kern, "the kerning attribute on the release's kerning key", String(describing: apiNSKern))
+
+// tracking is letter spacing and this release's attributed string has kerning and no tracking key, so the value lands on
+// the key that is the same measurement per character, and the engine says which one it is rather than guessing
+check(apiNSTracking == nil, "the tracking attribute has no key of this release, so nothing is written under one", String(describing: apiNSTracking))
+check(apiNSBaseline == nil, "and the baseline offset attribute has no key of this release to land on", String(describing: apiNSBaseline))
+check(AttributeScopes.SwiftUIAttributes.key(of: "NSNothing") == nil, "a name the release has no key for is the one that reads nothing")
+
+// the names are Apple's own, read out of the 26.2 interface
+equal(AttributeScopes.SwiftUIAttributes.FontAttribute.name, "NSFont", "the font attribute is named as Foundation names it")
+equal(AttributeScopes.SwiftUIAttributes.ForegroundColorAttribute.name, "NSColor", "and the foreground colour one")
+equal(AttributeScopes.SwiftUIAttributes.BackgroundColorAttribute.name, "NSBackgroundColor", "and the background colour one")
+equal(AttributeScopes.SwiftUIAttributes.StrikethroughStyleAttribute.name, "NSStrikethrough", "and the strikethrough one")
+equal(AttributeScopes.SwiftUIAttributes.UnderlineStyleAttribute.name, "NSUnderline", "and the underline one")
+equal(AttributeScopes.SwiftUIAttributes.KerningAttribute.name, "NSKern", "and the kerning one")
+equal(AttributeScopes.SwiftUIAttributes.TrackingAttribute.name, "NSTracking", "and the tracking one")
+equal(AttributeScopes.SwiftUIAttributes.BaselineOffsetAttribute.name, "NSBaselineOffset", "and the baseline offset one")
+
+// the value types are the port's own, as they are in Apple's: the font, the colour, the line style, a number
+// the value types are the port's own, as they are in Apple's: the font, the colour, the line style, a number — read by
+// name, because a typealias to a nominal type is not compared with ==
+func apiValueName(_ type: Any.Type) -> String { "\(type)".components(separatedBy: ".").last ?? "\(type)" }
+equal(apiValueName(AttributeScopes.SwiftUIAttributes.FontAttribute.Value.self), "Font", "the font attribute carries a Font")
+equal(apiValueName(AttributeScopes.SwiftUIAttributes.ForegroundColorAttribute.Value.self), "Color", "and the foreground colour one a Color")
+equal(apiValueName(AttributeScopes.SwiftUIAttributes.BackgroundColorAttribute.Value.self), "Color", "and the background colour one a Color")
+equal(apiValueName(AttributeScopes.SwiftUIAttributes.StrikethroughStyleAttribute.Value.self), "LineStyle", "and the strikethrough one a Text.LineStyle")
+equal(apiValueName(AttributeScopes.SwiftUIAttributes.UnderlineStyleAttribute.Value.self), "LineStyle", "and the underline one a Text.LineStyle")
+equal(apiValueName(AttributeScopes.SwiftUIAttributes.KerningAttribute.Value.self), "CGFloat", "and the kerning one a CGFloat")
+equal(apiValueName(AttributeScopes.SwiftUIAttributes.TrackingAttribute.Value.self), "CGFloat", "and the tracking one a CGFloat")
+equal(apiValueName(AttributeScopes.SwiftUIAttributes.BaselineOffsetAttribute.Value.self), "CGFloat", "and the baseline offset one a CGFloat")
+
+print("\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)
+

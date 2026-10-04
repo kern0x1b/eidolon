@@ -189,6 +189,20 @@ final class TextEditorDelegate: NSObject, UITextViewDelegate {
     func textViewDidChangeSelection(_ textView: UITextView) {
         selectionChanged(TextSelection(nsRange: textView.selectedRange, in: textView.text ?? ""))
     }
+    // .submitScope(.block) on a field of several lines: the return key runs the submit action of the screen instead of
+    // being a line of its own, which is what a UITextView of iOS 6 can be asked for
+    var blocksReturn = false
+    var submit: (() -> Void)?
+    weak var editorView: UITextView?
+    func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        guard Self.blocked(text, blocking: blocksReturn) else { return true }
+        submit?()
+        return false
+    }
+
+    // what a blocking .submitScope does to the return key of a field of several lines: it runs the submit action of the
+    // screen instead of being a line of its own. What the text is decides it, so the decision is its own function.
+    static func blocked(_ text: String, blocking: Bool) -> Bool { blocking && text == "\n" }
 }
 
 final class TextEditorNode: LayoutNode {
@@ -199,6 +213,7 @@ final class TextEditorNode: LayoutNode {
         view.font = UIFont.systemFont(ofSize: 17)
         super.init(view: view)
         view.delegate = delegate
+        delegate.editorView = view
     }
     /// The environment's selection, when a `textSelection` is in the environment: what the text view is
     /// told to show, and what its own selection is published back into.
@@ -210,7 +225,7 @@ final class TextEditorNode: LayoutNode {
         let binding = editor.text
         delegate.changed = { binding.wrappedValue = $0 }
         if textView.text != binding.wrappedValue { textView.text = binding.wrappedValue }
-        textView.font = env.fontValue ?? UIFont.systemFont(ofSize: 17)
+        textView.font = env.scaled(env.fontValue ?? UIFont.systemFont(ofSize: 17))
         textView.textColor = env.foregroundColor ?? .black
         // iOS 6 carries exactly one selected range, which is what a `TextSelection` reads back
         selection = env.textSelection.flatMap { value in Binding(get: { value }, set: { _ in }) }
@@ -219,6 +234,8 @@ final class TextEditorNode: LayoutNode {
             if textView.selectedRange != range { textView.selectedRange = range }
         }
         delegate.selectionChanged = { [weak self] new in self?.selection?.wrappedValue = new }
+        delegate.blocksReturn = env.submitBlocksReturn
+        delegate.submit = env.input.onSubmit
     }
     override func computeSize(_ p: ProposedSize) -> CGSize {
         CGSize(width: p.width ?? 200, height: p.height ?? 120)

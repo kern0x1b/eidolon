@@ -50,7 +50,7 @@ extension View {
         self.offset(y: -offset)
     }
     public func listSectionSeparator(_ visibility: Visibility, edges: VerticalEdge.Set = .all) -> some View {
-        ignored(self, "listSectionSeparator", "the table of iOS 6 draws the same separators in every section")
+        ignored(self, "listSectionSeparator", "a UITableView of iOS 6 draws no separator of its own between sections, only between rows")
     }
     public func navigationViewStyle<S: NavigationViewStyle>(_ style: S) -> some View {
         if S.self == DoubleColumnNavigationViewStyle.self && UIDevice.current.userInterfaceIdiom == .pad {

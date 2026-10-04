@@ -223,21 +223,59 @@ extension View {
     public func contextMenu<Content: View>(@ViewBuilder menuItems: @escaping () -> Content) -> some View {
         let items = menuEntries(menuItems())
         return onLongPressGesture {
-            guard let window = UIApplication.shared.keyWindow, let root = window.rootViewController else { return }
-            let sheet = UIActionSheet()
-            let keeper = ContextMenuKeeper.shared
-            keeper.delegate.actions = items.map { $0.1 }
-            sheet.delegate = keeper.delegate
-            for item in items { sheet.addButton(withTitle: item.0) }
-            sheet.addButton(withTitle: "Cancel")
-            sheet.cancelButtonIndex = items.count
-            sheet.show(in: root.view)
+            showReleaseMenu(items, in: UIApplication.shared.keyWindow?.rootViewController?.view)
         }
     }
 }
 
-final class ContextMenuKeeper {
-    static let shared = ContextMenuKeeper()
-    let delegate = SheetDelegate()
+// What a view can be copied or cut as: the pasteboard of this release holds a string, a URL or an image, and a payload of
+// any type is written as its description, which is what a sheet of a custom view can offer.
+func copyToPasteboard<T>(_ payload: [T]) {
+    if let url = payload.compactMap({ $0 as? URL }).first {
+        UIPasteboard.general.url = url
+    } else if let image = payload.compactMap({ $0 as? UIImage }).first {
+        UIPasteboard.general.image = image
+    } else {
+        UIPasteboard.general.string = pasteboardText(payload)
+    }
 }
 
+// What a payload is copied as: the pasteboard of this release takes a string, a URL or an image, and a payload of any
+// other type is written as its own description, one item per line.
+func pasteboardText<T>(_ payload: [T]) -> String { payload.map { "\($0)" }.joined(separator: "\n") }
+
+// What the share sheet of the release is given: its items are what an activity of this release can take — a string, a
+// URL, an image — and a payload of any other type is offered as its own description, the way the pasteboard takes one.
+func activityItems<T>(_ payload: [T]) -> [Any] {
+    payload.map { value -> Any in
+        if value is String || value is URL || value is UIImage { return value }
+        return "\(value)"
+    }
+}
+
+func clearPasteboard() {
+    UIPasteboard.general.items = []
+}
+
+// A menu of this release is an action sheet, and the sheet the release shows is the one this function puts up: the
+// titles and what each of them does, kept where a test can read them.
+func showReleaseMenu(_ entries: [(String, () -> Void)], in view: UIView?) {
+    guard !entries.isEmpty else { return }
+    let keeper = ContextMenuKeeper.shared
+    keeper.delegate.actions = entries.map { $0.1 }
+    ContextMenuKeeper.shown = entries.map { $0.0 }
+    // the menu is what the engine did even where there is no window to put the sheet in front of
+    guard let view else { return }
+    let sheet = UIActionSheet()
+    sheet.delegate = keeper.delegate
+    for entry in entries { sheet.addButton(withTitle: entry.0) }
+    sheet.addButton(withTitle: "Cancel")
+    sheet.cancelButtonIndex = entries.count
+    sheet.show(in: view)
+}
+
+final class ContextMenuKeeper {
+    static let shared = ContextMenuKeeper()
+    static nonisolated(unsafe) var shown: [String] = []
+    let delegate = SheetDelegate()
+}

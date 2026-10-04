@@ -119,6 +119,33 @@ def ios_counts(our_types, covered_mods, working, stubs):
     }
 
 
+# The number of public names no interface of the modules this port re-exports declares. It lives in the file
+# bridge/api-surface.sh writes (bridge/api/invented.txt), and the README states it, so the two are compared here the way
+# every other count is: --update writes what the file says, --check refuses a README that says otherwise.
+INVENTED_SCORE = re.compile(r"(Счёт в обеих строках один и тот же — )(\d+)(?=:)")
+INVENTED_TEXT = r"\g<1>{count}"
+INVENTED_PATH = os.path.join(here, "..", "bridge", "api", "invented.txt")
+INVENTED_PATH_NAME = "bridge/api/invented.txt"
+INVENTED_GENERATOR = "bridge/api-surface.sh"
+
+
+def invented_count():
+    """The number of public names no 26.2 interface declares, or None when that file is not there.
+
+    The file is written by bridge/api-surface.sh and is not tracked (.gitignore: /bridge/api/), so a fresh tree has
+    none and --check says so by name rather than passing a number nothing compared it with. --update writes the number
+    only when there is one to write, and says when it did not.
+    """
+    if not os.path.exists(INVENTED_PATH):
+        return None
+    return sum(1 for line in open(INVENTED_PATH) if line.strip())
+
+
+def invented_stated(readme):
+    stated = INVENTED_SCORE.search(readme)
+    return int(stated.group(2)) if stated else None
+
+
 def main():
     numbers, apple_types, apple_mods, our_types, our_mods, ignored, stubs = counts()
     baseline_path = os.path.join(here, 'coverage-baseline.json')
@@ -129,6 +156,11 @@ def main():
         readme = open(readme_path).read()
         readme = re.sub(SCORE, SCORE_TEXT.format(**numbers), readme)
         readme = re.sub(IOS_SCORE, IOS_SCORE_TEXT.format(**numbers), readme)
+        actual = invented_count()
+        if actual is None:
+            print(f'{INVENTED_PATH_NAME} нет: счёт выдуманных имён в README не записан, его пишет {INVENTED_GENERATOR}')
+        else:
+            readme = re.sub(INVENTED_SCORE, INVENTED_TEXT.format(count=actual), readme)
         open(readme_path, 'w').write(readme)
         print('записано:', numbers)
         return 0
@@ -160,6 +192,18 @@ def main():
         for name in sorted(ignored):
             if f'`{name}`' not in readme:
                 problems.append(f'игнорируемый API {name} не описан в README')
+        said = invented_stated(readme)
+        actual = invented_count()
+        if actual is None:
+            # the oracle is generated, not tracked, so a fresh tree has none: a check that skipped a missing oracle would
+            # pass any number at all, so the absence is the failure and it names what writes the file
+            problems.append(f'{INVENTED_PATH_NAME} нет, и без него счёт выдуманных имён не проверить: его пишет '
+                            f'{INVENTED_GENERATOR}, запустите его и обновите README (coverage.py --update)')
+        elif said is None:
+            problems.append('README не называет счёт выдуманных имён (bridge/api/invented.txt)')
+        elif said != actual:
+            problems.append(f'README говорит {said} выдуманных имён, {INVENTED_PATH_NAME} содержит {actual} — '
+                            f'обновите README (coverage.py --update)')
         counted, partial, unreadable = stub_calls()
         for where, call in unreadable:
             problems.append(f'{where}: {call} — счётчик не может прочесть имя (нужна строка из одного идентификатора)')
