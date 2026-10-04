@@ -138,7 +138,7 @@ public struct TableColumnBuilder<RowValue: Identifiable, Sort> {
         where C.TableRowValue == RowValue, C.TableColumnSortComparator == Never { _AnyTableColumnContent(content) }
     /// The `if #unavailable` case: there are no columns, so the empty set is what the builder is left with.
     public static func buildLimitedAvailability() -> _AnyTableColumnContent<RowValue, Sort> {
-        _AnyTableColumnContent(EmptyTableColumnContent<RowValue, Sort>())
+        _AnyTableColumnContent(_EmptyTableColumnContent<RowValue, Sort>())
     }
 }
 
@@ -193,7 +193,7 @@ public struct _AnyTableColumnContent<RowValue: Identifiable, Sort>: TableColumnC
 }
 
 /// No columns at all: what an `if #unavailable` leaves the builder with.
-public struct EmptyTableColumnContent<RowValue: Identifiable, Sort>: TableColumnContent {
+public struct _EmptyTableColumnContent<RowValue: Identifiable, Sort>: TableColumnContent {
     public typealias TableRowValue = RowValue
     public typealias TableColumnSortComparator = Sort
     public typealias TableColumnBody = Never

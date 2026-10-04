@@ -193,7 +193,7 @@ public struct _TabContentRow {
     init(value: AnyHashable?, view: any View) { self.value = value; self.view = view }
 }
 
-/// The tabs a content yields, as the builder hands them to a TabView. A `TabContentList` names each of
+/// The tabs a content yields, as the builder hands them to a TabView. A `_TabContentList` names each of
 /// its rows; anything else that is tab content is one tab it names itself, and a plain view is a tab with
 /// no name, which is what a TabView over plain views has always been.
 func tabContentRows(_ content: any TabContent) -> [_TabContentRow] {
@@ -223,16 +223,16 @@ public struct DefaultTabLabel: View, PrimitiveView {
 
 /// The tabs, in order, each with the view it stands for and the value that names it. This is what
 /// `ForEach` of tab content is: one tab per element, named by the element.
-struct TabContentList<Element: Hashable>: TabContent, TabContentNaming {
+struct _TabContentList<Element: Hashable>: TabContent, TabContentNaming {
     public typealias TabValue = AnyHashable
-    public typealias Body = TabContentList<Element>
+    public typealias Body = _TabContentList<Element>
     let elements: [Element]
     let view: (Element) -> AnyView
     let named: (Element) -> AnyHashable
     public init(_ elements: [Element], view: @escaping (Element) -> AnyView, named: @escaping (Element) -> AnyHashable) {
         self.elements = elements; self.view = view; self.named = named
     }
-    public var body: TabContentList<Element> { self }
+    public var body: _TabContentList<Element> { self }
     public var namedRows: [_TabContentRow] {
         elements.map { _TabContentRow(value: named($0), view: view($0)) }
     }
