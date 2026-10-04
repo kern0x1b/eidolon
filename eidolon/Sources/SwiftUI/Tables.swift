@@ -60,6 +60,20 @@ extension TableColumn where Sort == Never, Label == Text {
 }
 
 extension TableColumn where Sort == Never, Label == Text, Content == Text {
+    public init<C: Comparable>(_ titleKey: LocalizedStringKey, value: KeyPath<RowValue, C>) {
+        title = titleKey.text
+        cell = { Text(String(describing: $0[keyPath: value])) }
+        sortKey = value as AnyKeyPath
+        readKey = { $0[keyPath: value] as any Comparable }
+        columnAlignment = .numeric
+    }
+    public init<S: StringProtocol, C: Comparable>(_ title: S, value: KeyPath<RowValue, C>) {
+        self.title = String(title)
+        cell = { Text(String(describing: $0[keyPath: value])) }
+        sortKey = value as AnyKeyPath
+        readKey = { $0[keyPath: value] as any Comparable }
+        columnAlignment = .numeric
+    }
     public init(_ titleKey: LocalizedStringKey, value: KeyPath<RowValue, String>) {
         title = titleKey.text
         cell = { Text($0[keyPath: value]) }
@@ -615,5 +629,51 @@ public struct TableColumnAlignment: Hashable {
         var container = encoder.singleValueContainer()
         try container.encode(order)
         try container.encode(Set(visibility.filter { !$0.value }.keys))
+    }
+}
+
+/// A conditional row or column is the optional of one: a builder's `buildIf` hands back `C?`, and the
+/// block that follows takes it, so the optional has to be content too.
+extension Optional: TableRowContent where Wrapped: TableRowContent {
+    public typealias TableRowValue = Wrapped.TableRowValue
+    public typealias TableRowBody = Never
+    public var _rows: [Wrapped.TableRowValue] { self?._rows ?? [] }
+}
+
+extension Optional: TableColumnContent where Wrapped: TableColumnContent, Wrapped.TableColumnSortComparator == Never {
+    public typealias TableRowValue = Wrapped.TableRowValue
+    public typealias TableColumnSortComparator = Never
+    public typealias TableColumnBody = Never
+    public var _columns: [_AnyTableColumn<Wrapped.TableRowValue>] { self?._columns ?? [] }
+}
+
+
+/// The two arms of a conditional in a table's builder are content, so a column or a row written as an `if`
+/// is the content the builder returns -- which is what Apple's two `buildEither` overloads hand back.
+extension _ConditionalContent: TableColumnContent
+    where TrueContent: TableColumnContent, FalseContent: TableColumnContent,
+          TrueContent.TableRowValue == FalseContent.TableRowValue,
+          TrueContent.TableColumnSortComparator == FalseContent.TableColumnSortComparator {
+    public typealias TableRowValue = TrueContent.TableRowValue
+    public typealias TableColumnSortComparator = TrueContent.TableColumnSortComparator
+    public typealias TableColumnBody = Never
+    public var _columns: [_AnyTableColumn<TrueContent.TableRowValue>] {
+        switch storage {
+        case .trueContent(let arm): return arm._columns
+        case .falseContent(let arm): return arm._columns
+        }
+    }
+}
+
+extension _ConditionalContent: TableRowContent
+    where TrueContent: TableRowContent, FalseContent: TableRowContent,
+          TrueContent.TableRowValue == FalseContent.TableRowValue {
+    public typealias TableRowValue = TrueContent.TableRowValue
+    public typealias TableRowBody = Never
+    public var _rows: [TrueContent.TableRowValue] {
+        switch storage {
+        case .trueContent(let arm): return arm._rows
+        case .falseContent(let arm): return arm._rows
+        }
     }
 }

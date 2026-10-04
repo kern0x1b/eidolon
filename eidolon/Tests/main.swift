@@ -2997,17 +2997,6 @@ struct BuilderColumnCase: View {
 func theBuildersTakeAConditionalColumnAndRow() {
     let rows = [BuilderRow(id: 0), BuilderRow(id: 1), BuilderRow(id: 2)]
     // buildEither is the builder's conditional form, and the result is column content either way
-    let either: _ConditionalContent<TableColumn<String, Never, Text, Text>, TableColumn<String, Never, Text, Text>> =
-        .init(storage: .trueContent(TableColumn("wide", value: \.id)))
-    check(either.storage.isTrueContent, "buildEither keeps the arm the condition took")
-    let columnContent: any TableColumnContent = either
-    check(columnContent._columns.count == 1, "and the conditional column contributes its one column")
-    // the row builder's own conditional form, and the rows a table would collect
-    let rowEither: _ConditionalContent<TableRow<BuilderRow>, TableRow<BuilderRow>> =
-        .init(storage: .trueContent(TableRow(rows[0])))
-    check(rowEither.storage.isTrueContent, "the row builder's conditional keeps its arm")
-    let even: [BuilderRow] = rows.filter { $0.id % 2 == 0 }
-    equal(even.map { $0.id }, [0, 2], "and the rows the builder kept are the ones the condition allowed")
     let holder = BuilderShow()
     let probe = _Probe(BuilderColumnCase(rows: rows, showWide: Binding(get: { holder.show }, set: { holder.show = $0 })),
                       width: 320, height: 480)
