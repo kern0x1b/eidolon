@@ -305,3 +305,10 @@ extension ForEach: TabContent, TabContentNaming where Content: TabContent {
         }
     }
 }
+
+// The two rows Apple's frozen interface prints for an anchor's hashing. `==` and `hash(into:)` are
+// declared in TextModifiers.swift, where the anchor's own equality lives; `hashValue` follows them here so
+// the three are declared rather than derived, as they are for a frozen type.
+extension Anchor where Value: Hashable {
+    public var hashValue: Int { var hasher = Hasher(); hash(into: &hasher); return hasher.finalize() }
+}
