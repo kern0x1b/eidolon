@@ -532,8 +532,10 @@ func writeSnapshots(to folder: String) {
         }
     }
     logProbe("snapshots done")
-    // The run is over, so the application is: on a phone the script watches for the line above, and in
-    // the emulator `xmake emulate launch ... until-exit` holds the guest until this process is gone and
-    // then takes the last frame. A scenario still wanted on screen is the one run with /var/charon/show.
-    exit(0)
+    // The bundle that was asked for them is done, so the application is: in the emulator
+    // `xmake emulate launch ... until-exit` holds the guest until this process is gone and then takes the
+    // last frame. A phone run watches for the line above and leaves the application up.
+    if run.fromBundle {
+        exit(0)
+    }
 }

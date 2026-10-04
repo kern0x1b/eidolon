@@ -146,11 +146,12 @@ func loadBackports() {
 
 /// What the run renders: the scenarios, one of them only, and whether each is drawn as an image. A key
 /// of the bundle's own Info.plist says it, which is how the emulator's image says it - the snapshot
-/// bundle is the same program built as another application, and xmake emulate launch starts that one -
-/// and /var/charon says it on a phone, where the files are put there by hand. nil is no snapshot run.
-let snapshotRun: (only: String?, images: Bool)? = {
-    guard Bundle.main.object(forInfoDictionaryKey: "EidolonSnapshots") != nil
-        || FileManager.default.fileExists(atPath: "/var/charon/snapshots.on") else {
+/// bundle is the same program built as another application, and xmake emulate launch starts that one, and
+/// holds the guest until this process is gone (until-exit). /var/charon says it on a phone, where the
+/// files are put there by hand and the application stays up afterwards. nil is no snapshot run.
+let snapshotRun: (only: String?, images: Bool, fromBundle: Bool)? = {
+    let fromBundle = Bundle.main.object(forInfoDictionaryKey: "EidolonSnapshots") != nil
+    guard fromBundle || FileManager.default.fileExists(atPath: "/var/charon/snapshots.on") else {
         return nil
     }
     let only = (try? String(contentsOfFile: "/var/charon/snapshots.only", encoding: .utf8))
@@ -158,7 +159,7 @@ let snapshotRun: (only: String?, images: Bool)? = {
     let name = only?.trimmingCharacters(in: .whitespacesAndNewlines)
     let images = Bundle.main.object(forInfoDictionaryKey: "EidolonSnapshotImages") != nil
         || FileManager.default.fileExists(atPath: "/var/charon/snapshots.png")
-    return (name?.isEmpty == false ? name : nil, images)
+    return (name?.isEmpty == false ? name : nil, images, fromBundle)
 }()
 
 // /var/charon/gesture names a scenario whose real touches are run once it is on screen (a phone only).

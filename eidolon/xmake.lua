@@ -15,11 +15,12 @@ set_defaultarchs("iphoneos|armv7")
 
 -- The runtime the port carries, built with the backports: the runtime's overlays and Styx weakly import
 -- later API that only the library answers, and a runtime built so hands its lifted headers to the port,
--- which then has to carry the library as well.
+-- which then has to carry the library as well. One build of each: charon@eidolon passes these configs on
+-- to the runtime and Styx, so the port declares the same ones or it would get a second build of each.
 add_requires("charon@swift-runtime", {alias = "swift-runtime", configs = {backports = true}})
 add_requires("charon@libcxx", {alias = "libcxx"})
 add_requires("charon@styx", {alias = "styx", configs = {backports = true}})
-add_requires("charon@eidolon", {alias = "swiftui", configs = {backports = true, backports_uikit = true}})
+add_requires("charon@eidolon", {alias = "swiftui", configs = {backports = true}})
 add_requires("charon@apple-backports", {alias = "apple-backports", configs = {coredata = true, uikit = true}})
 
 target("EidolonDemo")
@@ -72,6 +73,8 @@ target("EidolonTests")
     add_packages("swiftui", "apple-backports")
     add_frameworks("UIKit", "Foundation", "CoreGraphics", "QuartzCore", "CoreData")
     set_optimize("fastest")
+    -- The tests are the one program compiled with availability checking off, as eidolon/build.sh has
+    -- always compiled them: they call iOS 7+ API on purpose, to check what Eidolon does with it.
     set_values("swift.flags", "-disable-availability-checking")
     set_values("charon.waive.weak-imports", "every weak import is reached only behind #available or carried by the backports: the runtime's overlays built with availability checking on, Styx's run-loop timer tolerance, compiler-rt's version check")
     set_values("charon.libraries", "apple-backports")
