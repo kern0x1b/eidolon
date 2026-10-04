@@ -141,7 +141,10 @@ public struct ForEachSubviewCollection<Content: View>: RandomAccessCollection {
     let children: [Subview]
     let content: (Subview) -> Content
     public init(_ children: SubviewsCollection, @ViewBuilder content: @escaping (Subview) -> Content) {
-        self.children = Array(children)
+        self.init(children: Array(children), content: content)
+    }
+    init(children: [Subview], content: @escaping (Subview) -> Content) {
+        self.children = children
         self.content = content
     }
     public var startIndex: Int { 0 }
@@ -161,4 +164,16 @@ public struct GroupElementsOfContent<Subviews: View, Content: View>: View {
     let subviews: Subviews
     let transformed: Content
     public var childViews: [any View] { [subviews, transformed] }
+}
+
+// A ForEach over a container's children, which is what `ForEach(subviews:content:)` is: the rows are
+// made from the subviews the container holds, and the collection is the data it walks.
+extension ForEach where Content: View {
+    public init<V: View>(subviews view: V, @ViewBuilder content: @escaping (Subview) -> Content)
+        where Data == ForEachSubviewCollection<Content>, ID == Subview.ID {
+        // the children of the view the caller passed: a group, a stack or anything else that holds them
+        let children: [any View] = view is GroupView ? (view as! GroupView).childViews : [view]
+        let identified = children.map { Subview($0) }
+        self.init(data: ForEachSubviewCollection(children: identified, content: content), id: \.id, content: content)
+    }
 }
