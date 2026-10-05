@@ -86,7 +86,7 @@
 `presentedWindowStyle`, `presentedWindowToolbarStyle`, `previewContext`, `previewDevice`, `previewDisplayName`, `previewInterfaceOrientation`,
 `previewLayout`, `renameAction`, `replaceDisabled`, `speechAdjustedPitch`, `speechAlwaysIncludesPunctuation`, `speechAnnouncementsQueued`,
 `speechSpellsOutCharacters`, `symbolRenderingMode`, `symbolVariant`, `textContentType`, `textSelection`, `toolbarRole`, `toolbarTitleMenu`,
-`touchBar`, `touchBarCustomizationLabel`, `touchBarItemPresence`, `touchBarItemPrincipal`, `userActivity`, `widgetAccentable`
+`touchBar`, `touchBarCustomizationLabel`, `touchBarItemPresence`, `touchBarItemPrincipal`, `userActivity`
 
 `accessibilityAction` (свои действия доступности появились в iOS 8; VoiceOver в iOS 6 делает двойное касание по самому виду), `Image(systemName:)` с именем вне набора (в iOS 6 нет SF Symbols; ~80 частых символов нарисованы встроенным набором `SymbolGlyphs`, для остальных имя ищется в бандле, затем рисуется квадрат со знаком вопроса), `swipeActions(edge: .leading)` (строка `UITableView` в iOS 6 свайпается только справа), `listRowSeparator(edges:)` и `listRowSeparatorTint(edges:)` (линия рисуется под строкой, а не над ней: таблица iOS 6 не рисует линии над строкой), `datePickerStyle(.compact)` и `datePickerStyle(.graphical)` (у `UIDatePicker` в iOS 6 есть только колесо).
 

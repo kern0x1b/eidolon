@@ -99,7 +99,6 @@ extension View {
         }, onUpdate: nil))
     }
     public func symbolRenderingMode(_ mode: SymbolRenderingMode) -> some View { ignored(self, "symbolRenderingMode", "there are no SF Symbols on this release: the glyphs SymbolGlyphs draws are a fixed set with no palette and no levels to render them by") }
-    public func widgetAccentable(_ accentable: Bool = true) -> some View { ignored(self, "widgetAccentable", "a widget is a timeline entry of a home screen, iOS 14; this release has no widget and no timeline to accent") }
 }
 
 public struct SubmitTriggers: OptionSet {
