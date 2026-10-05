@@ -12,7 +12,7 @@ accept=${1:-}
 name=snap-$(date +%H%M%S)
 out=$PWD/runs.noindex/$name
 mkdir -p "$out/shots"
-EIDOLON_SNAPSHOT_ONLY=${ONLY:-} xmake -P eidolon f -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
+EIDOLON_SNAPSHOT_ONLY=${ONLY:-} xmake f -P eidolon -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
 status=0
 xmake -P eidolon emulate -d iPod4,1 -r 6.0 -s "${SECONDS_BUDGET:-240}" -t 3000 \
     launch space.kern0x1b.eidolon.snapshots until-exit > "$out/launch.log" 2>&1 || status=$?

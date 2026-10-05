@@ -11,7 +11,7 @@ mkdir -p "$out"
 # xmake emulate needs the packages it copies already in the store, so the port is configured and
 # built here first. CHARON_REPO points the package repository at a checkout, CHARON_ADDON at the addon
 # version to build with; both default to what the machine has.
-xmake -P eidolon f -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
+xmake f -P eidolon -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
 xmake -P eidolon emulate install -d iPhone4,1 -r 6.1.3 > "$out/install.log" 2>&1
 ran=0
 marker=$out/.marked

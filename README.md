@@ -86,7 +86,7 @@ Machine-local paths go in `local.env` (git-ignored); nothing personal is tracked
 
 ```bash
 eidolon/build.sh        # module, demo app, tests and probe -> eidolon/out/EidolonDemo.app
-xmake -P eidolon f -p iphoneos -a armv7 -y   # the same, as a Charon port: the app and the tests as packages
+xmake f -P eidolon -p iphoneos -a armv7 -y   # the same, as a Charon port: the app and the tests as packages
 ```
 
 The build begins with `eidolon/coverage.py --check`, which refuses to continue if the ledger and the code disagree.
