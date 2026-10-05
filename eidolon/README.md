@@ -69,7 +69,7 @@
 
 **Объявлены и игнорируются** — то, чему на iOS 6 нечему соответствовать. При первом применении каждый
 печатает одну строку в журнал (`[SwiftUI] margins ignored on iOS 6: a margin takes the space around the view…`), список за прогон
-доступен в `_Unsupported.used` и печатается тестами:
+доступен в `_Unsupported.used` (группа SPI `Probe`: `@_spi(Probe) import SwiftUI`) и печатается тестами:
 `accessibilityActions`, `accessibilityChartDescriptor`, `accessibilityCustomContent`, `accessibilityIgnoresInvertColors`, `accessibilityInputLabels`,
 `accessibilityLabeledPair`, `accessibilityLinkedGroup`, `accessibilityQuickAction`, `accessibilityRespondsToUserInteraction`, `accessibilityRotor`,
 `accessibilityRotorEntry`, `accessibilityShowsLargeContentViewer`, `accessibilityTextContentType`, `blendMode`, `defaultFocus`,

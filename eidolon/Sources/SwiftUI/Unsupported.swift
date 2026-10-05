@@ -1,7 +1,7 @@
 import UIKit
 import Foundation
 
-public enum _Unsupported {
+@_spi(Probe) public enum _Unsupported {
     nonisolated(unsafe) static var reported: Set<String> = []
     nonisolated(unsafe) static var pending: Set<String> = []
 
