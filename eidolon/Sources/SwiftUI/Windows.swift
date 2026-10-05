@@ -34,7 +34,7 @@ public struct Window<Content>: Scene where Content: View {
     }
 
     /// The window this scene is over: the one the release has, which is the only one there is on iOS 6.
-    public func presentedWindowContent(forPresented presented: Bool) -> PresentedWindowContent<Data?, Content>? {
+    @_spi(Probe) public func presentedWindowContent(forPresented presented: Bool) -> PresentedWindowContent<Data?, Content>? {
         OpenWindowAction.currentWindowID = id
         _Unsupported.note("Window.presentedWindowContent(forPresented:)",
                           "iOS 6 has one UIWindow, so a window scene is that window and a presented one is the same content")
@@ -77,7 +77,7 @@ public struct OpenWindowAction {
     }
 
     /// The id of the window the engine is showing, which a window scene registers and the action reads.
-    public static var currentWindowID: String?
+    @_spi(Probe) public static var currentWindowID: String?
 
     public func callAsFunction<D>(id: String, value: D) where D: Codable & Hashable {
         callAsFunction(id: id)

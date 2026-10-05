@@ -1,4 +1,4 @@
-import SwiftUI
+@_spi(Probe) import SwiftUI
 import CoreData
 import UIKit
 import Foundation

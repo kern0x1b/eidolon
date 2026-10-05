@@ -136,7 +136,7 @@ public struct Anchor<Value> {
 
 extension Anchor.Source {
     /// What a source reads out of a view of that rectangle: how a geometry proxy answers an anchor.
-    public func measuring(_ bounds: CGRect) -> Value { measure(bounds) }
+    @_spi(Probe) public func measuring(_ bounds: CGRect) -> Value { measure(bounds) }
 
     /// The anchor of a whole array: each element is measured the way its own source says.
     public init<T>(_ array: [Anchor<T>.Source]) where Value == [T] {

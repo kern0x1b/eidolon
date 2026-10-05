@@ -157,7 +157,7 @@ public struct DocumentGroup<Document, Content>: Scene where Document: FileDocume
     /// Opens the document at a URL, which is what the release hands over when a file is opened. The
     /// release's `UIDocument` owns the file: this asks it for the bytes and hands back the document's
     /// editor, so the file is read and written the way iOS 6 does it.
-    public func open(_ url: URL) throws -> Content {
+    @_spi(Probe) public func open(_ url: URL) throws -> Content {
         let contents = try Data(contentsOf: url)
         let type = Document.readableContentTypes.first ?? "public.data"
         var document = try Document(configuration: FileDocumentReadConfiguration<Document>(
