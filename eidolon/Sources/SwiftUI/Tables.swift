@@ -441,7 +441,7 @@ extension Table {
 @frozen public struct KeyPathComparator<Value>: Equatable {
     public typealias Key = KeyPath<Value, any Comparable>
     public let key: AnyKeyPath
-    public var ascending: Bool
+    var ascending: Bool
     let read: (Value) -> any Comparable
     public init<C: Comparable>(_ key: KeyPath<Value, C>, ascending: Bool = true) {
         self.key = key as AnyKeyPath; self.ascending = ascending

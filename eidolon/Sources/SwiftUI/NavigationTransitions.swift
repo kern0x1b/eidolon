@@ -9,7 +9,7 @@ public struct AutomaticNavigationTransition: NavigationTransition {
 }
 
 public struct ZoomNavigationTransition: NavigationTransition {
-    public let sourceID: AnyHashable
+    let sourceID: AnyHashable
     public let namespace: Namespace.ID
     public init(sourceID: some Hashable, in namespace: Namespace.ID) {
         self.sourceID = AnyHashable(sourceID); self.namespace = namespace

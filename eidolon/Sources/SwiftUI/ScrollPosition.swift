@@ -91,7 +91,7 @@ public struct ViewAlignedScrollTargetBehavior: ScrollTargetBehavior {
         public static var alwaysByFew: LimitBehavior { LimitBehavior(stopsAtBoundaries: true, limit: 2) }
         public static var never: LimitBehavior { LimitBehavior(stopsAtBoundaries: false, limit: nil) }
     }
-    public let limitBehavior: LimitBehavior
+    let limitBehavior: LimitBehavior
     public let anchor: UnitPoint?
     public init(limitBehavior: LimitBehavior = .automatic) {
         self.limitBehavior = limitBehavior; anchor = nil
