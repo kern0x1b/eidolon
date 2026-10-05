@@ -38,7 +38,6 @@ named `SwiftUI` because every symbol an app takes from SwiftUI is mangled with t
 eidolon/build.sh                                    # begins with the ledger check
 ../run-emu.sh                                       # the engine tests, in the emulator
 ../snapshots.sh                                     # 37 rendered scenarios against eidolon/Snapshots/reference/
-../bridge/guest-abi-check.sh                        # arm64 module with library evolution
 ```
 
 `run-emu.sh` and `snapshots.sh` drive the Charon emulator: `xmake f -P eidolon`, then `xmake emulate install` and

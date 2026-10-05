@@ -147,10 +147,15 @@
 - **Нативная** (приложение компилируется из исходников под armv7 iOS 6) — без библиотечной эволюции.
 - **Гостевая** (для конвейера рекомпилятора: модуль собирается под arm64 и переводится вместе с приложением) —
   с `-enable-library-evolution`, иначе компилятор не выпускает method descriptors протоколов, которых
-  требует приложение, собранное против интерфейса Apple. Проверяется скриптом `../bridge/guest-abi-check.sh`:
-  он линкует подопытное приложение Apple-сборки с нашим модулем (сейчас 64 из 64 символов удовлетворены)
-  и следит, чтобы ни один класс образа не получил нулевую фиксированную раскладку — на iOS 6 такой класс
-  падает при реализации, потому что `_objc_realizeClassFromSwift` там нет.
+  требует приложение, собранное против интерфейса Apple.
+  `bridge/guest-abi-check.sh` (removed, 2026-10-06) checked this build and did not check the release the port ships:
+  it compiled with /usr/bin/swiftc 6.4 for arm64-apple-ios14.0 against the iOS 16.4 SDK, whose Swift 5.9 stdlib has no
+  `RangeSet`, so it failed on `TextSelection` (`cannot find type 'RangeSet'`); the port ships armv7-apple-ios6.0 on the
+  swift-runtime package, whose stdlib has it. Measured: every installed swift-runtime (6.4.0, six store entries) holds
+  only `armv7-apple-ios.swiftmodule`; an arm64 library_evolution install (`xmake f -p iphoneos -a arm64`) fails in
+  charon@libcxx ("the probe client does not import __ZdlPv"; the cause was not
+  diagnosed further, and the recipe is charon's). When an arm64 runtime
+  installs, rebuild the check against `-resource-dir <runtime>/lib/swift`, not the SDK's stdlib.
 
 Из этого следуют требования к коду: модуль называется `SwiftUI`, имена и метки аргументов совпадают
 с Apple дословно, порядок требований протоколов — слот в слот (таблица в `../bridge/README.md`),
