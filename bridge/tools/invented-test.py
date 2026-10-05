@@ -18,8 +18,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 GATE = os.path.join(HERE, '..', 'api-invented.py')
 
 
-def decl(kind, name, decl_kind, children=()):
-    return {'kind': kind, 'name': name, 'printedName': name, 'declKind': decl_kind, 'children': list(children)}
+def decl(kind, name, decl_kind, children=(), spi=False):
+    node = {'kind': kind, 'name': name, 'printedName': name, 'declKind': decl_kind, 'children': list(children)}
+    if spi:
+        # what the digester writes for `@_spi(Probe) public`
+        node.update(declAttributes=['SPIAccessControl'], spi_group_names=['Probe'])
+    return node
 
 
 def reference(name, printed):
@@ -27,9 +31,9 @@ def reference(name, printed):
     return {'kind': 'TypeNameAlias', 'name': name, 'printedName': printed}
 
 
-def dump(*members):
+def dump(*members, extra=()):
     return {'ABIRoot': {'kind': 'Root', 'name': 'SwiftUI', 'printedName': 'SwiftUI',
-                        'children': [decl('TypeDecl', 'Widget', 'Struct', members)]}}
+                        'children': [decl('TypeDecl', 'Widget', 'Struct', members), *extra]}}
 
 
 def run(module, surface):
@@ -73,6 +77,12 @@ def main():
                      dump(decl('Var', 'default', 'Var'), decl('Var', 'repeat', 'Var')), surface + keyword, []))
     good.append(case('control: a keyword-named member the surface lacks is still reported',
                      dump(decl('Var', 'default', 'Var')), surface, ['default'], control=True))
+    # SPI: public to a client that imports its group by name, and to no other, so not part of the API
+    good.append(case('an @_spi member is not public API',
+                     dump(decl('Var', 'hook', 'Var', spi=True)), surface, []))
+    good.append(case('nor is a member of an @_spi type, whatever it says of itself',
+                     dump(extra=[decl('TypeDecl', 'Hidden', 'Struct', [decl('Var', 'inside', 'Var')], spi=True)]),
+                     surface, []))
     print(f'\n{sum(good)}/{len(good)} cases')
     sys.exit(0 if all(good) else 1)
 

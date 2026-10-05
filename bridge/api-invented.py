@@ -80,6 +80,10 @@ def walk(node, path, public):
     # qualified, with no declaration kind and no usr: the declaration it names is judged where it is declared.
     if node.get('kind') in ('Import', 'Accessor', 'TypeNominal', 'TypeNameAlias', 'AssociatedType'):
         return
+    # An @_spi declaration is visible only to a client that imports its group by name (`@_spi(Probe) import`), so it
+    # is not part of the API an app is written against, and neither is anything inside it.
+    if 'SPIAccessControl' in (node.get('declAttributes') or []):
+        return
     is_public = access_level(node) == 'public'
     if printed and node.get('kind') != 'Root':
         base = re.sub(r'<[^<>]*>', '', printed).split('(')[0]
