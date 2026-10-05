@@ -26,22 +26,17 @@ public struct FileDocumentReadConfiguration<Document> {
     /// The bytes themselves.
     public var file: Data
     public var fileURL: URL?
-    /// The document is opened for reading, which is what a group asked for.
-    public var isUIPresentable: Bool
 
-    public init(contentType: String, file: Data, fileURL: URL? = nil, isUIPresentable: Bool = true) {
+    public init(contentType: String, file: Data, fileURL: URL? = nil) {
         self.contentType = contentType
         self.file = file
         self.fileURL = fileURL
-        self.isUIPresentable = isUIPresentable
     }
 }
 
 public struct FileDocumentWriteConfiguration<Document> {
     public var contentType: String
     public var originalURL: URL?
-    /// The bytes the document wants written, and the `UIDocument` of iOS 6 writes them itself.
-    public func prepareForWriting(_ wrapper: FileWrapper) -> Data { wrapper.regularFileContents ?? Data() }
 
     public init(contentType: String, originalURL: URL? = nil) {
         self.contentType = contentType
@@ -80,32 +75,6 @@ public struct FileDocumentConfiguration<Document> where Document: FileDocument {
     }
 }
 
-/// The read side of the same, for a `ReferenceFileDocument`.
-public struct ReferenceFileDocumentReadConfiguration<Document> where Document: ReferenceFileDocument {
-    public var contentType: String
-    public var file: Data
-    public var fileURL: URL?
-
-    public init(contentType: String, file: Data, fileURL: URL? = nil) {
-        self.contentType = contentType
-        self.file = file
-        self.fileURL = fileURL
-    }
-}
-
-/// The write side of the same.
-public struct ReferenceFileDocumentWriteConfiguration<Document> where Document: ReferenceFileDocument {
-    public var contentType: String
-    public var originalURL: URL?
-    public var shouldOverwrite: Bool
-
-    public init(contentType: String, originalURL: URL? = nil, shouldOverwrite: Bool = false) {
-        self.contentType = contentType
-        self.originalURL = originalURL
-        self.shouldOverwrite = shouldOverwrite
-    }
-}
-
 // MARK: - a document the release owns
 
 /// A document an app does not read itself: the release's `UIDocument`, which opens and saves the file and
@@ -121,12 +90,12 @@ public protocol ReferenceFileDocument: ObservableObject {
     /// Called before the release writes the file, which is where a document re-reads it.
     func snapshot(forWriting: Bool) throws -> Data
 
-    init(configuration: ReferenceFileDocumentReadConfiguration<Self>) throws
+    init(configuration: FileDocumentReadConfiguration<Self>) throws
 }
 
 extension ReferenceFileDocument {
     public init(contentsOf url: URL) throws {
-        try self.init(configuration: ReferenceFileDocumentReadConfiguration<Self>(
+        try self.init(configuration: FileDocumentReadConfiguration<Self>(
             contentType: Self.readableContentTypes.first ?? "public.data",
             file: try Data(contentsOf: url), fileURL: url))
     }
