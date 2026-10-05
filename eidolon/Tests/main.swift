@@ -3337,10 +3337,10 @@ struct PresentedCase: View {
             .sheet(isPresented: $shown) { Color.blue.presentationBackground(Color(red: 0.2, green: 0.4, blue: 0.6)) }
     }
 }
-let presented = _Probe(PresentedCase(), width: 60, height: 60)
+let presentedScreen = _Probe(PresentedCase(), width: 60, height: 60)
 let apiBackground = UIColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1)
-check(presented.presentedBackground?.isEqual(apiBackground) ?? false, "a presented screen is painted in the background its content asked for",
-      String(describing: presented.presentedBackground))
+check(presentedScreen.presentedBackground?.isEqual(apiBackground) ?? false, "a presented screen is painted in the background its content asked for",
+      String(describing: presentedScreen.presentedBackground))
 check(_Probe(PresentedCase(), width: 60, height: 60).presentedBackground != nil, "and the sheet is what is on screen")
 struct PlainPresentedCase: View {
     @State var shown = true
