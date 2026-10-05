@@ -6,17 +6,17 @@ import CoreGraphics
 /// One step of a keyframed animation: where the value is at the end of it, how long it takes to get
 /// there, and how it travels.
 public struct _ResolvedKeyframe<Value> {
-    public var to: Value
+    var to: Value
     public var duration: Double
-    public var timing: Timing
+    var timing: Timing
 
-    public enum Timing {
+    enum Timing {
         case linear
         case curve(UnitCurve)
         case spring(Spring)
     }
 
-    public init(to: Value, duration: Double, timing: Timing) {
+    init(to: Value, duration: Double, timing: Timing) {
         self.to = to
         self.duration = duration
         self.timing = timing
@@ -26,11 +26,11 @@ public struct _ResolvedKeyframe<Value> {
 /// A whole keyframe track, resolved: the steps, where the animation starts and how fast.
 public struct _ResolvedKeyframes<Value> {
     // Apple's _ResolvedKeyframes is an empty struct: the track the port resolves into it is its own
-    // reading, and the test that measures a track reads it, so the four names it answers stay public
-    // and are the port's own — named in the ledger.
-    public var keyframes: [_ResolvedKeyframe<Value>]
-    public var initialValue: Value
-    public var initialVelocity: Value?
+    // reading, and the test that measures a track reads it, so the names it answers are SPI of the
+    // tests' group, not public API.
+    @_spi(Probe) public var keyframes: [_ResolvedKeyframe<Value>]
+    @_spi(Probe) public var initialValue: Value
+    @_spi(Probe) public var initialVelocity: Value?
 
     public init(keyframes: [_ResolvedKeyframe<Value>] = [], initialValue: Value, initialVelocity: Value? = nil) {
         self.keyframes = keyframes
@@ -42,7 +42,7 @@ public struct _ResolvedKeyframes<Value> {
     public var duration: Double { keyframes.reduce(0) { $0 + $1.duration } }
 
     /// Where the track is at a moment, as a share of the way it has to travel.
-    public func progress(at time: Double) -> Double {
+    @_spi(Probe) public func progress(at time: Double) -> Double {
         guard duration > 0 else { return 1 }
         var passed = 0.0
         for (index, keyframe) in keyframes.enumerated() {
@@ -72,14 +72,14 @@ public struct _ResolvedKeyframes<Value> {
 
 /// One keyframe's own data, resolved: how far the value has to go and how long it takes.
 public struct _ResolvedKeyframeTrackContent<Value> {
-    // as on _ResolvedKeyframes: the port's own reading of one keyframe, named in the ledger
-    public var to: Value
+    // as on _ResolvedKeyframes: the port's own reading of one keyframe, which only the module reads
+    var to: Value
     public var duration: Double
-    public var timing: _ResolvedKeyframe<Value>.Timing
-    public var startVelocity: Value?
-    public var endVelocity: Value?
+    var timing: _ResolvedKeyframe<Value>.Timing
+    var startVelocity: Value?
+    var endVelocity: Value?
 
-    public init(to: Value, duration: Double, timing: _ResolvedKeyframe<Value>.Timing = .linear,
+    init(to: Value, duration: Double, timing: _ResolvedKeyframe<Value>.Timing = .linear,
                 startVelocity: Value? = nil, endVelocity: Value? = nil) {
         self.to = to
         self.duration = duration
