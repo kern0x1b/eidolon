@@ -2,7 +2,7 @@ import UIKit
 import CoreGraphics
 
 public struct Animation: Equatable, Hashable {
-    public enum Curve: Equatable, Hashable { case linear, easeIn, easeOut, easeInOut, spring }
+    enum Curve: Equatable, Hashable { case linear, easeIn, easeOut, easeInOut, spring }
     var curve: Curve
     var duration: Double
     var delay: Double
