@@ -75,10 +75,12 @@ def walk(node, path, public):
     if not isinstance(node, dict):
         return
     printed = node.get('printedName')
-    if node.get('kind') in ('Import', 'Accessor', 'TypeNominal', 'AssociatedType'):
+    # A TypeNameAlias is a use of a typealias inside a signature (`Swift.Void`, `Self.Configuration`), printed
+    # qualified, with no declaration kind and no usr: the declaration it names is judged where it is declared.
+    if node.get('kind') in ('Import', 'Accessor', 'TypeNominal', 'TypeNameAlias', 'AssociatedType'):
         return
     is_public = access_level(node) == 'public'
-    if printed:
+    if printed and node.get('kind') != 'Root':
         base = re.sub(r'<[^<>]*>', '', printed).split('(')[0]
         if (public or is_public) and base and not base.startswith('_') and len(base) > 1:
             ours.append((path[-1] if path else '', base, node.get('declKind') or ''))
