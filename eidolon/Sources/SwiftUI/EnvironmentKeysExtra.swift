@@ -13,7 +13,7 @@ struct _accessibilityReduceTransparencyKey: EnvironmentKey { static var defaultV
 struct _accessibilityShowButtonShapesKey: EnvironmentKey { static var defaultValue: Bool { false } }
 struct _buttonBorderShapeKey: EnvironmentKey { static var defaultValue: ButtonBorderShape { .automatic } }
 struct _colorSchemeContrastKey: EnvironmentKey { static var defaultValue: ColorSchemeContrast { .standard } }
-struct _deviceVariantKey: EnvironmentKey { static var defaultValue: _DeviceVariant { .unknown } }
+struct _deviceVariantKey: EnvironmentKey { static var defaultValue: _DeviceVariant { .regular } }
 struct _emittableNavigationIndicatorVisibilityABIKey: EnvironmentKey { static var defaultValue: Visibility { .hidden } }
 struct _focusSystemKey: EnvironmentKey { static var defaultValue: _FocusSystem { _FocusSystem() } }
 struct _navigationIndicatorVisibilityABIKey: EnvironmentKey { static var defaultValue: Visibility { .hidden } }

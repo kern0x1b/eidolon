@@ -100,8 +100,9 @@ public struct RemoteDeviceIdentifier: Hashable {
 
 // The three value types left: what device the app is being driven on, the focus system's own state, and
 // the reset-focus action. iOS 6 has one device and the focus system the engine keeps, so each is the empty
-// one until something fills it.
-public enum _DeviceVariant { case unknown, phone, pad }
+// one until something fills it. Apple's `_DeviceVariant` names the sizes of a watch (compact, regular and two
+// heights), and a device that is not a watch is `regular`.
+public enum _DeviceVariant: Equatable { case compact, regular, h394, h448 }
 
 public struct _FocusSystem {
     var onResetToDefault: (() -> Void)?
