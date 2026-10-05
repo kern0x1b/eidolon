@@ -53,7 +53,7 @@ struct DialogModifier: NodeModifier {
 }
 
 // What a dialog looks like once it is shown, for a test that has no window to show it in.
-public struct _DialogDescription: Equatable {
+@_spi(Probe) public struct _DialogDescription: Equatable {
     public var title: String
     public var message: String?
     public var buttons: [String]
