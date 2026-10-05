@@ -1,4 +1,4 @@
-import SwiftUI
+@_spi(Probe) import SwiftUI
 import UIKit
 
 final class PerfModel: ObservableObject {

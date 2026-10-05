@@ -15,7 +15,8 @@ named `SwiftUI` because every symbol an app takes from SwiftUI is mangled with t
   `Gestures.swift`, `AnimatableEngine.swift`, `Dialogs.swift`, `Hosting.swift`, and one file per area.
 - `eidolon/Tests/main.swift` — the engine tests (one flat file; identifiers are global, so prefix new ones).
 - `eidolon/Probe/`, `eidolon/Sources/SwiftUI/Probe.swift` — the headless probe: `_Probe` hosts a view without a
-  window, dumps its tree, drives gestures, dialogs and animations for tests.
+  window, dumps its tree, drives gestures, dialogs and animations for tests. `_Probe`, `_DialogDescription` and
+  `_Unsupported` are `@_spi(Probe)`, not public API: a client of them says `@_spi(Probe) import SwiftUI`.
 - `eidolon/Demo/` — the demo app and its snapshot scenarios; `eidolon/Snapshots/reference/` — the tree references.
 - `eidolon/README.md` + `eidolon/coverage.py` — the ledger and its checker.
 - `eidolon/xmake.lua`, `eidolon/control`, `eidolon/Info.plist` — the Charon port: the same demo sources built as two

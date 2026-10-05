@@ -2,7 +2,7 @@ import UIKit
 import CoreGraphics
 import CoreImage
 
-public final class _Probe {
+@_spi(Probe) public final class _Probe {
     let host: _HostingViewController
     public init(_ view: any View, width: CGFloat, height: CGFloat) {
         host = _HostingViewController(rootView: view)

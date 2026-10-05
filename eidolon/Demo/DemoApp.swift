@@ -1,4 +1,4 @@
-import SwiftUI
+@_spi(Probe) import SwiftUI
 import UIKit
 
 func logProbe(_ line: String) { probe(line) }
