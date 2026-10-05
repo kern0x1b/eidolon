@@ -46,7 +46,8 @@ apple = set()
 for line in open(SURFACE, errors='replace'):
     parts = line.rstrip('\n').split('\t')
     if len(parts) >= 2 and parts[1]:
-        apple.add(parts[1].split('.')[-1].split('(')[0])
+        # the interface writes a member named for a keyword in backticks (`default`, `repeat`); the dump does not
+        apple.add(parts[1].split('.')[-1].split('(')[0].strip('`'))
 print(f'# Apple surface from {SURFACE} ({len(apple)} names)', file=sys.stderr)
 apple |= {'==', 'hash', 'self', 'Type', 'init', 'some', 'get', 'set'}
 

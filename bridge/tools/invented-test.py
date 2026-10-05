@@ -66,6 +66,13 @@ def main():
                      surface, []))
     good.append(case('the module root is not a declaration of the module',
                      dump(), surface, []))
+    # the surface is read from the source text, where a member named for a keyword is written in backticks;
+    # the dump writes the same member without them
+    keyword = 'Widget\t`default`\t\tvar.let\nWidget\t`repeat`\t\tvar.var\n'
+    good.append(case('a member named for a keyword matches the one the surface writes in backticks',
+                     dump(decl('Var', 'default', 'Var'), decl('Var', 'repeat', 'Var')), surface + keyword, []))
+    good.append(case('control: a keyword-named member the surface lacks is still reported',
+                     dump(decl('Var', 'default', 'Var')), surface, ['default'], control=True))
     print(f'\n{sum(good)}/{len(good)} cases')
     sys.exit(0 if all(good) else 1)
 
