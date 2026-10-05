@@ -169,7 +169,7 @@ public struct DocumentGroup<Document, Content>: Scene where Document: FileDocume
     }
 
     /// The group with no file behind it: the editor of a new document.
-    public func newDocumentView() -> Content? {
+    func newDocumentView() -> Content? {
         guard let newDocument else { return nil }
         return viewer(FileDocumentConfiguration(document: Binding(get: { newDocument() },
                                                                  set: { _ in }),

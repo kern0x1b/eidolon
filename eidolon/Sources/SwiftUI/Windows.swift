@@ -42,18 +42,6 @@ public struct Window<Content>: Scene where Content: View {
     }
 }
 
-extension EnvironmentValues {
-    /// The scene's own id, which is what a window is known by.
-    public var windowID: String? {
-        get { self[WindowIDKey.self] }
-        set { self[WindowIDKey.self] = newValue }
-    }
-}
-
-struct WindowIDKey: EnvironmentKey {
-    static var defaultValue: String? { nil }
-}
-
 // MARK: - the action that opens one
 
 /// Opens a window by its id, with a value. Apple declares it for iOS 16 and up and not at all for tvOS or

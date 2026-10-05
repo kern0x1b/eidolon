@@ -184,7 +184,6 @@ public struct GaugeStyleConfiguration {
     public var currentValueLabel: CurrentValueLabel?
     public var minimumValueLabel: MinimumValueLabel?
     public var maximumValueLabel: MaximumValueLabel?
-    public var markedValueLabels: [MarkedValueLabel] = []
 }
 
 public struct DefaultGaugeStyle: GaugeStyle {

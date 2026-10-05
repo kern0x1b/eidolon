@@ -29,9 +29,8 @@ public protocol NavigationSplitViewStyle {
 
 public struct NavigationSplitViewStyleConfiguration {
     public var isExpanded: Bool
-    public var preferredCompactColumn: Binding<NavigationSplitViewVisibility>?
     public var horizontalSizeClass: Int
-    public init() { isExpanded = true; preferredCompactColumn = nil; horizontalSizeClass = 0 }
+    public init() { isExpanded = true; horizontalSizeClass = 0 }
 }
 
 extension NavigationSplitViewStyle {

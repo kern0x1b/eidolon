@@ -32,7 +32,7 @@ extension Font {
         }
     }
 
-    public func design(_ design: Design) -> Font {
+    func design(_ design: Design) -> Font {
         let bold = uiFont.fontName.contains("Bold")
         return Font.system(size: uiFont.pointSize, weight: bold ? .bold : .regular, design: design)
     }

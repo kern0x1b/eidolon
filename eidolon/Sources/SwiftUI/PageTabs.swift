@@ -2,7 +2,6 @@ import UIKit
 
 public protocol TabViewStyle {}
 public struct DefaultTabViewStyle: TabViewStyle { public init() {} }
-public typealias DefaultTabViewStyleMarker = DefaultTabViewStyle
 
 public struct PageTabViewStyle: TabViewStyle {
     /// Apple's is a struct with three constants, not an enum, so `.page(indexDisplayMode: .never)` reads
@@ -352,7 +351,6 @@ public struct TabRole: Hashable {
     let name: String
     public static var search: TabRole { TabRole(name: "search") }
     public static var `default`: TabRole { TabRole(name: "default") }
-    public static var more: TabRole { TabRole(name: "more") }
 }
 
 /// A tab, with the value that names it written in the tab itself. A tab bar on iOS 6 shows a bar and has

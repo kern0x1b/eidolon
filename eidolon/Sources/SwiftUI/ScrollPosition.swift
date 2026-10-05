@@ -49,8 +49,6 @@ public struct ScrollTargetBehaviorPropertiesContext {
     public init() {}
 }
 
-public protocol ScrollTargetLayout {}
-
 public protocol ScrollTargetBehavior {
     typealias TargetContext = ScrollTargetBehaviorContext
     typealias Properties = ScrollTargetBehaviorProperties
