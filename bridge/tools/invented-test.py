@@ -18,8 +18,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 GATE = os.path.join(HERE, '..', 'api-invented.py')
 
 
-def decl(kind, name, decl_kind, children=(), spi=False):
+def decl(kind, name, decl_kind, children=(), spi=False, overriding=False):
     node = {'kind': kind, 'name': name, 'printedName': name, 'declKind': decl_kind, 'children': list(children)}
+    if overriding:
+        # what it writes for `override func`: the name is the overridden declaration's, in a class this module may not own
+        node.update(overriding=True, declAttributes=['Override'])
     if spi:
         # what the digester writes for `@_spi(Probe) public`
         node.update(declAttributes=['SPIAccessControl'], spi_group_names=['Probe'])
@@ -83,6 +86,12 @@ def main():
     good.append(case('nor is a member of an @_spi type, whatever it says of itself',
                      dump(extra=[decl('TypeDecl', 'Hidden', 'Struct', [decl('Var', 'inside', 'Var')], spi=True)]),
                      surface, []))
+    # an override introduces no name: the declaration it overrides does, wherever that is (UIKit's are Objective-C and
+    # in no .swiftinterface)
+    good.append(case('an override is not an invented name',
+                     dump(decl('Function', 'viewDidLoad()', 'Func', overriding=True)), surface, []))
+    good.append(case('control: the same name declared, not overridden, is reported',
+                     dump(decl('Function', 'viewDidLoad()', 'Func')), surface, ['viewDidLoad'], control=True))
     print(f'\n{sum(good)}/{len(good)} cases')
     sys.exit(0 if all(good) else 1)
 

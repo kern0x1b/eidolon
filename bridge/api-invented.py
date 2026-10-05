@@ -84,6 +84,10 @@ def walk(node, path, public):
     # is not part of the API an app is written against, and neither is anything inside it.
     if 'SPIAccessControl' in (node.get('declAttributes') or []):
         return
+    # An override is the name of the declaration it overrides, which is judged where that one is declared (a method of
+    # UIKit is Objective-C and is in no .swiftinterface, so judging the override would call UIKit's own name invented).
+    if node.get('overriding'):
+        return
     is_public = access_level(node) == 'public'
     if printed and node.get('kind') != 'Root':
         base = re.sub(r'<[^<>]*>', '', printed).split('(')[0]
