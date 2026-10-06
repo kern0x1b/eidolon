@@ -405,6 +405,9 @@ enum Updates {
     /// The same closures once a change in that body has scheduled a flush: the body is over by the time the flush runs,
     /// and the transaction with it, so they are taken at the change.
     static var completionsForFlush: [(criteria: AnimationCompletionCriteria, run: () -> Void)] = []
+    /// The closures of a transaction whose body changed nothing that renders: no flush was scheduled for them, so they
+    /// wait for the next turn, as Apple's do, and run when it comes whether or not anything animates.
+    static var completionsWithoutChange: [(criteria: AnimationCompletionCriteria, run: () -> Void)] = []
     static var hosts: [WeakHost] = []
     static var flushCount = 0
 
@@ -418,11 +421,23 @@ enum Updates {
         DispatchQueue.main.async { flush() }
     }
 
+    /// Hands over what a transaction's body left behind: closures that no change in it took for a flush.
+    static func deferCompletions(_ left: [(criteria: AnimationCompletionCriteria, run: () -> Void)]) {
+        guard !left.isEmpty else { return }
+        completionsWithoutChange += left
+        guard !scheduled else { return }
+        scheduled = true
+        DispatchQueue.main.async { flush() }
+    }
+
     static func flush() {
         scheduled = false
         flushCount += 1
         let completions = completionsForFlush
         completionsForFlush = []
+        let unchanged = completionsWithoutChange
+        completionsWithoutChange = []
+        defer { for completion in unchanged { completion.run() } }
         let nodes = dirty.sorted { $0.depth < $1.depth }
         dirty = []
         var rendered: [CompositeNode] = []

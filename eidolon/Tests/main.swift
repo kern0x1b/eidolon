@@ -2707,6 +2707,33 @@ completionProbe.flush()
 check(completed == 0, "a transaction's completion does not run before the animation is over")
 _Probe.advanceAnimations(to: 0.6)
 check(completed > 0, "and does when it is")
+// a transaction whose body changes nothing that renders has no animation to wait for: Apple's runs its completions
+// on the next turn after the body (macOS 27, `.agent-work/runs/4-tx/`: not inside the body, and not after a 0.5 s animation
+// either, 13 ms), once, in the order they were added, and also when the body throws
+var idleOrder: [String] = []
+var idleTransaction = Transaction(animation: .linear(duration: 0.5))
+idleTransaction.addAnimationCompletion { idleOrder.append("logically") }
+idleTransaction.addAnimationCompletion(criteria: .removed) { idleOrder.append("removed") }
+withTransaction(idleTransaction) { idleOrder.append("body") }
+equal(idleOrder, ["body"], "a transaction that changes nothing does not run its completion inside its body")
+_flushTransactions()
+equal(idleOrder, ["body", "logically", "removed"], "it runs on the next turn, in the order they were added")
+_flushTransactions()
+equal(idleOrder.count, 3, "and once")
+struct IdleError: Error {}
+var idleThrown = 0
+var throwingTransaction = Transaction()
+throwingTransaction.addAnimationCompletion { idleThrown += 1 }
+do { try withTransaction(throwingTransaction) { throw IdleError() } } catch {}
+_flushTransactions()
+equal(idleThrown, 1, "a body that throws still has its completion run")
+var boundValue = 0
+var bindingTransaction = Transaction()
+var boundRuns = 0
+bindingTransaction.addAnimationCompletion { boundRuns += 1 }
+Binding(get: { boundValue }, set: { boundValue = $0 }).transaction(bindingTransaction).wrappedValue = 0
+_flushTransactions()
+equal(boundRuns, 1, "and so does the transaction of a binding whose write changes no view")
 
 // environment values that have something to correspond to on iOS 6, and the anchors of a preference
 /// What a view read out of the environment, recorded by the view itself: a check that asks the tree

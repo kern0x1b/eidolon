@@ -143,7 +143,11 @@ public struct Transaction {
 public func withTransaction<Result>(_ transaction: Transaction, _ body: () throws -> Result) rethrows -> Result {
     let previous = Updates.pendingCompletions
     Updates.pendingCompletions = transaction.completions
-    defer { Updates.pendingCompletions = previous }
+    defer {
+        // a change in the body took the closures for its flush; what is still here, nothing in the body asked to render
+        Updates.deferCompletions(Updates.pendingCompletions)
+        Updates.pendingCompletions = previous
+    }
     return try withAnimation(transaction.disablesAnimations ? nil : transaction.animation, body)
 }
 
