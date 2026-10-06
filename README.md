@@ -89,7 +89,10 @@ eidolon/build.sh        # module, demo app, tests and probe -> eidolon/out/Eidol
 xmake f -P eidolon -p iphoneos -a armv7 -y   # the same, as a Charon port: the app and the tests as packages
 ```
 
-The build begins with `eidolon/coverage.py --check`, which refuses to continue if the ledger and the code disagree.
+The build begins with `eidolon/coverage.py --check --before-build`, which refuses to continue if the ledger and the code
+disagree. The count of invented names is not part of that: it is read from `bridge/api/invented.txt`, which
+`bridge/api-surface.sh` makes from the module the build produces, so a fresh tree runs the build, then api-surface.sh,
+then a plain `python3 coverage.py --check`, which compares that count with the README.
 Everything is compiled with availability checking **on**, against the same Swift runtime the app carries.
 
 ## Usage

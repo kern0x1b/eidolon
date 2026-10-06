@@ -5,7 +5,8 @@ cd "$(dirname "$0")"
 ROOT=$PWD/..; O=$PWD/out
 source $ROOT/pkg-env.sh
 SWFLAGS="$PKGFLAGS $OCFLAGS -module-cache-path $O/mc -enforce-exclusivity=unchecked -suppress-warnings -O"
-python3 coverage.py --check
+# the count of invented names comes from the module built below (bridge/api-surface.sh), so it is compared afterwards by a plain --check
+python3 coverage.py --check --before-build
 rm -rf $O/obj $O/mods; mkdir -p $O/obj $O/mods
 $SWIFTC $SWFLAGS -parse-as-library -wmo -module-name SwiftUI -emit-module -emit-module-path $O/mods/SwiftUI.swiftmodule \
   -c Sources/SwiftUI/*.swift -o $O/obj/SwiftUI.o

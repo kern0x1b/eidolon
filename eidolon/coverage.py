@@ -194,7 +194,11 @@ def main():
                 problems.append(f'игнорируемый API {name} не описан в README')
         said = invented_stated(readme)
         actual = invented_count()
-        if actual is None:
+        if '--before-build' in sys.argv:
+            # build.sh runs this first, and the file below is made from the module build.sh builds: on a fresh tree no
+            # build can start if it must already be there. The full --check (without the flag) compares it afterwards.
+            pass
+        elif actual is None:
             # the oracle is generated, not tracked, so a fresh tree has none: a check that skipped a missing oracle would
             # pass any number at all, so the absence is the failure and it names what writes the file
             problems.append(f'{INVENTED_PATH_NAME} нет, и без него счёт выдуманных имён не проверить: его пишет '
