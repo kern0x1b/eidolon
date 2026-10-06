@@ -314,4 +314,69 @@ for (name, held, apple) in [("mass 1 stiffness 100 damping 10", InterpolatingSpr
 }
 print("asked Apple", retimedAsked, "times of springs that were sped up, slowed down and delayed")
 
+// Spring.settlingDuration, in every form: Apple's settles a spring that oscillates when the envelope of its swing is under epsilon
+// (the logarithm of the distance plus what the speed adds to the decay, over epsilon, over the decay, and no less than nothing), and
+// one that does not a tenth of a second (added up) after the last tenth at which it is epsilon or more away
+var settlings = 0
+func settle(_ what: String, _ mine: Double, _ apple: Double) {
+    settlings += 1
+    if mine == apple || (mine.isNaN && apple.isNaN) { return }
+    if abs(mine - apple) > 1e-9 { print("DIFF settling", what, "mine", mine, "apple", apple) }
+}
+var sweptSprings: [(String, Mine, Apple)] = []
+for (d, b) in [(0.5, 0.0), (0.5, 0.3), (1, -0.2), (0.3, 0.9), (2, -0.7), (0.15, 0.15), (0.5, 0.15), (0.25, 0.6), (0.4, 0.99), (0.4, -0.01), (3, 0.05)] {
+    sweptSprings.append(("duration \(d) bounce \(b)", Mine(duration: d, bounce: b), Apple(duration: d, bounce: b)))
+}
+for (r, z) in [(0.5, 0.7), (0.3, 0.9999), (0.3, 1.0001), (1.0, 0.1), (0.1, 0.5), (2.0, 1.01), (0.5, 0.0), (0.5, 3)] {
+    sweptSprings.append(("response \(r) ratio \(z)", Mine(response: r, dampingRatio: z), Apple(response: r, dampingRatio: z)))
+}
+for (m, k, c) in [(2.0, 100.0, 5.0), (1.0, 100.0, 40.0), (0.5, 20.0, 3.0), (1.0, 100.0, 20.0)] {
+    sweptSprings.append(("mass \(m) stiffness \(k) damping \(c)", Mine(mass: m, stiffness: k, damping: c, allowOverDamping: true), Apple(mass: m, stiffness: k, damping: c, allowOverDamping: true)))
+}
+for (name, m, a) in sweptSprings {
+    settle("\(name) property", m.settlingDuration, a.settlingDuration)
+    for eps in [0.1, 0.01, 0.001, 1e-5] {
+        for target in [0.2, 1.0, 5.0, 100.0, -2.0] {
+            for v0 in [0.0, 2.0, -3.0, 20.0, -50.0, 500.0] {
+                settle("\(name) eps \(eps) target \(target) v0 \(v0)", m.settlingDuration(target: target, initialVelocity: v0, epsilon: eps), a.settlingDuration(target: target, initialVelocity: v0, epsilon: eps))
+            }
+        }
+        for (tp, vp) in [(AnimatablePair(3.0, 4.0), AnimatablePair(1.0, -2.0)), (AnimatablePair(3.0, 4.0), AnimatablePair(0.0, 0.0)), (AnimatablePair(-0.3, 0.4), AnimatablePair(50.0, 20.0)), (AnimatablePair(0.0, 0.0), AnimatablePair(5.0, 1.0))] {
+            settle("\(name) pair \(tp) \(vp) eps \(eps)", m.settlingDuration(target: tp, initialVelocity: vp, epsilon: eps), a.settlingDuration(target: tp, initialVelocity: vp, epsilon: eps))
+        }
+        for (from, to, iv) in [(CGPoint(x: 0.5, y: 1), CGPoint(x: 4, y: -2), CGPoint(x: 1, y: 2)), (CGPoint(x: 0, y: 0), CGPoint(x: 100, y: 50), CGPoint(x: -300, y: 0)), (CGPoint(x: 1, y: 1), CGPoint(x: 1, y: 1), CGPoint(x: 4, y: 3))] {
+            settle("\(name) point \(from) \(to) \(iv) eps \(eps)", m.settlingDuration(fromValue: from, toValue: to, initialVelocity: iv, epsilon: eps), a.settlingDuration(fromValue: from, toValue: to, initialVelocity: iv, epsilon: eps))
+        }
+    }
+}
+// the springs no one means, and the numbers that are not
+for z in [0.0, -0.2, 1.0, 2.0, 0.5, Double.nan] {
+    let m = Mine(response: 0.5, dampingRatio: z), a = Apple(response: 0.5, dampingRatio: z)
+    for (target, v0, eps) in [(1.0, 0.0, 0.001), (1e-4, 0.0, 0.001), (0.0, 0.0, 0.001), (0.0, 5.0, 0.001), (1.0, 0.0, 0.0), (1.0, 0.0, -1.0), (1.0, 0.0, 1e-300), (1.0, 0.0, Double.nan), (Double.nan, 0.0, 0.001), (1.0, Double.nan, 0.001)] {
+        settle("response 0.5 ratio \(z) target \(target) v0 \(v0) eps \(eps)", m.settlingDuration(target: target, initialVelocity: v0, epsilon: eps), a.settlingDuration(target: target, initialVelocity: v0, epsilon: eps))
+    }
+}
+for r in [0.0, -1.0, Double.nan, 1e-9, 1e5] {
+    settle("response \(r)", Mine(response: r, dampingRatio: 0.5).settlingDuration, Apple(response: r, dampingRatio: 0.5).settlingDuration)
+    settle("response \(r) with a speed", Mine(response: r, dampingRatio: 0.5).settlingDuration(target: 1.0, initialVelocity: 3, epsilon: 0.001), Apple(response: r, dampingRatio: 0.5).settlingDuration(target: 1.0, initialVelocity: 3, epsilon: 0.001))
+}
+// the response a settling duration asks for (Apple solves it by an iteration of its own, so the two agree to a few hundred-thousandths, and
+// not at all for a ratio within a millionth of one below it, where its iteration is off by up to seven in a hundred)
+for z in [0.3, 0.5, 0.7, 0.9, 1.0, 1.3, 2.0] {
+    for t in [0.2, 0.5, 1.0, 2.5] {
+        for eps in [0.01, 0.001, 1e-5] {
+            let mine = Mine(settlingDuration: t, dampingRatio: z, epsilon: eps).response, apple = Apple(settlingDuration: t, dampingRatio: z, epsilon: eps).response
+            settlings += 1
+            if abs(mine - apple) > 5e-5 * apple { print("DIFF settling response for a settling of \(t) at ratio \(z) epsilon \(eps) mine", mine, "apple", apple) }
+        }
+    }
+}
+for (t, z, eps) in [(1e-9, 0.5, 0.001), (0.005, 0.5, 0.001), (0.01, 0.5, 0.001), (100.0, 0.5, 0.001), (1e4, 0.5, 0.001), (0.0, 0.5, 0.001), (-1.0, 0.5, 0.001), (Double.nan, 0.5, 0.001),
+                    (1.0, 0.0, 0.001), (1.0, -0.5, 0.001), (1.0, Double.nan, 0.001), (1.0, 1e-6, 0.001), (1.0, 0.001, 0.001), (1.0, 1.0000001, 0.001), (1.0, 3.0, 0.1), (100.0, 1.0, 0.001), (0.001, 2.0, 0.001)] {
+    let mine = Mine(settlingDuration: t, dampingRatio: z, epsilon: eps), apple = Apple(settlingDuration: t, dampingRatio: z, epsilon: eps)
+    settlings += 1
+    let (m, a) = ((mine.response, mine.dampingRatio), (apple.response, apple.dampingRatio))
+    if !((m.0.isNaN && a.0.isNaN) || abs(m.0 - a.0) <= 5e-5 * abs(a.0)) || !((m.1.isNaN && a.1.isNaN) || abs(m.1 - a.1) <= 1e-12) { print("DIFF settling response for a settling of \(t) at ratio \(z) epsilon \(eps) mine", m, "apple", a) }
+}
+print("compared", settlings, "settling durations")
 print("compared", count, "numbers; worst difference", worst)

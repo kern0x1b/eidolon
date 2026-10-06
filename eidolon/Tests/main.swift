@@ -2514,6 +2514,26 @@ closeTo(plainSpring.velocity(target: 1.0, time: 0.1), 4.494373762, "its velocity
 closeTo(plainSpring.velocity(target: 1.0, time: 0), 0, "and none at the start")
 closeTo(plainSpring.force(target: 1.0, position: 0.5, velocity: 0), 78.956835209, "the force that pulls a spring back")
 closeTo(plainSpring.settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 0.8, "and when it has settled")
+// Apple's settling of a spring that oscillates is the moment the envelope of its swing is under epsilon, by the distance and what the
+// speed adds to the decay, not the last moment it is outside the band; one that does not is settled a tenth of a second after the last
+// tenth at which it is epsilon or more from the target (`host/springcmp.swift` compares 3598 settlings and responses with Apple's;
+// these were measured on macOS 27, `.agent-work/runs/43-c4/pin.swift`)
+let swingingSpring = Spring(duration: 0.5, bounce: 0.3)
+closeTo(swingingSpring.settlingDuration, 1.0447130905, "a spring that bounces is settled when the envelope of its swing is a thousandth, not at the last crossing (0.8187 s)")
+closeTo(swingingSpring.settlingDuration(target: 1.0, initialVelocity: 3, epsilon: 0.001), 1.0031487275, "a speed toward the target settles it sooner")
+closeTo(swingingSpring.settlingDuration(target: 1.0, initialVelocity: -3, epsilon: 0.001), 1.0750829785, "and one away from it later")
+closeTo(swingingSpring.settlingDuration(target: 10.0, initialVelocity: 0, epsilon: 0.001), 1.3064758044, "ten times the distance takes a tenth of the decay longer")
+closeTo(swingingSpring.settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.01), 0.7829503766, "and ten times the epsilon that much less")
+closeTo(swingingSpring.settlingDuration(target: AnimatablePair(3.0, 4.0), initialVelocity: AnimatablePair(1.0, -2.0), epsilon: 0.001), 1.2300759152, "a vector by the length of its distance and of what its speed adds")
+closeTo(swingingSpring.settlingDuration(target: AnimatablePair(3.0, 4.0), initialVelocity: .zero, epsilon: 0.001), 1.2276773758, "and with no speed")
+closeTo(swingingSpring.settlingDuration(fromValue: CGPoint(x: 0.5, y: 1), toValue: CGPoint(x: 4, y: -2), initialVelocity: CGPoint(x: 1, y: 2), epsilon: 0.001), 1.2199389664, "a point by the way from one to the other")
+closeTo(plainSpring.settlingDuration(target: 0.2, initialVelocity: 0, epsilon: 0.001), 0.6, "a critical spring is settled by the distance it has to go, not by one")
+closeTo(plainSpring.settlingDuration(target: 0.0001, initialVelocity: 0, epsilon: 0.001), 0, "and is settled already when that is under the epsilon")
+closeTo(Spring(response: 1.0, dampingRatio: 1.5).settlingDuration(target: 1.0, initialVelocity: 20, epsilon: 0.1), 0.4, "and one that is over-damped by the last time a speed carries it out of the band")
+check(Spring(response: 0.5, dampingRatio: 0).settlingDuration.isInfinite, "a spring that is not damped never settles")
+closeTo(Spring(settlingDuration: 1.0, dampingRatio: 0.5, epsilon: 0.001).response, 0.4940815892, "the response of a spring that settles in a second is its own closed form", 1e-4)
+closeTo(Spring(settlingDuration: 1.0, dampingRatio: 1.0, epsilon: 0.001).response, 0.6804834770, "a critical one", 1e-4)
+closeTo(Spring(settlingDuration: 1.0, dampingRatio: 2.0, epsilon: 0.001).dampingRatio, 1, "and one past it is held as the critical", 1e-12)
 let bouncySpring = Spring(duration: 0.5, bounce: 0.15)
 closeTo(bouncySpring.dampingRatio, 0.85, "a bounce damps the spring by that much less")
 closeTo(bouncySpring.value(target: 1.0, time: 0.4), 1.001616993, "an under-damped spring passes the target")
@@ -2702,7 +2722,7 @@ closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, damping
 closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, dampingRatio: 0.7)), at: 1.0), 100, "and over at 1 s (0.863 s)", 1e-3)
 // `.speed` and `.delay` put an animation in time as `rate * (t - delay)`: a speed after a delay scales the delay, a delay after a speed does
 // not, two delays add, and the animation ends and is logically complete in the time that gives (`host/springcmp.swift` asks Apple's
-// for 113009 answers of 64 retimed springs; the numbers here are its answers at the middle of a step of the animation's own time)
+// for 113009 answers of 10 springs retimed in up to 23 ways; the numbers here are its answers at the middle of a step of the animation's own time)
 let retimedFluid = Animation.spring(response: 0.5, dampingFraction: 0.825)
 closeTo(interpolatingBarWidth(retimedFluid.speed(2), at: 99.5 / 600), 98.6387221, "a spring at twice the speed is where it is at twice the time", 1e-3)
 closeTo(interpolatingBarWidth(retimedFluid.speed(2), at: 157.5 / 600), 100.5769034, "and is over at half the time: still on its way", 1e-3)

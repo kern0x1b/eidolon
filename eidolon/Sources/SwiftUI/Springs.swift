@@ -75,20 +75,30 @@ public struct Spring: Hashable {
         form = .system(mass, stiffness, allowOverDamping ? damping : min(damping, critical))
     }
 
+    // The response of a spring that settles in a time, by Apple's own reckoning, which is not the property's: the time is held to
+    // between a hundredth of a second and ten, one that oscillates settles when its swing is `damping ratio / root(1 - ratio^2)`
+    // times `e^(-decay t)` under epsilon, and one that does not (a ratio of one or over, which is taken as one) when the critical
+    // spring is, `(1 + w t) e^(-w t)`; a ratio of nothing, or of a number that is not one, or too small for the epsilon, has no
+    // response (as a ratio one or over is held as one). Apple's solves it by iteration to a tolerance of its own, so its answers are within a few hundred-thousandths of these.
     public init(settlingDuration: Double, dampingRatio: Double, epsilon: Double = 0.001) {
-        // The response whose settling time is the one asked for. The slower the spring, the longer it
-        // takes to settle, so a bisection on the response finds it; where the answer of a spring that
-        // does not oscillate is quantised, the midpoint of the range that shares it will do.
-        var low = settlingDuration / 64, high = settlingDuration * 64
-        for _ in 0..<80 {
-            let middle = (low + high) / 2
-            if Spring(response: middle, dampingRatio: dampingRatio).settling(target: 1, initialVelocity: 0, epsilon: epsilon) < settlingDuration {
-                low = middle
-            } else {
-                high = middle
+        let time = settlingDuration.isNaN ? 0.01 : min(max(settlingDuration, 0.01), 10)
+        if dampingRatio >= 1 {
+            // the root of ln(1 + x) - x = ln(epsilon), by Newton's method from above it
+            var x = 1 - log(epsilon)
+            for _ in 0..<64 {
+                let next = x - (log(1 + x) - x - log(epsilon)) / (1 / (1 + x) - 1)
+                if next == x { break }
+                x = next
             }
+            self.init(response: 2 * Double.pi * time / x, dampingRatio: 1)
+            return
         }
-        self.init(response: (low + high) / 2, dampingRatio: dampingRatio)
+        let decay = log(dampingRatio / ((1 - dampingRatio * dampingRatio).squareRoot() * epsilon)) / time
+        guard dampingRatio > 0, decay > 0 else {
+            self.init(response: .nan, dampingRatio: .nan)
+            return
+        }
+        self.init(response: 2 * Double.pi * dampingRatio / decay, dampingRatio: dampingRatio)
     }
 
     public static func smooth(duration: Double = 0.5, extraBounce: Double = 0) -> Spring { Spring(duration: duration, bounce: extraBounce) }
@@ -236,54 +246,48 @@ public struct Spring: Hashable {
     // MARK: when it is over
 
     public func settlingDuration<V: VectorArithmetic>(target: V, initialVelocity: V = .zero, epsilon: Double) -> Double {
-        settling(target: magnitude(of: target), initialVelocity: share(initialVelocity, of: target), epsilon: epsilon)
+        settling(travel: target, velocity: initialVelocity, epsilon: epsilon)
     }
 
     public func settlingDuration<V: Animatable>(fromValue: V, toValue: V, initialVelocity: V, epsilon: Double) -> Double {
         let travel = toValue.animatableData - fromValue.animatableData
-        return settling(target: magnitude(of: travel), initialVelocity: share(initialVelocity.animatableData, of: travel), epsilon: epsilon)
+        return settling(travel: travel, velocity: initialVelocity.animatableData, epsilon: epsilon)
     }
 
-    public var settlingDuration: Double { settling(target: 1, initialVelocity: 0, epsilon: 0.001) }
+    public var settlingDuration: Double { settling(travel: 1.0, velocity: 0.0, epsilon: 0.001) }
 
-    // The time after which the spring stays within `epsilon` of the target: the last moment it is still
-    // outside it. A spring that does not oscillate crosses once, and Apple's own answer for that is the
-    // crossing rounded up to the next tenth of a second (measured over sweeps of the response, the
-    // epsilon, the target and the damping, .agent-work/runs/settling.txt); one that oscillates is read
-    // off its last swing.
-    private func settling(target: Double, initialVelocity: Double, epsilon: Double) -> Double {
+    // Apple's own rule, the same for every way a spring is given (`host/springcmp.swift` compares it over sweeps of the response, the
+    // ratio, the distance, the speed and the epsilon). One that oscillates is settled when the envelope of its swing, the distance
+    // plus what the speed adds to the decay of it, `(|d| + |decay d - v|) e^(-decay t)`, is under epsilon: the logarithm of that over
+    // epsilon, over the decay, and no less than nothing; one that is not damped never is. One that does not oscillate is settled a
+    // tenth of a second after the last of the tenths of a second (counted by adding them up) at which it is epsilon or more away
+    // from the target where it has got to, so that a distance too small for the number it is made of to show is none.
+    private func settling<A: VectorArithmetic>(travel: A, velocity: A, epsilon: Double) -> Double {
         let z = dampingRatio
-        guard epsilon > 0, !z.isNaN, mass > 0, stiffness > 0 else { return 0 }
-        let slowest = z < 1 ? z * frequency : frequency * (z - (z * z - 1).squareRoot())
+        guard !z.isNaN, response > 0 else { return 0 }
+        func length(_ value: A) -> Double { value.magnitudeSquared.squareRoot() }
+        if z < 1 {
+            let decay = z * frequency
+            if decay == 0 { return .infinity }
+            let time = log((length(travel) + length(travel.scaled(by: decay) - velocity)) / epsilon) / decay
+            return time.isNaN ? 0 : max(time, 0)
+        }
+        guard epsilon > 0 else { return 0 }
+        let slowest = z == 1 ? frequency : frequency * (z - (z * z - 1).squareRoot())
         guard slowest > 0 else { return .infinity }
-        let scale = max(1, target + abs(initialVelocity)) / epsilon
-        let horizon = log(scale) / slowest + 8 * response
-        let stepSize = min(response / 256, horizon / 2048)
-        var outside = 0.0
-        var t = 0.0
-        while t < horizon {
-            if abs(remaining(initialVelocity: initialVelocity, time: t)) * max(target, 1) > epsilon { outside = t }
-            t += stepSize
+        let horizon = log(max(1, length(travel) + length(velocity)) / epsilon) / slowest + 8 * response
+        var time = 0.0, settled = 0.0
+        while time < horizon && time < Spring.horizon {
+            let next = time + 0.1
+            let u = unit(time: time)
+            if length(travel - (A.zero + travel.scaled(by: 1 - u.a) + velocity.scaled(by: u.b))) >= epsilon { settled = next }
+            time = next
         }
-        guard outside > 0 else { return 0 }
-        var low = outside, high = min(outside + stepSize, horizon)
-        for _ in 0..<60 {
-            let middle = (low + high) / 2
-            if abs(remaining(initialVelocity: initialVelocity, time: middle)) * max(target, 1) > epsilon { low = middle } else { high = middle }
-        }
-        return z >= 1 ? (high * 10).rounded(.up) / 10 : high
+        return settled
     }
+    /// A spring that has not settled in a quarter of an hour is taken as one that never does.
+    private static let horizon = 900.0
 
-    // MARK: the arithmetic of a vector
-
-    private func magnitude<A: VectorArithmetic>(of value: A) -> Double { value.magnitudeSquared.squareRoot() }
-    // The part of a speed that is along the way to the target, as a share of the distance, negative when it is away.
-    private func share<A: VectorArithmetic>(_ velocity: A, of travel: A) -> Double {
-        let length = travel.magnitudeSquared
-        guard length > 0 else { return 0 }
-        let along = ((velocity + travel).magnitudeSquared - velocity.magnitudeSquared - length) / 2
-        return along / length
-    }
 }
 
 extension VectorArithmetic {
