@@ -94,6 +94,12 @@ behaviour is checked in the snapshot scenarios, which run inside the demo app. A
 tested with a virtual clock (`_Probe.useVirtualClock()`, `_Probe.advanceAnimations(to:)`); dialogs through
 `_Probe.captureDialogs`.
 
+Two more limits, measured in the emulator's guest. There is no `UIApplication`, so `UIControl.sendActions(for:)` sends
+nothing: a test performs the control's registered actions with `deliver(_:to:)`. And its Core Image draws nothing for a
+picture with an alpha channel, which every filtered view's picture has, so the colour-filter pixel checks run only where
+`_Probe.coreImageRenders()` is true; elsewhere the run prints `SKIP n checks` and ends with how many were not run.
+Those checks need a device.
+
 ## Conventions
 
 - Commit subjects are plain and imperative; an agent's commit ends with its own `Co-Authored-By:` trailer.
