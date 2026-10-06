@@ -2843,6 +2843,29 @@ do {
 equal(sharedRuns, 0, "a copy of a transaction shares its completions: letting one copy go runs nothing while another is held")
 _flushTransactions()
 equal(sharedRuns, 11, "and the closure added through the copy is the original's too")
+// a copy made before any completion was added shares nothing with the transaction a completion is added to afterwards
+// (macOS 27, `.agent-work/runs/26-copy/c.swift`, built with and without -O: probes A to E)
+var copyLog: [String] = []
+var copyKept: Transaction?
+func copiedBeforeAdding() {
+    var original = Transaction()
+    let copy = original
+    original.addAnimationCompletion { copyLog.append("added to the original") }
+    copyKept = copy
+}
+copiedBeforeAdding()
+equal(copyLog, ["added to the original"], "a completion added after a copy was made is the original's alone: the original going away runs it, the copy still held")
+copyKept = nil
+func copiedAfterAdding() {
+    var original = Transaction()
+    original.addAnimationCompletion { copyLog.append("added before the copy") }
+    copyKept = original
+}
+copiedAfterAdding()
+equal(copyLog.count, 1, "while one added before the copy is the copy's as well, which keeps it from running while that is held")
+_flushTransactions()
+equal(copyLog, ["added to the original", "added before the copy"], "and it runs at the turn")
+copyKept = nil
 struct IdleError: Error {}
 var idleThrown = 0
 var throwingTransaction = Transaction()
