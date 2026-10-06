@@ -174,7 +174,7 @@ public struct Animation: Equatable, Hashable {
             let track = FluidTrack(spring)
             return Course(length: track.end(distance: distance), legs: Double(legs), autoreverses: autoreverses, at: { track.progress(at: $0) })
         case .interpolating(let held):
-            return Course(length: held.spring.response, legs: Double(legs), autoreverses: autoreverses, at: { held.progress($0 / held.spring.response) })
+            return Course(length: held.settlingTime, legs: Double(legs), autoreverses: autoreverses, at: { held.progress(at: $0) })
         default:
             let length = max(duration, 0.001)
             return Course(length: length, legs: Double(legs), autoreverses: autoreverses, at: { progress($0 / length) })

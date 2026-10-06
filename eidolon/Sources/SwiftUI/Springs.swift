@@ -386,12 +386,45 @@ struct InterpolatingSpring: Hashable {
         self.init(mass: 1, stiffness: frequency * frequency, damping: 2 * frequency * fraction, initialVelocity: initialVelocity)
     }
 
-    var spring: Spring { Spring(mass: mass, stiffness: stiffness, damping: damping) }
-
-    /// How far it has come, as a fraction of the distance, a fraction `t` of its natural period after it began. The
-    /// speed it starts with is a multiple of the distance, so it is the fraction's own speed toward the target.
-    func progress(_ t: Double) -> Double {
-        let spring = spring
-        return 1 - spring.remaining(initialVelocity: initialVelocity, time: t * spring.response)
+    /// The damping it is solved with: no more than the critical one, which is also what a damping that is not a number comes to.
+    private var solvedDamping: Double {
+        let critical = 2 * (mass * stiffness).squareRoot()
+        return damping.isNaN ? critical : min(damping, critical)
     }
+
+    var spring: Spring { Spring(mass: mass, stiffness: stiffness, damping: solvedDamping) }
+
+    /// How far it has come, as a fraction of the distance, a number of seconds after it began. The speed it starts with is a
+    /// multiple of the distance, so it is the fraction's own speed toward the target.
+    func progress(at time: Double) -> Double {
+        1 - spring.remaining(initialVelocity: initialVelocity, time: time)
+    }
+
+    /// The moment after which Apple's answers nothing more, as Core Animation's settling duration of the same spring
+    /// (`host/springcmp.swift` asks Apple's for every one, and Core Animation for a few thousand more in `.agent-work/runs/33-end`):
+    /// it does not depend on the distance. A spring that oscillates is over when the envelope of its swing is a thousandth of the
+    /// distance, from the speed it starts with included; one that is critical or past it (clamped to critical), when the first of
+    /// the tenths of a second is reached at which the critical solution is a thousandth of it. A spring with no damping never
+    /// rests, and one with no mass, no stiffness, a negative damping or a number that is not one is over before it starts (a damping
+    /// that is not a number is the critical one).
+    var settlingTime: Double {
+        guard mass > 0, mass.isFinite, stiffness > 0, stiffness.isFinite, initialVelocity.isFinite else { return 0 }
+        let damping = solvedDamping
+        guard damping >= 0 else { return 0 }
+        guard damping > 0 else { return .infinity }
+        if damping < 2 * (mass * stiffness).squareRoot() {
+            let decay = damping / (2 * mass)
+            let damped = (stiffness / mass - decay * decay).squareRoot()
+            return log(1000 * (1 + abs(decay - initialVelocity) / damped)) / decay
+        }
+        let omega = (stiffness / mass).squareRoot()
+        var time = 0.0
+        for _ in 0..<InterpolatingSpring.horizon {
+            time += 0.1
+            if abs((1 + (omega - initialVelocity) * time) * exp(-omega * time)) < 0.001 { return time }
+        }
+        return .infinity
+    }
+    /// A critical spring that has not come to rest in an hour is taken as one that never does.
+    private static let horizon = 36000
 }

@@ -154,13 +154,39 @@ for (name, mine, apple) in interpolating {
     var context = makeContext()
     for t in [0.0, 0.01, 0.05, 0.1, 0.2, 0.4, 0.8, 1.5] {
         for distance in [1.0, 3.0, -2.0] {
-            guard let got = apple.animate(value: distance, time: t, context: &context) else { continue }
+            let got = apple.animate(value: distance, time: t, context: &context)
             solved += 1
-            note("interpolating \(name) at \(t) over \(distance)", distance * mine.progress(t / mine.spring.response), got)
+            same("interpolating \(name) answers at \(t) as long as it has not settled", got == nil, t >= mine.settlingTime)
+            if let got { note("interpolating \(name) at \(t) over \(distance)", distance * mine.progress(at: t), got) }
         }
     }
 }
 print("compared", solved, "values of interpolating springs")
+// where it is over: the last moment it answers and the first it does not, to a billionth of a second, and the answer before that
+var settled = 0
+func compareEnds(_ name: String, _ mine: InterpolatingSpring, _ apple: Animation) {
+    settled += 1
+    let end = mine.settlingTime
+    var context = makeContext()
+    if end == 0 { same("\(name) is over at once", apple.animate(value: 1, time: 0, context: &context) == nil, true); return }
+    if end.isFinite {
+        let before = apple.animate(value: 1, time: end - 1e-9 * max(1, end), context: &context)
+        same("\(name) answers just before it settles, at \(end)", before != nil, true)
+        if let before { note("\(name) just before its end", mine.progress(at: end - 1e-9 * max(1, end)), before) }
+        same("\(name) answers nothing just after it settles, at \(end)", apple.animate(value: 1, time: end + 1e-9 * max(1, end), context: &context) == nil, true)
+    } else {
+        same("\(name) answers for ever", apple.animate(value: 1, time: 1e6, context: &context) != nil, true)
+    }
+}
+for (name, mine, apple) in interpolating { compareEnds(name, mine, apple) }
+for m in [0.3, 1.0, 2.5] { for k in [20.0, 100.0, 700.0] { for ratio in [0.01, 0.1, 0.5, 0.9, 0.999, 0.9999999, 1, 1.0000001, 1.5, 4] { for v in [0.0, 1.0, -3.0, 10.0, 50.0, 200.0, -40.0] {
+    let c = ratio * 2 * (m * k).squareRoot()
+    compareEnds("sweep mass \(m) stiffness \(k) damping \(c) v \(v)", InterpolatingSpring(mass: m, stiffness: k, damping: c, initialVelocity: v), Animation.interpolatingSpring(mass: m, stiffness: k, damping: c, initialVelocity: v))
+} } } }
+for (m, k, c) in [(1.0, 100.0, 0.0), (1.0, 100.0, 1e-6), (1.0, 100.0, -2.0), (0.0, 100.0, 10.0), (1.0, 0.0, 10.0), (-1.0, 100.0, 10.0), (1.0, -100.0, 10.0), (1.0, 100.0, Double.nan), (1.0, 100.0, Double.infinity), (Double.nan, 100.0, 10.0), (1.0, Double.nan, 10.0), (Double.infinity, 100.0, 10.0), (1.0, Double.infinity, 10.0), (1.0, 1e-4, 0.01), (1e-4, 100.0, 1e-3)] {
+    compareEnds("odd mass \(m) stiffness \(k) damping \(c)", InterpolatingSpring(mass: m, stiffness: k, damping: c), Animation.interpolatingSpring(mass: m, stiffness: k, damping: c))
+}
+print("compared", settled, "ends of interpolating springs")
 
 // the blend of a spring moves nothing in time: Apple's answers for a spring are the same whatever blend it was given
 // (and its end and logical completion with them)
