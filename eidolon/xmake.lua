@@ -10,7 +10,7 @@ set_version("0.1")
 -- reads that tree's. Nothing outside a band should set it, and a build that set it and then failed
 -- must not be left running: it holds the shared package lock while it waits for the next one.
 add_repositories("charon " .. (os.getenv("CHARON_REPO") or "https://github.com/kern0x1b/charon.git"))
-add_addons("charon " .. (os.getenv("CHARON_ADDON") or "v0.8.15"))
+add_addons("charon " .. (os.getenv("CHARON_ADDON") or "v0.8.16"))
 set_config("apple_minimum", "6.0")
 includes("@addon/charon/apple-ios")
 includes("@addon/charon/emulate")

@@ -42,7 +42,7 @@ eidolon/build.sh                                    # begins with the ledger che
 
 `run-emu.sh` and `snapshots.sh` drive the Charon emulator: `xmake f -c -P eidolon` (`-c`, so the package the pin names is the one installed), then `xmake emulate install` and
 either `emulate run /usr/libexec/EidolonTests` or `emulate launch space.kern0x1b.eidolon.snapshots until-exit`. The
-addon has to be one with `xmake emulate launch` (Charon v0.8.14 or later), named by `CHARON_ADDON`; `CHARON_REPO`
+addon has to be one with `xmake emulate launch` (Charon v0.8.14 or later; `until-exit` holds until the application exits from v0.8.16), named by `CHARON_ADDON`; `CHARON_REPO`
 names a Charon checkout to take the packages from. The scenarios need a key window, so they run in the application,
 through SpringBoard; the engine tests are a console binary and go through `run`.
 
