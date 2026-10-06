@@ -188,6 +188,23 @@ for (m, k, c) in [(1.0, 100.0, 0.0), (1.0, 100.0, 1e-6), (1.0, 100.0, -2.0), (0.
 }
 print("compared", settled, "ends of interpolating springs")
 
+// an interpolating spring on a vector (a pair, as a CGPoint or a CGSize is animated): the speed it starts with is a multiple of the distance of
+// every component, so each component goes as the scalar one does, and the pair is over when the scalar is, whatever its length
+var pairsAsked = 0
+for (name, mine, apple) in interpolating where name.contains("v 1.5") || name.contains("v -2") {
+    for (x, y) in [(3.0, 4.0), (-0.3, 0.4), (60.0, -80.0), (0.0, 7.0)] {
+        var context = makeContext(AnimatablePair<Double, Double>.self)
+        let end = mine.settlingTime
+        for t in [0.0, 0.03, 0.1, 0.25, 0.6, 1.2, 2.0, 5.0] {
+            let got = apple.animate(value: AnimatablePair(x, y), time: t, context: &context)
+            pairsAsked += 1
+            same("pair \(name) \(x) \(y) at \(t) over when the scalar is", got == nil, t >= end)
+            if let got { note("pair.first", mine.progress(at: t) * x, got.first); note("pair.second", mine.progress(at: t) * y, got.second) }
+        }
+    }
+}
+print("asked Apple's interpolating springs", pairsAsked, "times of a pair")
+
 // the blend of a spring moves nothing in time: Apple's answers for a spring are the same whatever blend it was given
 // (and its end and logical completion with them)
 func answersOf(_ animation: Animation, distance: Double, at times: [Double]) -> [Double?] {
@@ -257,6 +274,7 @@ for (r, z) in [(0.5, 0.825), (0.3, 0.4), (1.0, 1.0), (0.4, 1.5)] {
     }
 }
 print("asked Apple's fluid spring", vectorAsked, "times of a pair")
+
 // .speed and .delay, in every order: Apple's animation is `rate * (t - delay)` seconds into its own time, so a speed after a delay
 // scales it and a delay after a speed does not, and two delays add. The answers come step by step from one context (a fluid
 // spring integrates from the state it kept), with steps finer than a three-hundredth of a second of the animation's own time.
