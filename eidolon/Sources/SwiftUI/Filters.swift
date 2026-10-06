@@ -1,6 +1,7 @@
 import UIKit
 import CoreGraphics
 import CoreImage
+import OpenGLES
 
 // The colour filters of SwiftUI over what Core Image of iOS 6 can do. A filter here is a filter of a picture: the
 // subtree is drawn, the picture goes through the filter, and the picture is what the screen shows. CoreAnimation of this
@@ -159,8 +160,12 @@ struct ColorFilter {
     // Swift gives +[CIContext contextWithOptions:] and -[CIContext initWithOptions:] the same spelling,
     // CIContext(options:), and only one of the two is in iOS 6's Core Image — so the class method is asked whether it is
     // there and called by its own name when it is, which is the one this release has.
-    private static let context: CIContext = {
-        let made = (CIContext.self as AnyObject).perform(NSSelectorFromString("contextWithOptions:"), with: nil)
+    // Core Image draws on the GPU through an EAGLContext it makes itself. Where OpenGL ES cannot make one (the emulator
+    // has none), a context made with no options does not fail: Core Image writes through a null pointer and the process
+    // dies with signal 11. The CPU renderer is Core Image's own way to a context without a GPU, so it is asked for there.
+    static let context: CIContext = {
+        let options: NSDictionary? = EAGLContext(api: .openGLES2) == nil ? [CIContextOption.useSoftwareRenderer.rawValue: true] : nil
+        let made = (CIContext.self as AnyObject).perform(NSSelectorFromString("contextWithOptions:"), with: options)
         if let context = made?.takeUnretainedValue() as? CIContext { return context }
         return CIContext()
     }()
