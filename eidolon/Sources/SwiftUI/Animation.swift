@@ -154,6 +154,14 @@ public struct Animation: Equatable, Hashable {
         return AnimationCourse(base, retiming: retiming)
     }
 
+    /// How the animation goes for a value that is on its way somewhere else already: what the value takes of it when it is told to go to a
+    /// new place by it.
+    var pace: Pace {
+        var spring: Spring?
+        if case .spring(let held) = timing { spring = held }
+        return Pace(retiming: retiming, spring: spring, course: { course(distance: $0) })
+    }
+
     /// How far the animation of a curve has come at a fraction of its own length.
     private func progress(_ t: Double) -> Double {
         switch timing {

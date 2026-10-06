@@ -99,22 +99,18 @@ extension _LayoutView: LayoutViewLike {
     var layoutContent: any View { content }
 }
 
-final class LayoutAnimation<L: Layout> {
-    var from: L
-    var interpolate: Interpolation<L>
-    init(from: L, interpolate: Interpolation<L>) { self.from = from; self.interpolate = interpolate }
-}
-
 protocol ExplicitAlignmentProvider {
     func explicitGuide(key: String, size: CGSize) -> CGFloat?
 }
 
 final class CustomLayoutNode<L: Layout>: ContainerNode, LayoutContainer, ExplicitAlignmentProvider {
-    var layout: L?
+    var layout: L? { journey.shown }
     var cache: L.Cache?
-    var target: L?
-    var running: LayoutAnimation<L>?
-    var animator: ValueAnimator?
+    lazy var journey = Journey<L> { [unowned self] in
+        self.refreshCache()
+        self.invalidateLayout()
+        self.env.host?.view.setNeedsLayout()
+    }
 
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)
@@ -122,7 +118,7 @@ final class CustomLayoutNode<L: Layout>: ContainerNode, LayoutContainer, Explici
             content = adopt(reconcile(content, generic.layoutContent, env))
         }
         guard let new = Mirror(reflecting: view).children.first(where: { $0.label == "layout" })?.value as? L else { return }
-        retarget(new, animation: Updates.animationForFlush ?? env.animation)
+        journey.retarget(new, animation: Updates.animationForFlush ?? env.animation)
         if let axis = L.layoutProperties.stackOrientation { children.forEach { $0.stackAxis = axis } }
         refreshCache()
     }
@@ -140,44 +136,8 @@ final class CustomLayoutNode<L: Layout>: ContainerNode, LayoutContainer, Explici
         if cache == nil { cache = layout.makeCache(subviews: list) }
     }
 
-    func retarget(_ new: L, animation: Animation?) {
-        defer { target = new }
-        guard let shown = layout else { layout = new; return }
-        if let running, let last = target, interpolate(from: last, to: new) == nil {
-            if let rebuilt = interpolate(from: running.from, to: new) { running.interpolate = rebuilt } else { finish(at: new) }
-            return
-        }
-        animator?.stop()
-        animator = nil
-        running = nil
-        guard let animation, let step = interpolate(from: shown, to: new) else { layout = new; return }
-        let state = LayoutAnimation<L>(from: shown, interpolate: step)
-        running = state
-        let driver = ValueAnimator(animation: animation, distance: step.distance) { [weak self, weak state] t in
-            guard let self, let state else { return }
-            self.layout = state.interpolate(t)
-            self.refreshCache()
-            self.invalidateLayout()
-            self.env.host?.view.setNeedsLayout()
-        }
-        driver.finished = { [weak self] in
-            self?.animator = nil
-            self?.running = nil
-        }
-        animator = driver
-        driver.start()
-    }
-
-    func finish(at new: L) {
-        animator?.stop()
-        animator = nil
-        running = nil
-        layout = new
-    }
-
     override func dispose() {
-        animator?.stop()
-        animator = nil
+        journey.dispose()
         super.dispose()
     }
 

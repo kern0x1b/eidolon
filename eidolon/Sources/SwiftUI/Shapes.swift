@@ -189,7 +189,7 @@ extension _ShapeView: ShapeViewLike {
 }
 
 final class ShapeNode: LayoutNode {
-    var shape: (any Shape)?
+    var shape: (any Shape)? { journey.shown?.shape }
     var fill: UIColor?
     var stroke: UIColor?
     var lineWidth: CGFloat = 0
@@ -202,47 +202,15 @@ final class ShapeNode: LayoutNode {
     }
 
     var lastSize = CGSize.zero
-    var target: (any Shape)?
-    var running: ShapeAnimation?
-    var animator: ValueAnimator?
+    lazy var journey = Journey<AnimatedShape>(compatible: AnimatedShape.isOneKind) { [unowned self] in self.layoutContents(self.lastSize) }
 
-    // The shape on screen is `shape`; while an animation runs it is the shape between the old and the new one.
+    // The shape on screen is `shape`; while an animation runs it is the shape on the way to the last one it was given.
     func retarget(_ new: any Shape, animation: Animation?) {
-        defer { target = new }
-        guard let shown = shape else { shape = new; return }
-        if let running, let last = target, shapeInterpolator(from: last, to: new) == nil {
-            if let rebuilt = shapeInterpolator(from: running.from, to: new) { running.interpolate = rebuilt } else { finish(at: new) }
-            return
-        }
-        animator?.stop()
-        animator = nil
-        running = nil
-        guard let animation, lastSize != .zero, let step = shapeInterpolator(from: shown, to: new) else { shape = new; return }
-        let state = ShapeAnimation(from: shown, interpolate: step)
-        running = state
-        let driver = ValueAnimator(animation: animation, distance: step.distance) { [weak self, weak state] t in
-            guard let self, let state else { return }
-            self.shape = state.interpolate(t)
-            self.layoutContents(self.lastSize)
-        }
-        driver.finished = { [weak self] in
-            self?.animator = nil
-            self?.running = nil
-        }
-        animator = driver
-        driver.start()
-    }
-
-    func finish(at new: any Shape) {
-        animator?.stop()
-        animator = nil
-        running = nil
-        shape = new
+        journey.retarget(AnimatedShape(shape: new), animation: animation, animates: lastSize != .zero)
     }
 
     override func dispose() {
-        animator?.stop()
-        animator = nil
+        journey.dispose()
         super.dispose()
     }
 

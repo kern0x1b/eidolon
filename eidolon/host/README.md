@@ -38,3 +38,13 @@ is still out, and a critical interpolating spring is over at once when none of i
 program bisects the response, and the stiffness for masses of a half, one and two, at which Apple's starts to, and compares just
 under and just over (not at the ulp the bisection ends at, where the two sides round differently). The whole program takes
 about four seconds on this host, the long fluid springs included.
+
+`retargetcmp.swift` is the one that needs a window server: a value told to go somewhere else while it is on its way, Apple's against
+the port's `Passage` (`Flights.swift`). Apple's is a `Shape` in an `NSHostingView` in a window that is never shown, which records the data it
+is drawn with and the time, the first animation begun from nothing and the second (or none) a number of seconds into it. The port is asked for
+the number at the time of each record, and a record is matched if the port has it at any time within three thousandths of a second of
+it (the run loop gives the moments, and the fluid spring is a staircase of steps of a three-hundredth). The command is in its header; it
+takes about ten minutes, and `retargetcmp pins` prints the lines for `Tests/main.swift` instead (the width of a bar at moments after the
+second animation began). A fluid spring that is delayed or sped up and told to go somewhere else is the case left out: no rule fitted
+it (a curve, fresh from where the value is, fresh from where it is when the delay is over, a speed from the first, or any speed at all,
+none within a hundredth), so the port starts it from where the value is with no speed, as it did before.

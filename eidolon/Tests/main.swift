@@ -2698,6 +2698,52 @@ func interpolatingBarWidth(_ animation: Animation, at time: Double, distance: Do
     _Probe.advanceAnimations(to: time)
     return Double(shapeLayers(probe).first?.path?.boundingBoxOfPath.size.width ?? -1)
 }
+// a bar told to go somewhere else while it is on its way: the first animation begun at 0 to the whole width, the second at a moment of it to a place
+var retargetFirst = Animation.linear
+var retargetSecond: Animation? = .linear
+var retargetPlace = 3.0
+struct RetargetBarCase: View {
+    @State private var progress = 0.0
+    var body: some View {
+        let _ = register { withAnimation(retargetFirst) { progress = 1 } }
+        let _ = register { withAnimation(retargetSecond) { progress = retargetPlace } }
+        GrowingBar(progress: progress).fill(Color.red).frame(width: 100, height: 10)
+    }
+}
+/// How wide the bar of 100 is (a negative width for a value below nothing) at moments after the first animation began, when the second was
+/// begun at `moment`, read in turn: the moments go forward.
+func retargetedBarWidths(_ first: Animation, _ second: Animation?, at moment: Double, to place: Double, times: [Double], read: (Double, Double) -> Void) {
+    retargetFirst = first
+    retargetSecond = second
+    retargetPlace = place
+    _Probe.useVirtualClock()
+    let probe = _Probe(RetargetBarCase(), width: 100, height: 10)
+    _ = frames(probe)
+    let begunSecond = actions.removeLast(), begunFirst = actions.removeLast()
+    begunFirst()
+    probe.flush()
+    _Probe.advanceAnimations(to: moment)
+    begunSecond()
+    probe.flush()
+    for time in times {
+        _Probe.advanceAnimations(to: time)
+        let box = shapeLayers(probe).first?.path?.boundingBoxOfPath ?? .null
+        read(time, Double(box.minX + box.maxX))
+    }
+}
+/// Apple's widths of the bar (`host/retargetcmp.swift pins`: the last frame drawn by each moment, in a hosted view, so a millisecond or two
+/// behind it, which is a width or more where the bar moves fastest), as the engine's is at one of the moments within three thousandths of a
+/// second of each, the nearest to Apple's.
+func retargetBar(_ first: Animation, _ second: Animation?, at moment: Double, to place: Double, _ widths: [(Double, Double)], _ what: String, tolerance: Double = 0.5) {
+    for (time, width) in widths {
+        var nearest = Double.infinity
+        let around = stride(from: time - 0.003, through: time + 0.003, by: 0.0002).map { $0 }
+        retargetedBarWidths(first, second, at: moment, to: place, times: around) { _, got in
+            if abs(got - width) < abs(nearest - width) { nearest = got }
+        }
+        closeTo(nearest, width, "\(what), \(time) s in", tolerance)
+    }
+}
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 10), at: 0.1), 34.0300, "an interpolating spring of a mass, stiffness and damping moves as the spring does", 0.01)
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.1), 26.4241, "one whose damping is past the critical moves as the critical one, as Apple's does", 0.01)
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.2), 59.3994, "and keeps to it", 0.01)
@@ -2796,6 +2842,39 @@ closeTo(interpolatingBarWidth(repeatedLinear.repeatCount(3, autoreverses: true).
 let fluidTwice = Animation.spring(response: 0.5, dampingFraction: 0.825).repeatCount(2, autoreverses: false)
 closeTo(interpolatingBarWidth(fluidTwice, at: 1.07), 100, "two passes of a spring are over after twice the first, 1.06 s (Apple's answers nothing from there)", 0.01)
 check(abs(interpolatingBarWidth(fluidTwice, at: 1.04) - 100) > 0.01, "and not before it")
+// a value told to go somewhere else while it is on its way (Apple's numbers: `host/retargetcmp.swift pins`, a Shape in an NSHostingView that records
+// the data it is drawn with, the first animation begun at 0 to 1 and the second at the moment given to the place given; the numbers are the widths of the bar
+// of 100 at moments after: `host/retargetcmp.swift` compares 161 such scenarios with the port's `Passage`, which these pin through the engine).
+// An animation of a curve or an interpolating spring takes over without a break: where the first one is, plus the way left to the place by its own progress.
+// A fluid spring starts from where the value is, and with the speed it is going at if the first is a fluid spring as well, in the first's own seconds.
+// No animation leaves the first going to its end, the place moving it by how far it is from where it went. A place it is going to changes nothing.
+// The width is that of the nearest moment of those within three thousandths of a second of each, to half a width of the 100: Apple's frames are
+// drawn a millisecond or two after the moment they are for; where the first animation is delayed the numbers come out another millisecond or two
+// from the engine's (not told from that by the probe), which for the spring going at 900 widths a second is the 1.5 it is given.
+retargetBar(.linear(duration: 1), .linear(duration: 1), at: 0.3010, to: 3.0, [(0.40, 65.613), (0.60, 131.665), (0.90, 215.733), (1.30, 299.801), (2.30, 300.000)], "linear told to go to 3.0 by linear")
+retargetBar(.easeInOut(duration: 1), .easeIn(duration: 0.6), at: 0.3006, to: 0.0, [(0.40, 31.515), (0.60, 45.656), (0.90, 0.159), (1.30, 0.000), (2.30, 0.000)], "easeInOut told to go to 0.0 by easeIn")
+retargetBar(.easeOut(duration: 1.4), .interpolatingSpring(mass: 1.0, stiffness: 100.0, damping: 8.0), at: 0.3005, to: 3.0, [(0.40, 134.408), (0.60, 354.516), (0.90, 292.179), (1.30, 303.139), (2.30, 300.000)], "easeOut told to go to 3.0 by interpolating")
+retargetBar(.linear(duration: 1), .spring(response: 1.0, dampingFraction: 0.5), at: 0.3008, to: 3.0, [(0.40, 71.380), (0.60, 245.308), (0.90, 343.035), (1.30, 297.231), (2.30, 300.000)], "linear told to go to 3.0 by spring .5")
+retargetBar(.interpolatingSpring(mass: 1.0, stiffness: 100.0, damping: 8.0), .spring(response: 0.5, dampingFraction: 0.7), at: 0.3001, to: 0.0, [(0.40, 71.181), (0.60, -3.637), (0.90, -0.101), (1.30, 0.000), (2.30, 0.000)], "interpolating told to go to 0.0 by bouncy")
+retargetBar(.spring(response: 1.0, dampingFraction: 0.5), .spring(response: 1.0, dampingFraction: 0.5), at: 0.3001, to: 3.0, [(0.40, 133.229), (0.60, 275.432), (0.90, 334.056), (1.30, 296.147), (2.30, 300.000)], "spring .5 told to go to 3.0 by spring .5")
+retargetBar(.spring(response: 1.0, dampingFraction: 0.5), .spring(response: 0.3, dampingFraction: 1.0), at: 0.3007, to: 0.0, [(0.40, 34.014), (0.60, 1.512), (0.90, 0.000), (1.30, 0.000), (2.30, 0.000)], "spring .5 told to go to 0.0 by spring crit")
+retargetBar(.spring(response: 0.5, dampingFraction: 0.7), .spring(response: 0.5, dampingFraction: 1.0), at: 0.3006, to: 3.0, [(0.40, 174.542), (0.60, 277.980), (0.90, 298.918), (1.30, 300.000), (2.30, 300.000)], "bouncy told to go to 3.0 by smooth")
+retargetBar(.spring(response: 0.3, dampingFraction: 1.0), .spring(response: 0.5, dampingFraction: 0.7), at: 0.3008, to: 3.0, [(0.40, 183.915), (0.60, 306.069), (0.90, 300.155), (1.30, 300.000), (2.30, 300.000)], "spring crit told to go to 3.0 by bouncy")
+retargetBar(.spring(response: 1.0, dampingFraction: 0.5), .linear(duration: 1), at: 0.3006, to: 0.0, [(0.40, 92.343), (0.60, 81.223), (0.90, 40.935), (1.30, 0.058), (2.30, 0.000)], "spring .5 told to go to 0.0 by linear")
+retargetBar(.spring(response: 0.5, dampingFraction: 0.7), .interpolatingSpring(mass: 1.0, stiffness: 100.0, damping: 8.0), at: 0.3005, to: 3.0, [(0.40, 173.693), (0.60, 345.471), (0.90, 292.819), (1.30, 303.125), (2.30, 300.000)], "bouncy told to go to 3.0 by interpolating")
+retargetBar(.linear(duration: 1), .linear(duration: 1).delay(0.5), at: 0.3010, to: 3.0, [(0.40, 39.856), (0.60, 59.856), (0.90, 110.667), (1.30, 199.810), (2.30, 300.000)], "linear told to go to 3.0 by linear delay 0.5")
+retargetBar(.linear(duration: 1), .linear(duration: 1).speed(2.0), at: 0.3006, to: 3.0, [(0.40, 91.583), (0.60, 203.664), (0.90, 300.000), (1.30, 300.000), (2.30, 300.000)], "linear told to go to 3.0 by linear speed 2.0")
+retargetBar(.linear(duration: 1).delay(0.5), .linear(duration: 1), at: 0.3005, to: 3.0, [(0.40, 29.872), (0.60, 96.776), (0.90, 195.832), (1.30, 299.903), (2.30, 300.000)], "linear delay 0.5 told to go to 3.0 by linear")
+retargetBar(.linear(duration: 1).speed(2.0), .linear(duration: 1), at: 0.3006, to: 3.0, [(0.40, 101.621), (0.60, 159.887), (0.90, 219.887), (1.30, 299.887), (2.30, 300.000)], "linear speed 2.0 told to go to 3.0 by linear")
+retargetBar(.linear(duration: 1), .linear(duration: 1).repeatCount(2, autoreverses: true), at: 0.3009, to: 3.0, [(0.40, 65.647), (0.60, 131.693), (0.90, 215.760), (1.30, 299.831), (2.30, 100.172)], "linear told to go to 3.0 by linear repeat 2")
+retargetBar(.linear(duration: 1).repeatCount(2, autoreverses: true), .linear(duration: 1), at: 0.3010, to: 3.0, [(0.40, 65.616), (0.60, 131.667), (0.90, 215.737), (1.30, 299.774), (2.30, 300.000)], "linear repeat 2 told to go to 3.0 by linear")
+retargetBar(.spring(response: 1.0, dampingFraction: 0.5).speed(2.0), .spring(response: 1.0, dampingFraction: 0.5), at: 0.3010, to: 3.0, [(0.40, 143.160), (0.60, 261.683), (0.90, 329.385), (1.30, 298.196), (2.30, 300.000)], "spring .5 speed 2.0 told to go to 3.0 by spring .5")
+retargetBar(.spring(response: 1.0, dampingFraction: 0.5).delay(0.2), .spring(response: 1.0, dampingFraction: 0.5), at: 0.3000, to: 3.0, [(0.40, 78.360), (0.60, 262.033), (0.90, 344.337), (1.30, 295.515), (2.30, 300.000)], "spring .5 delay 0.2 told to go to 3.0 by spring .5", tolerance: 1.5)
+retargetBar(.spring(response: 1.0, dampingFraction: 0.5).speed(0.5), .spring(response: 1.0, dampingFraction: 0.5), at: 0.3011, to: 3.0, [(0.40, 95.185), (0.60, 269.072), (0.90, 341.694), (1.30, 295.359), (2.30, 300.000)], "spring .5 speed 0.5 told to go to 3.0 by spring .5")
+retargetBar(.spring(response: 1.0, dampingFraction: 0.5), nil, at: 0.3003, to: 3.0, [(0.40, 302.536), (0.60, 315.935), (0.90, 302.186), (1.30, 298.198), (2.30, 300.000)], "spring .5 told to go to 3.0 by none")
+retargetBar(.linear(duration: 1), nil, at: 0.3006, to: 3.0, [(0.40, 239.855), (0.60, 259.859), (0.90, 289.859), (1.30, 300.000), (2.30, 300.000)], "linear told to go to 3.0 by none")
+retargetBar(.interpolatingSpring(mass: 1.0, stiffness: 100.0, damping: 8.0), nil, at: 0.3002, to: 3.0, [(0.40, 322.042), (0.60, 296.473), (0.90, 299.911), (1.30, 299.713), (2.30, 300.000)], "interpolating told to go to 3.0 by none")
+retargetBar(.linear(duration: 1), .spring(response: 0.5, dampingFraction: 0.7), at: 0.3009, to: 1.0, [(0.40, 39.865), (0.60, 59.865), (0.90, 89.865)], "linear told to go to 1.0 by bouncy")
 var retimedCompletions = 0
 func logicallyCompleted(_ animation: Animation, by time: Double) -> Bool {
     _Probe.useVirtualClock()

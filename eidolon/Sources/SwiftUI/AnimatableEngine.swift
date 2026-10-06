@@ -87,14 +87,7 @@ final class ValueAnimator {
     /// Where the animation stands a number of seconds after it began: the value to apply, and
     /// whether it is over. An animation of its own curve — a keyframe track, a phase — says so itself.
     private let elapsed: (Double) -> (value: Double, done: Bool)
-
-    /// `distance` is how far apart the two ends of what it drives are: a spring is over by how far it has to go.
-    init(animation: Animation, distance: Double, apply: @escaping (Double) -> Void) {
-        self.animation = animation
-        self.apply = apply
-        let course = animation.course(distance: distance)
-        self.elapsed = { course.position(elapsed: $0) }
-    }
+    private var frame: ((CFTimeInterval) -> Bool)?
 
     init(delay: Double, total: Double, at: @escaping (CFTimeInterval) -> (value: Double, done: Bool), apply: @escaping (Double) -> Void = { _ in }) {
         self.animation = Animation(curve: .linear, duration: total, delay: delay)
@@ -102,10 +95,18 @@ final class ValueAnimator {
         self.elapsed = { at($0 - delay) }
     }
 
+    /// An animation that is run by the moments the clock gives: it is told each one, and says whether the animation is over by it.
+    init(animation: Animation, frame: @escaping (CFTimeInterval) -> Bool) {
+        self.animation = animation
+        self.apply = { _ in }
+        self.elapsed = { _ in (0, false) }
+        self.frame = frame
+    }
+
     func start() {
         started = ValueAnimator.clock()
         ValueAnimator.active.append(self)
-        apply(0)
+        if let frame { _ = frame(started) } else { apply(0) }
         ValueAnimator.updateLink()
     }
 
@@ -119,8 +120,14 @@ final class ValueAnimator {
     }
 
     func tick() {
-        let (value, done) = progress(at: ValueAnimator.clock())
-        apply(value)
+        let done: Bool
+        if let frame {
+            done = frame(ValueAnimator.clock())
+        } else {
+            let (value, over) = progress(at: ValueAnimator.clock())
+            apply(value)
+            done = over
+        }
         if done {
             stop()
             finished?()
@@ -130,47 +137,133 @@ final class ValueAnimator {
     func progress(at now: CFTimeInterval) -> (value: Double, done: Bool) { elapsed(now - started) }
 }
 
-// MARK: interpolation of animatable values
+// MARK: a value on its way
 
-/// The values between two ends, by how far along the way they are, and how far apart the ends are.
-struct Interpolation<Value> {
-    let distance: Double
-    let at: (Double) -> Value
-    func callAsFunction(_ t: Double) -> Value { at(t) }
-}
+/// What a node shows of a value that is animated, and what it does when it is given a new one: shows it, or takes the value there by
+/// the animation of the transaction, from where the value is, with what is going on still going on if it is on its way already (`Flights.swift`).
+final class Journey<Value: Animatable> {
+    typealias Data = Value.AnimatableData
 
-func interpolate<A: Animatable>(from: A, to: A) -> Interpolation<A>? {
-    let start = from.animatableData
-    let delta = to.animatableData - start
-    guard delta.magnitudeSquared > 1e-12 else { return nil }
-    return Interpolation(distance: delta.magnitudeSquared.squareRoot()) { t in
-        var step = delta
-        step.scale(by: t)
-        var value = to
-        value.animatableData = start + step
+    private(set) var shown: Value?
+    private var target: Value?
+    private var passage: Passage<Data>?
+    private var animator: ValueAnimator?
+    /// Whether the two values are of a kind that one is taken into the other: a shape of another kind is not.
+    private let compatible: (Value, Value) -> Bool
+    /// What the node does at each frame of the animation, once `shown` is the value of the frame.
+    private let frame: () -> Void
+
+    init(compatible: @escaping (Value, Value) -> Bool = { _, _ in true }, frame: @escaping () -> Void) {
+        self.compatible = compatible
+        self.frame = frame
+    }
+
+    private func valued(_ data: Data, like template: Value) -> Value {
+        var value = template
+        value.animatableData = data
         return value
     }
+
+    /// `animates` is false where a value is not to be taken anywhere yet (a shape that has not been given a size).
+    func retarget(_ new: Value, animation: Animation?, animates: Bool = true) {
+        let last = target
+        target = new
+        guard let current = shown, let last else { shown = new; return }
+        guard compatible(current, new), animates else { finish(at: new); return }
+        let now = ValueAnimator.clock()
+        let end = new.animatableData
+        if let passage {
+            let next = Passage.redirecting(passage, to: end, pace: animation?.pace, now: now)
+            if next === passage {
+                // told to go where it is going: it goes on, with whatever else of the value was changed
+                shown = valued(passage.data(at: now), like: new)
+                return
+            }
+            self.passage = next
+            if let animation { drive(animation) }
+            return
+        }
+        let start = current.animatableData
+        guard let animation, (end - start).magnitudeSquared > 1e-12 else { shown = new; return }
+        passage = Passage.redirecting(Passage(end: start), to: end, pace: animation.pace, now: now)
+        drive(animation)
+    }
+
+    /// The frames of the animation go to the passage the value is on at the moment of each, which a new place told to it changes.
+    private func drive(_ animation: Animation) {
+        animator?.stop()
+        let driver = ValueAnimator(animation: animation) { [weak self] now in
+            guard let self, let passage = self.passage, let template = self.target else { return true }
+            self.shown = self.valued(passage.data(at: now), like: template)
+            self.frame()
+            return passage.isOver(at: now)
+        }
+        driver.finished = { [weak self] in
+            self?.animator = nil
+            self?.passage = nil
+        }
+        animator = driver
+        driver.start()
+    }
+
+    func finish(at new: Value) {
+        animator?.stop()
+        animator = nil
+        passage = nil
+        shown = new
+    }
+
+    func dispose() {
+        animator?.stop()
+        animator = nil
+        passage = nil
+    }
 }
 
-// nil when the two shapes are of different kinds, or when nothing that animates differs between them.
-func shapeInterpolator(from: any Shape, to: any Shape) -> Interpolation<any Shape>? {
-    if let left = from as? AnyShape, let right = to as? AnyShape {
-        guard let inner = shapeInterpolator(from: left.base, to: right.base) else { return nil }
-        return Interpolation(distance: inner.distance) { AnyShape(inner($0)) }
-    }
-    func open<S: Shape>(_ start: S) -> Interpolation<any Shape>? {
-        guard let end = to as? S, let step = interpolate(from: start, to: end) else { return nil }
-        return Interpolation(distance: step.distance) { step($0) }
-    }
-    return open(from)
+// MARK: the values of a kind that is only known when they are opened
+
+private func vector<A: Animatable>(of value: A) -> ErasedVector {
+    if let wrapped = value as? AnyShape { return vector(of: wrapped.base) }
+    return ErasedVector(value.animatableData)
 }
 
-func effectInterpolator(from: any GeometryEffect, to: any GeometryEffect) -> Interpolation<any GeometryEffect>? {
-    func open<E: GeometryEffect>(_ start: E) -> Interpolation<any GeometryEffect>? {
-        guard let end = to as? E, let step = interpolate(from: start, to: end) else { return nil }
-        return Interpolation(distance: step.distance) { step($0) }
+private func rebuilt<A: Animatable>(_ value: A, from data: ErasedVector) -> A {
+    var copy = value
+    if let own = data.data(as: A.AnimatableData.self) { copy.animatableData = own }
+    return copy
+}
+
+private func rebuiltShape<S: Shape>(_ shape: S, from data: ErasedVector) -> any Shape {
+    if let wrapped = shape as? AnyShape { return AnyShape(rebuiltShape(wrapped.base, from: data)) }
+    return rebuilt(shape, from: data)
+}
+
+/// A shape, whatever its kind, as a value whose data is animated: the data of the kind it is.
+struct AnimatedShape: Animatable {
+    var shape: any Shape
+
+    var animatableData: ErasedVector {
+        get { vector(of: shape) }
+        set { shape = rebuiltShape(shape, from: newValue) }
     }
-    return open(from)
+
+    /// Whether one shape is taken into another: both of one kind, which for the type-erased one is the kind it holds.
+    static func isOneKind(_ a: AnimatedShape, _ b: AnimatedShape) -> Bool {
+        if let left = a.shape as? AnyShape, let right = b.shape as? AnyShape { return isOneKind(AnimatedShape(shape: left.base), AnimatedShape(shape: right.base)) }
+        return type(of: a.shape) == type(of: b.shape)
+    }
+}
+
+/// A geometry effect, whatever its kind, as a value whose data is animated.
+struct AnimatedEffect: Animatable {
+    var effect: any GeometryEffect
+
+    var animatableData: ErasedVector {
+        get { vector(of: effect) }
+        set { effect = rebuilt(effect, from: newValue) }
+    }
+
+    static func isOneKind(_ a: AnimatedEffect, _ b: AnimatedEffect) -> Bool { type(of: a.effect) == type(of: b.effect) }
 }
 
 // MARK: GeometryEffect
@@ -200,63 +293,16 @@ public struct _GeometryEffectView<Content: View, Effect: GeometryEffect>: View, 
     func makeNode(_ env: EnvironmentValues) -> Node { let n = GeometryEffectNode(); n.update(self, env); return n }
 }
 
-final class ShapeAnimation {
-    var from: any Shape
-    var interpolate: Interpolation<any Shape>
-    init(from: any Shape, interpolate: Interpolation<any Shape>) { self.from = from; self.interpolate = interpolate }
-}
-
-final class EffectAnimation {
-    var from: any GeometryEffect
-    var interpolate: Interpolation<any GeometryEffect>
-    init(from: any GeometryEffect, interpolate: Interpolation<any GeometryEffect>) { self.from = from; self.interpolate = interpolate }
-}
-
 final class GeometryEffectNode: ContainerNode {
-    var effect: (any GeometryEffect)?
-    var target: (any GeometryEffect)?
-    var running: EffectAnimation?
-    var animator: ValueAnimator?
+    var effect: (any GeometryEffect)? { journey.shown?.effect }
+    lazy var journey = Journey<AnimatedEffect>(compatible: AnimatedEffect.isOneKind) { [unowned self] in self.applyTransform() }
 
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)
         let described = view as! GeometryEffectViewLike
         content = adopt(reconcile(content, described.effectContent, env))
-        retarget(described.effectValue, animation: Updates.animationForFlush ?? env.animation)
+        journey.retarget(AnimatedEffect(effect: described.effectValue), animation: Updates.animationForFlush ?? env.animation)
         applyTransform()
-    }
-
-    func retarget(_ new: any GeometryEffect, animation: Animation?) {
-        defer { target = new }
-        guard let shown = effect else { effect = new; return }
-        if let running, let last = target, effectInterpolator(from: last, to: new) == nil {
-            if let rebuilt = effectInterpolator(from: running.from, to: new) { running.interpolate = rebuilt } else { finish(at: new) }
-            return
-        }
-        animator?.stop()
-        animator = nil
-        running = nil
-        guard let animation, let step = effectInterpolator(from: shown, to: new) else { effect = new; return }
-        let state = EffectAnimation(from: shown, interpolate: step)
-        running = state
-        let driver = ValueAnimator(animation: animation, distance: step.distance) { [weak self, weak state] t in
-            guard let self, let state else { return }
-            self.effect = state.interpolate(t)
-            self.applyTransform()
-        }
-        driver.finished = { [weak self] in
-            self?.animator = nil
-            self?.running = nil
-        }
-        animator = driver
-        driver.start()
-    }
-
-    func finish(at new: any GeometryEffect) {
-        animator?.stop()
-        animator = nil
-        running = nil
-        effect = new
     }
 
     // A geometry effect works in the view's own coordinates, with the origin in its top-left corner; a layer turns
@@ -272,8 +318,7 @@ final class GeometryEffectNode: ContainerNode {
     }
 
     override func dispose() {
-        animator?.stop()
-        animator = nil
+        journey.dispose()
         super.dispose()
     }
 
@@ -369,12 +414,6 @@ protocol AnimatedModifierMaking {
     func makeAnimatedNode(_ env: EnvironmentValues) -> Node?
 }
 
-final class ModifierAnimation<M: ViewModifier & Animatable> {
-    var from: M
-    var interpolate: Interpolation<M>
-    init(from: M, interpolate: Interpolation<M>) { self.from = from; self.interpolate = interpolate }
-}
-
 extension ModifiedContent: AnimatedModifierMaking where Modifier: Animatable {
     func makeAnimatedNode(_ env: EnvironmentValues) -> Node? {
         // A geometry effect animates itself, and a modifier without data has nothing to interpolate.
@@ -388,16 +427,18 @@ extension ModifiedContent: AnimatedModifierMaking where Modifier: Animatable {
 // Every frame of an animation evaluates the body of the modifier again with data between the old and the new.
 final class AnimatedModifierNode<C: View, M: ViewModifier & Animatable>: ContainerNode {
     var contentView: C?
-    var shown: M?
-    var target: M?
-    var running: ModifierAnimation<M>?
-    var animator: ValueAnimator?
+    var shown: M? { journey.shown }
+    lazy var journey = Journey<M> { [unowned self] in
+        self.render()
+        self.invalidateLayout()
+        (self.env.host as? _HostingViewController)?.contentChanged()
+    }
 
     override func update(_ view: any View, _ env: EnvironmentValues) {
         super.update(view, env)
         guard let modified = view as? ModifiedContent<C, M> else { return }
         contentView = modified.content
-        retarget(modified.modifier, animation: Updates.animationForFlush ?? env.animation)
+        journey.retarget(modified.modifier, animation: Updates.animationForFlush ?? env.animation)
         render()
     }
 
@@ -407,44 +448,8 @@ final class AnimatedModifierNode<C: View, M: ViewModifier & Animatable>: Contain
         content = adopt(reconcile(content, AnyView(body), env))
     }
 
-    func retarget(_ new: M, animation: Animation?) {
-        defer { target = new }
-        guard let current = shown else { shown = new; return }
-        if let running, let last = target, interpolate(from: last, to: new) == nil {
-            if let rebuilt = interpolate(from: running.from, to: new) { running.interpolate = rebuilt } else { finish(at: new) }
-            return
-        }
-        animator?.stop()
-        animator = nil
-        running = nil
-        guard let animation, let step = interpolate(from: current, to: new) else { shown = new; return }
-        let state = ModifierAnimation<M>(from: current, interpolate: step)
-        running = state
-        let driver = ValueAnimator(animation: animation, distance: step.distance) { [weak self, weak state] t in
-            guard let self, let state else { return }
-            self.shown = state.interpolate(t)
-            self.render()
-            self.invalidateLayout()
-            (self.env.host as? _HostingViewController)?.contentChanged()
-        }
-        driver.finished = { [weak self] in
-            self?.animator = nil
-            self?.running = nil
-        }
-        animator = driver
-        driver.start()
-    }
-
-    func finish(at new: M) {
-        animator?.stop()
-        animator = nil
-        running = nil
-        shown = new
-    }
-
     override func dispose() {
-        animator?.stop()
-        animator = nil
+        journey.dispose()
         super.dispose()
     }
 

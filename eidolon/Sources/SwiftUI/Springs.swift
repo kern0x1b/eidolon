@@ -423,8 +423,11 @@ struct BaseTrack {
     let at: (Double) -> Double
 
     static func fluid(_ spring: Spring, distance: Double) -> BaseTrack {
-        let track = FluidTrack(spring, distance: distance)
-        return BaseTrack(ended: { track.end(by: $0) }, at: { track.progress(at: $0) })
+        fluid(FluidTrack(spring, distance: distance))
+    }
+
+    static func fluid(_ track: FluidTrack) -> BaseTrack {
+        BaseTrack(ended: { track.end(by: $0) }, at: { track.progress(at: $0) })
     }
 
     static func interpolating(_ held: InterpolatingSpring) -> BaseTrack {
@@ -501,22 +504,36 @@ struct AnimationCourse {
 final class FluidTrack {
     static let step = 1.0 / 300
     private static let highestFrequency = 0.5.squareRoot() / step
+    /// What a spring that takes over from one that was moving is let go with: the way left to the target and the speed it is going at, as
+    /// vectors of the value, which a spring of one number does not need and one of many does, since the length of a sum of them is what the
+    /// tests of its end are made of: their lengths squared and what they hold of each other.
+    struct Release {
+        var remainderSquared: Double
+        var crossed: Double
+        var speedSquared: Double
+    }
 
     private let stiffness: Double
     private let damping: Double
     private let size: Double
+    private let release: Release?
     private var positions = [0.0]
     private var speeds = [0.0]
+    /// The way left to the target of a spring let go on it at a unit speed, and that speed, step by step: with the two above the state of
+    /// a spring let go anywhere with any speed is the sum of the two, since a step is linear in the state.
+    private var kicks = [0.0]
+    private var kickSpeeds = [1.0]
     /// The first step not yet known to be one that does not end, and the one that does, once there is one.
     private var tested = 0
     private var ended: Int?
 
-    init(_ spring: Spring, distance: Double) {
+    init(_ spring: Spring, distance: Double, release: Release? = nil) {
         let response = spring.response
         let frequency = response > 0 ? min(2 * Double.pi / response, FluidTrack.highestFrequency) : (response <= 0 ? FluidTrack.highestFrequency : .nan)
         stiffness = frequency * frequency
         damping = 2 * spring.dampingRatio * frequency
         size = abs(distance)
+        self.release = release
     }
 
     private func reach(_ index: Int) {
@@ -524,15 +541,42 @@ final class FluidTrack {
             let speed = speeds[speeds.count - 1] + FluidTrack.step * (stiffness * (1 - positions[positions.count - 1]) - damping * speeds[speeds.count - 1])
             speeds.append(speed)
             positions.append(positions[positions.count - 1] + FluidTrack.step * speed)
+            let kickSpeed = kickSpeeds[kickSpeeds.count - 1] + FluidTrack.step * (-stiffness * kicks[kicks.count - 1] - damping * kickSpeeds[kickSpeeds.count - 1])
+            kickSpeeds.append(kickSpeed)
+            kicks.append(kicks[kicks.count - 1] + FluidTrack.step * kickSpeed)
         }
+    }
+
+    /// The step a moment is in, for a moment after the start: the one the answer for it is the position of.
+    private func index(at time: Double) -> Int {
+        time > 0 ? Int((time / FluidTrack.step).rounded(.up)) - 1 : 0
     }
 
     /// The fraction of the distance covered `time` seconds in, where the animation has not ended.
     func progress(at time: Double) -> Double {
         guard time > 0 else { return 0 }
-        let index = Int((time / FluidTrack.step).rounded(.up)) - 1
+        let index = index(at: time)
         reach(index)
         return positions[index]
+    }
+
+    /// The parts of the way left to the target, and of the speed it was let go at, that a spring let go `time` seconds ago has still to go:
+    /// the vector left is the way it began from, times the first, plus the speed it began with, times the second.
+    func remainders(at time: Double) -> (way: Double, speed: Double) {
+        let index = index(at: time)
+        reach(index)
+        return (1 - positions[index], kicks[index])
+    }
+
+    /// How fast the value is going, `time` seconds in, in the animation's own seconds: the vector the way left to the target was, times the
+    /// first, plus the speed it began with, times the second. It is the speed of the step the value is shown at, which the spring that
+    /// takes over is let go with (`.agent-work/runs/58-host/h6.out`, 32 pairs of fluid springs, the second begun 0.3 s into the first: the
+    /// series Apple's shows are nearest those of a spring let go with the speed of that step, a mean difference of 0.00029 of the distance, against
+    /// 0.00035 for the speed of the step after it, 0.00052 for the second and 0.00068 for the third).
+    func rates(at time: Double) -> (way: Double, speed: Double) {
+        let index = index(at: time)
+        reach(index)
+        return (-speeds[index], kickSpeeds[index])
     }
 
     /// The seconds after which Apple's answers nothing more for the distance to cover, if that is no later than `time` seconds in.
@@ -543,13 +587,28 @@ final class FluidTrack {
             reach(n + 1)
             let left = 1 - positions[n]
             let acceleration = stiffness * left - damping * speeds[n]
-            if positions[n].isNaN || abs(left) < 0.01 && abs(acceleration) * size < 0.06 && abs(speeds[n] + speeds[n + 1]) / 2 * size < 0.06 {
+            if positions[n].isNaN || isAtRest(step: n, way: left, acceleration: acceleration) {
                 ended = n
                 return Double(n) * FluidTrack.step
             }
             tested += 1
         }
         return nil
+    }
+
+    /// The three tests of the end of a step: the distance left is under a hundredth of it, and the acceleration and the mean of the speeds
+    /// either side are under 0.06, the last two in distance units.
+    private func isAtRest(step n: Int, way left: Double, acceleration: Double) -> Bool {
+        guard let release else {
+            return abs(left) < 0.01 && abs(acceleration) * size < 0.06 && abs(speeds[n] + speeds[n + 1]) / 2 * size < 0.06
+        }
+        func length(_ way: Double, _ speed: Double) -> Double {
+            (way * way * release.remainderSquared + 2 * way * speed * release.crossed + speed * speed * release.speedSquared).squareRoot()
+        }
+        let kickAcceleration = -stiffness * kicks[n] - damping * kickSpeeds[n]
+        return length(left, kicks[n]) < 0.01 * size
+            && length(-acceleration, kickAcceleration) < 0.06
+            && length(-(speeds[n] + speeds[n + 1]) / 2, (kickSpeeds[n] + kickSpeeds[n + 1]) / 2) < 0.06
     }
 }
 
