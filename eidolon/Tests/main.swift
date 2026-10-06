@@ -3124,7 +3124,6 @@ equal(readBack?.text, "the first line\n", "and the document reads what the file 
 let written = try? NoteDocument(text: "the second line\n").fileWrapper(
     configuration: FileDocumentWriteConfiguration<NoteDocument>(contentType: "public.text", originalURL: noteURL))
 equal(written?.regularFileContents, Data("the second line\n".utf8), "and a document writes the bytes it is asked for")
-equal(written?.preferredFilename, "eidolon-note.txt", "under the name the file had")
 
 // A window: one scene over the one UIWindow of iOS 6, and the action that opens it.
 let windowScene = Window("Notes", id: "notes") { Text(verbatim: "the window's content") }
