@@ -430,6 +430,35 @@ for base in [Animation.linear(duration: 1), Animation.spring(response: 0.5, damp
 }
 print("compared", equalitySequences.count * equalitySequences.count * 2, "pairs of retimed animations for equality")
 
+// a custom animation under the calls: the time it is asked for is the one the calls make of the time it is given (the last call made first, a
+// speed multiplying it and a delay taking it off to nothing), it answers no velocity and does not merge, once any call has been made on it
+nonisolated(unsafe) var customAsked: [Double] = []
+struct Recording: CustomAnimation {
+    func animate<V: VectorArithmetic>(value: V, time: TimeInterval, context: inout AnimationContext<V>) -> V? { customAsked.append(time); return time >= 8 ? nil : value }
+    func velocity<V: VectorArithmetic>(value: V, time: TimeInterval, context: AnimationContext<V>) -> V? { value }
+    func shouldMerge<V: VectorArithmetic>(previous: Animation, value: V, time: TimeInterval, context: inout AnimationContext<V>) -> Bool { true }
+}
+var customTimes = 0
+let customGrid = [-2.0, -1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0, 1.25, 1.5, 2.0, 2.5, 4.0]
+for ops in equalitySequences + [[.speed(-1)], [.delay(1), .speed(-1)], [.speed(-1), .delay(1)], [.speed(0.5)], [.speed(3), .delay(-0.2)], [.delay(-1)], [.repeat(2, false)], [.speed(2), .repeat(3, true)], [.delay(0.5), .repeat(2, false), .speed(2)]] {
+    let apple = retime(Animation(Recording()), ops), mine = retimed(Retiming(), ops)
+    var context = makeContext()
+    for t in customGrid {
+        customAsked = []
+        _ = apple.animate(value: 1.0, time: t, context: &context)
+        customTimes += 1
+        // a repeat only means something up to the first question it is answered nothing to (the passes after it restart from the question)
+        if mine.repeated != nil && t > 1.9 { continue }
+        let got = customAsked.first ?? .nan
+        if abs(got - mine.baseTime(at: t)) > 1e-12 && !(got == 0 && mine.baseTime(at: t) == 0) { print("DIFF custom time", ops, "at", t, "apple", got, "mine", mine.baseTime(at: t)) }
+    }
+    let velocity = apple.velocity(value: 1.0, time: 0.5, context: makeContext())
+    var other = makeContext()
+    same("custom velocity under \(ops) is nothing once a call has been made", velocity == nil, mine.isRetimed)
+    same("custom animation under \(ops) merges only when no call has been made", apple.shouldMerge(previous: .linear, value: 1.0, time: 0.5, context: &other), !mine.isRetimed)
+}
+print("asked Apple", customTimes, "times of a custom animation under calls")
+
 // Spring.settlingDuration, in every form: Apple's settles a spring that oscillates when the envelope of its swing is under epsilon
 // (the logarithm of the distance plus what the speed adds to the decay, over epsilon, over the decay, and no less than nothing), and
 // one that does not a tenth of a second (added up) after the last tenth at which it is epsilon or more away

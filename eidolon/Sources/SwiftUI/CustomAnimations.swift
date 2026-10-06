@@ -77,16 +77,19 @@ extension Animation {
 
     public var base: (any CustomAnimation)? { custom?.base }
 
+    // A custom animation under `.speed`, `.delay`, `.logicallyComplete` or a repeat is asked for the time those make of the one it is
+    // given, answers no velocity and does not merge, whatever it would say itself, as Apple's does (every call made on it, even a speed of
+    // one, a layer around it: `host/springcmp.swift` records what a custom animation is asked under each).
     public func animate<V: VectorArithmetic>(value: V, time: Double, context: inout AnimationContext<V>) -> V? {
-        custom?.base.animate(value: value, time: time, context: &context)
+        custom?.base.animate(value: value, time: retiming.baseTime(at: time), context: &context)
     }
 
     public func velocity<V: VectorArithmetic>(value: V, time: Double, context: AnimationContext<V>) -> V? {
-        custom?.base.velocity(value: value, time: time, context: context)
+        retiming.isRetimed ? nil : custom?.base.velocity(value: value, time: time, context: context)
     }
 
     public func shouldMerge<V: VectorArithmetic>(previous: Animation, value: V, time: Double, context: inout AnimationContext<V>) -> Bool {
-        custom?.base.shouldMerge(previous: previous, value: value, time: time, context: &context) ?? false
+        retiming.isRetimed ? false : custom?.base.shouldMerge(previous: previous, value: value, time: time, context: &context) ?? false
     }
 }
 

@@ -373,6 +373,26 @@ struct Retiming: Hashable {
         return now.rate > 0 ? max(now.rate * (elapsed - now.delay), 0) : 0
     }
 
+    /// Whether any call has been made on the animation, even one that changes nothing (a speed of one, a delay of nothing): Apple's
+    /// animation is then a layer around the one it was made on, which answers no velocity and does not merge.
+    var isRetimed: Bool { !steps.isEmpty }
+
+    /// The time the animation underneath is asked for `elapsed` seconds after it was asked to begin: every call turns the time it is
+    /// given into the one it passes on, the last one made first, a speed by multiplying it and a delay by taking it off, to nothing
+    /// and no less (`host/springcmp.swift` compares it with the times Apple's passes to a custom animation that records them). A
+    /// speed is not held to be a speed above nothing here: one of nothing asks for nothing, and a negative one for the time backwards.
+    func baseTime(at elapsed: Double) -> Double {
+        var time = elapsed
+        for step in steps.reversed() {
+            switch step {
+            case .speed(let speed): time *= speed
+            case .delay(let seconds): time = max(time - seconds, 0)
+            case .complete, .repeating: break
+            }
+        }
+        return time
+    }
+
     /// The seconds after its delay in which a number of seconds of its own time pass.
     func outer(_ inner: Double) -> Double { rate > 0 ? inner / rate : .infinity }
 

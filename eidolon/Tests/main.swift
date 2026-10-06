@@ -2881,6 +2881,42 @@ check(customAnimation.shouldMerge(previous: .linear(), value: 0.0, time: 0, cont
 equal(AnimationCompletionCriteria.logicallyComplete, .logicallyComplete, "the two completion criteria are values")
 check(AnimationCompletionCriteria.logicallyComplete != .removed, "and are told apart")
 
+// a custom animation under .speed and .delay is asked for the time they make of the one it is given, answers no velocity and does not merge;
+// the numbers are what Apple's animation asked a recording one for (macOS 27, host/springcmp.swift and .agent-work/runs/54-hor/cu2.swift)
+var timesAsked: [Double] = []
+struct Recorder: CustomAnimation {
+    func animate<V: VectorArithmetic>(value: V, time: Double, context: inout AnimationContext<V>) -> V? { timesAsked.append(time); return value }
+    func velocity<V: VectorArithmetic>(value: V, time: Double, context: AnimationContext<V>) -> V? { value }
+    func shouldMerge<V: VectorArithmetic>(previous: Animation, value: V, time: Double, context: inout AnimationContext<V>) -> Bool { true }
+}
+func timeAsked(_ animation: Animation, at time: Double) -> Double {
+    var context = AnimationContext<Double>()
+    timesAsked = []
+    _ = animation.animate(value: 1.0, time: time, context: &context)
+    return timesAsked.first ?? .nan
+}
+let plainRecorder = Animation(Recorder())
+equal(timeAsked(plainRecorder, at: 1.25), 1.25, "a custom animation with no call made on it is asked the time it is given")
+equal(timeAsked(plainRecorder, at: -0.5), -0.5, "even before its start")
+equal(timeAsked(plainRecorder.delay(1), at: 1.25), 0.25, "a delay of a second takes a second off the time it is asked")
+equal(timeAsked(plainRecorder.delay(1), at: 0.5), 0, "and asks nothing before zero")
+equal(timeAsked(plainRecorder.delay(-0.5), at: 0.5), 1, "a negative delay puts a half second on")
+equal(timeAsked(plainRecorder.delay(-1), at: -0.5), 0.5, "and starts it in the middle of its run before it is begun")
+equal(timeAsked(plainRecorder.speed(2).delay(-0.5), at: 0.5), 2, "a delay after a speed is on the time already sped up")
+equal(timeAsked(plainRecorder.delay(-0.5).speed(2), at: 0.5), 1.5, "and one before it is not")
+equal(timeAsked(plainRecorder.speed(0.5), at: 2), 1, "a speed of a half takes twice as long")
+equal(timeAsked(plainRecorder.speed(-1), at: 1), -1, "a negative speed runs it backwards")
+equal(timeAsked(plainRecorder.delay(1).speed(2).delay(0.5), at: 2), 2, "the calls stack, the last made first")
+equal(timeAsked(plainRecorder.speed(0), at: 2), 0, "a speed of nothing stops it at the start")
+equal(timeAsked(plainRecorder.speed(1), at: -0.5), -0.5, "a speed of one leaves the time as it is, and does not clamp it as a delay does")
+var recorderContext = AnimationContext<Double>()
+check(plainRecorder.velocity(value: 1.0, time: 0.5, context: recorderContext) != nil, "a custom animation answers a velocity with no call made on it")
+check(plainRecorder.shouldMerge(previous: .linear, value: 1.0, time: 0.5, context: &recorderContext), "and takes over from another animation")
+for (name, retimed) in [("a delay of nothing", plainRecorder.delay(0)), ("a speed of one", plainRecorder.speed(1)), ("a delay", plainRecorder.delay(1)), ("a speed", plainRecorder.speed(2))] {
+    check(retimed.velocity(value: 1.0, time: 0.5, context: recorderContext) == nil, "\(name) takes the velocity of a custom animation away: it is not asked")
+    check(!retimed.shouldMerge(previous: .linear, value: 1.0, time: 0.5, context: &recorderContext), "\(name) takes the merging of a custom animation away")
+}
+
 struct Phases: View {
     var body: some View {
         PhaseAnimator([1, 2, 3], content: { phase in
