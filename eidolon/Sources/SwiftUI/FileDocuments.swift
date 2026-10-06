@@ -36,7 +36,9 @@ public struct FileDocumentReadConfiguration<Document> {
 
 public struct FileDocumentWriteConfiguration<Document> {
     public var contentType: String
-    public var originalURL: URL?
+    /// Where the document was read from. Apple's `FileDocumentWriteConfiguration` has `existingFile`, not this,
+    /// so it is kept out of the public names (nothing in the port reads it yet).
+    var originalURL: URL?
 
     public init(contentType: String, originalURL: URL? = nil) {
         self.contentType = contentType
