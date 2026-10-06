@@ -25,3 +25,8 @@ and the values it answers. Those values are asked of `Animation.animate(value:ti
 has no public initializer, so the program builds one in memory from an `AnimationState` and `EnvironmentValues`
 (a 26-byte struct on this host: the state at offset 0, the environment at 8, two flags after); if a later macOS changes
 that layout, the values come out wrong or the program crashes, and the held numbers and equalities still stand alone.
+The same context answers for `Animation.spring` and its named forms, asked in step order from one context (the animation
+integrates from the state it kept, and a question asked cold far into it is answered wrongly): `FluidTrack` is compared with
+its staircase of steps of a three-hundredth of a second and with the step after which it answers nothing, over the responses,
+fractions and distances of the program, for a pair of numbers as a distance, and for the springs no one means (a response of
+nothing, a negative or undamped or runaway one, a number that is not one).

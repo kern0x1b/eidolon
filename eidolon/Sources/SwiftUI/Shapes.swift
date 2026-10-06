@@ -220,7 +220,7 @@ final class ShapeNode: LayoutNode {
         guard let animation, lastSize != .zero, let step = shapeInterpolator(from: shown, to: new) else { shape = new; return }
         let state = ShapeAnimation(from: shown, interpolate: step)
         running = state
-        let driver = ValueAnimator(animation: animation) { [weak self, weak state] t in
+        let driver = ValueAnimator(animation: animation, distance: step.distance) { [weak self, weak state] t in
             guard let self, let state else { return }
             self.shape = state.interpolate(t)
             self.layoutContents(self.lastSize)

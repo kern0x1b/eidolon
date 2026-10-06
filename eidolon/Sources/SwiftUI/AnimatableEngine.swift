@@ -88,11 +88,12 @@ final class ValueAnimator {
     /// whether it is over. An animation of its own curve — a keyframe track, a phase — says so itself.
     private let elapsed: (Double) -> (value: Double, done: Bool)
 
-    init(animation: Animation, apply: @escaping (Double) -> Void) {
+    /// `distance` is how far apart the two ends of what it drives are: a spring is over by how far it has to go.
+    init(animation: Animation, distance: Double, apply: @escaping (Double) -> Void) {
         self.animation = animation
         self.apply = apply
-        let clock = ValueAnimator.clock
-        self.elapsed = { ValueAnimator.position(of: animation, elapsed: $0 - animation.delay) }
+        let course = animation.course(distance: distance)
+        self.elapsed = { course.position(elapsed: $0 - animation.delay) }
     }
 
     init(delay: Double, total: Double, at: @escaping (CFTimeInterval) -> (value: Double, done: Bool), apply: @escaping (Double) -> Void = { _ in }) {
@@ -127,31 +128,22 @@ final class ValueAnimator {
     }
 
     func progress(at now: CFTimeInterval) -> (value: Double, done: Bool) { elapsed(now - started) }
-
-    /// Where an animation of its own curve and duration stands a number of seconds after it began.
-    static func position(of animation: Animation, elapsed: Double) -> (value: Double, done: Bool) {
-        guard elapsed >= 0 else { return (0, false) }
-        let length = max(animation.duration, 0.001)
-        let legs = Double(animation.legs)
-        if legs.isFinite && elapsed / length >= legs {
-            let backAtStart = animation.autoreverses && Int(legs) % 2 == 0
-            return (backAtStart ? 0 : 1, true)
-        }
-        let passes = elapsed / length
-        let whole = floor(passes)
-        let fraction = passes - whole
-        let raw = animation.autoreverses ? (Int(whole) % 2 == 0 ? fraction : 1 - fraction) : fraction
-        return (animation.progress(raw), false)
-    }
 }
 
 // MARK: interpolation of animatable values
 
-func interpolate<A: Animatable>(from: A, to: A) -> ((Double) -> A)? {
+/// The values between two ends, by how far along the way they are, and how far apart the ends are.
+struct Interpolation<Value> {
+    let distance: Double
+    let at: (Double) -> Value
+    func callAsFunction(_ t: Double) -> Value { at(t) }
+}
+
+func interpolate<A: Animatable>(from: A, to: A) -> Interpolation<A>? {
     let start = from.animatableData
     let delta = to.animatableData - start
     guard delta.magnitudeSquared > 1e-12 else { return nil }
-    return { t in
+    return Interpolation(distance: delta.magnitudeSquared.squareRoot()) { t in
         var step = delta
         step.scale(by: t)
         var value = to
@@ -161,22 +153,22 @@ func interpolate<A: Animatable>(from: A, to: A) -> ((Double) -> A)? {
 }
 
 // nil when the two shapes are of different kinds, or when nothing that animates differs between them.
-func shapeInterpolator(from: any Shape, to: any Shape) -> ((Double) -> any Shape)? {
+func shapeInterpolator(from: any Shape, to: any Shape) -> Interpolation<any Shape>? {
     if let left = from as? AnyShape, let right = to as? AnyShape {
         guard let inner = shapeInterpolator(from: left.base, to: right.base) else { return nil }
-        return { AnyShape(inner($0)) }
+        return Interpolation(distance: inner.distance) { AnyShape(inner($0)) }
     }
-    func open<S: Shape>(_ start: S) -> ((Double) -> any Shape)? {
+    func open<S: Shape>(_ start: S) -> Interpolation<any Shape>? {
         guard let end = to as? S, let step = interpolate(from: start, to: end) else { return nil }
-        return { step($0) }
+        return Interpolation(distance: step.distance) { step($0) }
     }
     return open(from)
 }
 
-func effectInterpolator(from: any GeometryEffect, to: any GeometryEffect) -> ((Double) -> any GeometryEffect)? {
-    func open<E: GeometryEffect>(_ start: E) -> ((Double) -> any GeometryEffect)? {
+func effectInterpolator(from: any GeometryEffect, to: any GeometryEffect) -> Interpolation<any GeometryEffect>? {
+    func open<E: GeometryEffect>(_ start: E) -> Interpolation<any GeometryEffect>? {
         guard let end = to as? E, let step = interpolate(from: start, to: end) else { return nil }
-        return { step($0) }
+        return Interpolation(distance: step.distance) { step($0) }
     }
     return open(from)
 }
@@ -210,14 +202,14 @@ public struct _GeometryEffectView<Content: View, Effect: GeometryEffect>: View, 
 
 final class ShapeAnimation {
     var from: any Shape
-    var interpolate: (Double) -> any Shape
-    init(from: any Shape, interpolate: @escaping (Double) -> any Shape) { self.from = from; self.interpolate = interpolate }
+    var interpolate: Interpolation<any Shape>
+    init(from: any Shape, interpolate: Interpolation<any Shape>) { self.from = from; self.interpolate = interpolate }
 }
 
 final class EffectAnimation {
     var from: any GeometryEffect
-    var interpolate: (Double) -> any GeometryEffect
-    init(from: any GeometryEffect, interpolate: @escaping (Double) -> any GeometryEffect) { self.from = from; self.interpolate = interpolate }
+    var interpolate: Interpolation<any GeometryEffect>
+    init(from: any GeometryEffect, interpolate: Interpolation<any GeometryEffect>) { self.from = from; self.interpolate = interpolate }
 }
 
 final class GeometryEffectNode: ContainerNode {
@@ -247,7 +239,7 @@ final class GeometryEffectNode: ContainerNode {
         guard let animation, let step = effectInterpolator(from: shown, to: new) else { effect = new; return }
         let state = EffectAnimation(from: shown, interpolate: step)
         running = state
-        let driver = ValueAnimator(animation: animation) { [weak self, weak state] t in
+        let driver = ValueAnimator(animation: animation, distance: step.distance) { [weak self, weak state] t in
             guard let self, let state else { return }
             self.effect = state.interpolate(t)
             self.applyTransform()
@@ -379,8 +371,8 @@ protocol AnimatedModifierMaking {
 
 final class ModifierAnimation<M: ViewModifier & Animatable> {
     var from: M
-    var interpolate: (Double) -> M
-    init(from: M, interpolate: @escaping (Double) -> M) { self.from = from; self.interpolate = interpolate }
+    var interpolate: Interpolation<M>
+    init(from: M, interpolate: Interpolation<M>) { self.from = from; self.interpolate = interpolate }
 }
 
 extension ModifiedContent: AnimatedModifierMaking where Modifier: Animatable {
@@ -428,7 +420,7 @@ final class AnimatedModifierNode<C: View, M: ViewModifier & Animatable>: Contain
         guard let animation, let step = interpolate(from: current, to: new) else { shown = new; return }
         let state = ModifierAnimation<M>(from: current, interpolate: step)
         running = state
-        let driver = ValueAnimator(animation: animation) { [weak self, weak state] t in
+        let driver = ValueAnimator(animation: animation, distance: step.distance) { [weak self, weak state] t in
             guard let self, let state else { return }
             self.shown = state.interpolate(t)
             self.render()

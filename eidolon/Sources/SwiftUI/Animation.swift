@@ -143,14 +143,49 @@ public struct Animation: Equatable, Hashable {
     // An entrance or an exit plays once, however the animation around it repeats.
     var once: Animation { with { $0.legs = 1; $0.autoreverses = false } }
 
-    /// How far the animation has come at a fraction of its own length: what a frame-driven animator
-    /// multiplies the difference between the old and the new value by. A spring is solved as one.
-    func progress(_ t: Double) -> Double {
+    /// How one pass of the animation goes, for something that is `distance` away from where it is going.
+    struct Course {
+        /// Seconds a pass takes; infinite where it never ends.
+        let length: Double
+        let legs: Double
+        let autoreverses: Bool
+        /// The fraction of the distance covered a number of seconds into a pass.
+        let at: (Double) -> Double
+
+        /// Where the animation stands a number of seconds after it began (the delay already taken off): the fraction
+        /// to apply, and whether it is over.
+        func position(elapsed: Double) -> (value: Double, done: Bool) {
+            guard elapsed >= 0 else { return (0, false) }
+            guard length.isFinite else { return (at(elapsed), false) }
+            if legs.isFinite && elapsed >= legs * length {
+                let backAtStart = autoreverses && Int(legs) % 2 == 0
+                return (backAtStart ? 0 : 1, true)
+            }
+            let passes = elapsed / length
+            let whole = floor(passes)
+            let seconds = (passes - whole) * length
+            return (at(autoreverses && Int(whole) % 2 != 0 ? length - seconds : seconds), false)
+        }
+    }
+
+    func course(distance: Double) -> Course {
         switch timing {
-        case .none: return Easing.apply(curve, t)
+        case .spring(let spring):
+            let track = FluidTrack(spring)
+            return Course(length: track.end(distance: distance), legs: Double(legs), autoreverses: autoreverses, at: { track.progress(at: $0) })
+        case .interpolating(let held):
+            return Course(length: held.spring.response, legs: Double(legs), autoreverses: autoreverses, at: { held.progress($0 / held.spring.response) })
+        default:
+            let length = max(duration, 0.001)
+            return Course(length: length, legs: Double(legs), autoreverses: autoreverses, at: { progress($0 / length) })
+        }
+    }
+
+    /// How far the animation of a curve has come at a fraction of its own length.
+    private func progress(_ t: Double) -> Double {
+        switch timing {
         case .curve(let unit): return unit.value(at: t)
-        case .spring(let spring): return 1 - spring.remaining(initialVelocity: 0, time: t * spring.response)
-        case .interpolating(let held): return held.progress(t)
+        default: return Easing.apply(curve, t)
         }
     }
 

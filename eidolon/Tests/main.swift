@@ -2638,16 +2638,19 @@ check(Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10) != Ani
 check(Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10) != Animation.interpolatingSpring(mass: 2, stiffness: 100, damping: 10), "and of the mass")
 check(Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 50) != Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 20), "a damping past the critical is held as given, not as the critical one")
 var interpolatingBarAnimation = Animation.linear
+var interpolatingBarDistance = 1.0
 struct InterpolatingBarCase: View {
     @State private var progress = 0.0
     var body: some View {
-        let _ = register { withAnimation(interpolatingBarAnimation) { progress = 1 } }
+        let _ = register { withAnimation(interpolatingBarAnimation) { progress = interpolatingBarDistance } }
         GrowingBar(progress: progress).fill(Color.red).frame(width: 100, height: 10)
     }
 }
-/// How wide a bar of 100 that an animation grows is a number of seconds after it began.
-func interpolatingBarWidth(_ animation: Animation, at time: Double) -> Double {
+/// How wide a bar of 100 that an animation grows is a number of seconds after it began; a bar that is to go `distance` times
+/// its width.
+func interpolatingBarWidth(_ animation: Animation, at time: Double, distance: Double = 1) -> Double {
     interpolatingBarAnimation = animation
+    interpolatingBarDistance = distance
     _Probe.useVirtualClock()
     let probe = _Probe(InterpolatingBarCase(), width: 100, height: 10)
     _ = frames(probe)
@@ -2660,6 +2663,23 @@ closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damp
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.1), 26.4241, "one whose damping is past the critical moves as the critical one, as Apple's does", 0.01)
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.2), 59.3994, "and keeps to it", 0.01)
 closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, dampingRatio: 1.5)), at: 0.1), 35.7740, "so does the interpolating spring of an over-damped one", 0.01)
+// the fluid spring is a staircase of steps of a three-hundredth of a second, and is over at the step whose state is near the
+// target and at rest, which depends on how far it has to go (Apple's numbers, `.agent-work/runs/35-c1/gen.swift`: the answers of
+// Animation.spring for a distance of 1, 10 and 100, asked step by step, the middle of step k being (k + 0.5) / 300)
+let fluidSteps = Animation.spring(response: 0.5, dampingFraction: 0.825)
+closeTo(interpolatingBarWidth(fluidSteps, at: 29.5 / 300), 39.0798008, "a fluid spring is where its step began, not where the exact solution is", 1e-3)
+closeTo(interpolatingBarWidth(fluidSteps, at: 99.5 / 300), 98.6387221, "a third of a second in", 1e-3)
+closeTo(interpolatingBarWidth(fluidSteps, at: 157.5 / 300), 100.5769034, "it is still moving a few hundredths of a second after its response is over, as Apple's is", 1e-3)
+closeTo(interpolatingBarWidth(fluidSteps, at: 158.5 / 300), 100, "and it is over at the step after", 1e-3)
+closeTo(interpolatingBarWidth(fluidSteps, at: 277.5 / 300, distance: 10), 999.9415469, "a spring with ten times the way to go is over later: still on its way", 0.01)
+closeTo(interpolatingBarWidth(fluidSteps, at: 278.5 / 300, distance: 10), 1000, "over at step 278 where one of the distance of 1 is over at 158", 0.01)
+closeTo(interpolatingBarWidth(fluidSteps, at: 292.5 / 300, distance: 100), 9999.54518, "and a hundred times the way ends at step 293", 0.1)
+closeTo(interpolatingBarWidth(fluidSteps, at: 293.5 / 300, distance: 100), 10000, "so it does", 0.1)
+let fluidInteractive = Animation.spring(response: 0.15, dampingFraction: 0.86)
+closeTo(interpolatingBarWidth(fluidInteractive, at: 58.5 / 300), 100.0539916, "a short spring is over by the end of its step 58", 1e-3)
+closeTo(interpolatingBarWidth(fluidInteractive, at: 59.5 / 300), 100, "and not after it", 1e-3)
+closeTo(interpolatingBarWidth(.bouncy, at: 227.5 / 300), 99.8581835, "the bouncy animation rests at step 228", 1e-3)
+closeTo(interpolatingBarWidth(.bouncy, at: 228.5 / 300), 100, "and no later", 1e-3)
 // the blend of a spring moves nothing in time: a spring that blends for a quarter of a second starts at once, and a delay
 // given after it is the delay (`host/springcmp.swift` asks Apple's for the answers of 15 blended springs against none)
 let plainBarWidth = interpolatingBarWidth(.spring(response: 0.5, dampingFraction: 0.825), at: 0.1)

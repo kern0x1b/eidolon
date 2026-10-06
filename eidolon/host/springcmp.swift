@@ -108,12 +108,12 @@ print("compared", animations, "pairs of animations for equality")
 // numbers are read out of it by reflection; its values are asked of it through an AnimationContext, which has no public
 // initializer, so one is put together in memory from an AnimationState and EnvironmentValues (a 26-byte struct: the state at
 // 0, the environment at 8, two flags after them). The port's own types are InterpolatingSpring, Springs.swift.
-func makeContext() -> AnimationContext<Double> {
+func makeContext<V: VectorArithmetic>(_: V.Type = Double.self) -> AnimationContext<V> {
     let memory = UnsafeMutableRawPointer.allocate(byteCount: 32, alignment: 8)
     memory.initializeMemory(as: UInt8.self, repeating: 0, count: 32)
-    memory.storeBytes(of: AnimationState<Double>(), toByteOffset: 0, as: AnimationState<Double>.self)
+    memory.storeBytes(of: AnimationState<V>(), toByteOffset: 0, as: AnimationState<V>.self)
     memory.storeBytes(of: EnvironmentValues(), toByteOffset: 8, as: EnvironmentValues.self)
-    return memory.load(as: AnimationContext<Double>.self)
+    return memory.load(as: AnimationContext<V>.self)
 }
 func heldBy(_ animation: Animation) -> [Double]? {
     let fields = Mirror(reflecting: Mirror(reflecting: animation).children.first!.value).children
@@ -178,4 +178,57 @@ for (r, z) in [(0.5, 0.825), (0.15, 0.86), (1.0, 0.5), (0.3, 1.0), (0.4, 1.4)] {
     }
 }
 print("compared", blended, "blends against none")
+
+// the fluid spring: Apple's steps its spring a three-hundredth of a second at a time and answers a staircase, and answers nothing
+// from the step whose state is close to the target and at rest; the answers come from one context, in step order, because the
+// animation integrates from the state it kept (a question asked cold, far into the animation, is answered wrongly)
+var fluidAsked = 0, fluidEnds = 0
+func compareFluid(_ name: String, _ mine: Mine, _ apple: Animation, distance: Double, limit: Int = 3000) {
+    let track = FluidTrack(mine), end = track.end(distance: distance)
+    var context = makeContext()
+    for k in 0..<limit {
+        let t = (Double(k) + 0.5) / 300
+        let got = apple.animate(value: distance, time: t, context: &context)
+        let expected: Double? = t > end ? nil : distance * track.progress(at: t)
+        fluidAsked += 1
+        if (got == nil) != (expected == nil) { print("DIFF fluid end", name, "distance", distance, "step", k, "apple", got as Any, "mine", expected as Any); return }
+        guard let got, let expected else { fluidEnds += 1; return }
+        let scale = max(1, abs(got))
+        note("fluid \(name) distance \(distance) step \(k)", expected / scale, got / scale)
+    }
+    if end < Double(limit) / 300 { print("DIFF fluid end", name, "distance", distance, "apple never within", limit, "steps; mine", end) }
+}
+for r in [0.1, 0.15, 0.25, 0.3, 0.5, 0.75, 1, 1.5, 2, 3] {
+    for z in [0.1, 0.2, 0.3, 0.5, 0.7, 0.825, 0.9, 1, 1.25, 1.5, 2] {
+        for d in [0.01, 0.3, 1, 3, 17, 100, 1000] {
+            compareFluid("response \(r) fraction \(z)", Mine(response: r, dampingRatio: z), Animation.spring(response: r, dampingFraction: z), distance: d)
+        }
+    }
+}
+for (r, b) in [(0.5, 0.0), (0.5, 0.15), (0.5, 0.3), (0.15, 0.15), (0.35, -0.4)] {
+    for d in [0.5, 4, 60] { compareFluid("duration \(r) bounce \(b)", Mine(duration: r, bounce: b), Animation.spring(duration: r, bounce: b), distance: d) }
+}
+// a response shorter than the step allows, a spring that is not damped, one that is damped by a negative, or by too much, or by nothing
+for (r, z) in [(0.0, 0.8), (-1.0, 0.8), (0.0001, 0.8), (0.02, 0.5), (0.0296, 0.5), (0.03, 0.5), (0.5, 0.0), (0.5, 0.001), (0.5, -0.5), (0.5, 50), (0.5, Double.nan), (Double.nan, 0.5)] {
+    compareFluid("odd response \(r) fraction \(z)", Mine(response: r, dampingRatio: z), Animation.spring(response: r, dampingFraction: z), distance: 1)
+}
+print("asked Apple's fluid spring", fluidAsked, "times; it ended", fluidEnds, "of its runs")
+// a vector rests when its length does, and moves along its direction as the unit solution does
+var vectorAsked = 0
+for (r, z) in [(0.5, 0.825), (0.3, 0.4), (1.0, 1.0), (0.4, 1.5)] {
+    for (x, y) in [(3.0, 4.0), (-0.3, 0.4), (60.0, -80.0), (0.003, 0.004)] {
+        let track = FluidTrack(Mine(response: r, dampingRatio: z)), end = track.end(distance: (x * x + y * y).squareRoot())
+        var context = makeContext(AnimatablePair<Double, Double>.self)
+        let animation = Animation.spring(response: r, dampingFraction: z)
+        for k in 0..<3000 {
+            let t = (Double(k) + 0.5) / 300
+            let got = animation.animate(value: AnimatablePair(x, y), time: t, context: &context)
+            vectorAsked += 1
+            same("vector \(r) \(z) \(x) \(y) step \(k) ends with its length", got == nil, t > end)
+            guard let got else { break }
+            note("vector.first", track.progress(at: t) * x, got.first); note("vector.second", track.progress(at: t) * y, got.second)
+        }
+    }
+}
+print("asked Apple's fluid spring", vectorAsked, "times of a pair")
 print("compared", count, "numbers; worst difference", worst)

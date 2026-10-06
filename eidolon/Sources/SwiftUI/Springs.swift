@@ -295,6 +295,62 @@ extension VectorArithmetic {
     }
 }
 
+/// Where Apple's fluid spring animation (`Animation.spring`, `smooth`, `snappy`, `bouncy`, `interactiveSpring`) is, as a
+/// fraction of the distance. It does not solve its spring: it steps it, a three-hundredth of a second at a time, with
+/// the semi-implicit Euler step, and answers for every moment of a step the position the step began with, so the curve is a
+/// staircase that differs from the exact solution by up to a fiftieth of the distance (`host/springcmp.swift` compares it with
+/// Apple's, to the last digits). It is over at the first step whose state is close to the target and at rest, by
+/// three tests the distance enters into, since two of them are in distance units and not in fractions: the distance left is
+/// under a hundredth of it, and the acceleration and the mean of the speeds either side of the step are each under 0.06.
+/// A frequency above the one at which a step carries the position half way is taken as that one, so a response under 0.0296 s
+/// moves as 0.0296 s does; a spring that runs away, or has no number to run by, ends where its position stops being a number.
+/// Every component of a vector is that unit solution times its own distance.
+final class FluidTrack {
+    static let step = 1.0 / 300
+    private static let highestFrequency = 0.5.squareRoot() / step
+    /// A spring that has not come to rest in an hour is taken as one that never does.
+    private static let horizon = 3600 * 300
+
+    private let stiffness: Double
+    private let damping: Double
+    private var positions = [0.0]
+    private var speed = 0.0
+
+    init(_ spring: Spring) {
+        let response = spring.response
+        let frequency = response > 0 ? min(2 * Double.pi / response, FluidTrack.highestFrequency) : (response <= 0 ? FluidTrack.highestFrequency : .nan)
+        stiffness = frequency * frequency
+        damping = 2 * spring.dampingRatio * frequency
+    }
+
+    /// The fraction of the distance covered `time` seconds in, where the animation has not ended.
+    func progress(at time: Double) -> Double {
+        guard time > 0 else { return 0 }
+        let index = Int((time / FluidTrack.step).rounded(.up)) - 1
+        while positions.count <= index {
+            speed += FluidTrack.step * (stiffness * (1 - positions[positions.count - 1]) - damping * speed)
+            positions.append(positions[positions.count - 1] + FluidTrack.step * speed)
+        }
+        return positions[index]
+    }
+
+    /// The seconds after which Apple's answers nothing more for a distance to cover, infinite for one that never rests.
+    func end(distance: Double) -> Double {
+        let size = abs(distance)
+        var position = 0.0, speed = 0.0
+        for n in 0..<FluidTrack.horizon {
+            if position.isNaN { return Double(n) * FluidTrack.step }
+            let left = 1 - position
+            let acceleration = stiffness * left - damping * speed
+            let next = speed + FluidTrack.step * acceleration
+            if abs(left) < 0.01 && abs(acceleration) * size < 0.06 && abs(speed + next) / 2 * size < 0.06 { return Double(n) * FluidTrack.step }
+            speed = next
+            position += FluidTrack.step * speed
+        }
+        return .infinity
+    }
+}
+
 /// What Apple's interpolating spring holds: a mass, a stiffness and a damping, exactly as they were given or as the
 /// spring it was made of reads them back, and the speed it starts with, in distances per second. It is not the animation
 /// of a response and a fraction, so it is never equal to one. Damping past the critical is held as given and solved as

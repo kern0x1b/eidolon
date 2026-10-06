@@ -101,8 +101,8 @@ extension _LayoutView: LayoutViewLike {
 
 final class LayoutAnimation<L: Layout> {
     var from: L
-    var interpolate: (Double) -> L
-    init(from: L, interpolate: @escaping (Double) -> L) { self.from = from; self.interpolate = interpolate }
+    var interpolate: Interpolation<L>
+    init(from: L, interpolate: Interpolation<L>) { self.from = from; self.interpolate = interpolate }
 }
 
 protocol ExplicitAlignmentProvider {
@@ -153,7 +153,7 @@ final class CustomLayoutNode<L: Layout>: ContainerNode, LayoutContainer, Explici
         guard let animation, let step = interpolate(from: shown, to: new) else { layout = new; return }
         let state = LayoutAnimation<L>(from: shown, interpolate: step)
         running = state
-        let driver = ValueAnimator(animation: animation) { [weak self, weak state] t in
+        let driver = ValueAnimator(animation: animation, distance: step.distance) { [weak self, weak state] t in
             guard let self, let state else { return }
             self.layout = state.interpolate(t)
             self.refreshCache()
