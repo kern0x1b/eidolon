@@ -98,13 +98,13 @@ public struct Animation: Equatable, Hashable {
     }
     public static var bouncy: Animation { bouncy() }
     public static func interpolatingSpring(mass: Double = 1.0, stiffness: Double, damping: Double, initialVelocity: Double = 0.0) -> Animation {
-        interpolating(InterpolatingSpring(mass: mass, stiffness: stiffness, damping: damping))
+        interpolating(InterpolatingSpring(mass: mass, stiffness: stiffness, damping: damping, initialVelocity: initialVelocity))
     }
     public static func interpolatingSpring(_ spring: Spring, initialVelocity: Double = 0.0) -> Animation {
-        interpolating(InterpolatingSpring(spring))
+        interpolating(InterpolatingSpring(spring, initialVelocity: initialVelocity))
     }
     public static func interpolatingSpring(duration: Double = 0.5, bounce: Double = 0, initialVelocity: Double = 0.0) -> Animation {
-        interpolating(InterpolatingSpring(duration: duration, bounce: bounce))
+        interpolating(InterpolatingSpring(duration: duration, bounce: bounce, initialVelocity: initialVelocity))
     }
     public static func timingCurve(_ curve: UnitCurve, duration: Double) -> Animation {
         Animation(curve: .linear, duration: duration, delay: 0, timing: .curve(curve))

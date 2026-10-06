@@ -296,43 +296,46 @@ extension VectorArithmetic {
 }
 
 /// What Apple's interpolating spring holds: a mass, a stiffness and a damping, exactly as they were given or as the
-/// spring it was made of reads them back. It is not the animation of a response and a fraction, so it is never equal
-/// to one. Damping past the critical is held as given and solved as critical, as Apple's solves it
-/// (`host/springcmp.swift` compares the held numbers and the solved values).
+/// spring it was made of reads them back, and the speed it starts with, in distances per second. It is not the animation
+/// of a response and a fraction, so it is never equal to one. Damping past the critical is held as given and solved as
+/// critical, as Apple's solves it (`host/springcmp.swift` compares the held numbers and the solved values).
 struct InterpolatingSpring: Hashable {
     var mass: Double
     var stiffness: Double
     var damping: Double
+    var initialVelocity: Double
 
-    init(mass: Double, stiffness: Double, damping: Double) {
+    init(mass: Double, stiffness: Double, damping: Double, initialVelocity: Double = 0) {
         self.mass = mass
         self.stiffness = stiffness
         self.damping = damping
+        self.initialVelocity = initialVelocity
     }
 
     /// The spring an interpolating spring is made of: its mass is one, and its stiffness and damping are those of the
     /// response and fraction the spring comes back out as (`asFluid`), not the spring's own stiffness and damping, which
     /// differ in the last bits and, for an over-damped or a heavy one, in much more.
-    init(_ spring: Spring) {
+    init(_ spring: Spring, initialVelocity: Double = 0) {
         let fluid = spring.asFluid
-        self.init(response: fluid.response, fraction: fluid.dampingRatio)
+        self.init(response: fluid.response, fraction: fluid.dampingRatio, initialVelocity: initialVelocity)
     }
 
     /// One made of a duration and a bounce holds the duration and the fraction of the bounce as they are.
-    init(duration: Double, bounce: Double) {
-        self.init(response: duration, fraction: Spring(duration: duration, bounce: bounce).dampingRatio)
+    init(duration: Double, bounce: Double, initialVelocity: Double = 0) {
+        self.init(response: duration, fraction: Spring(duration: duration, bounce: bounce).dampingRatio, initialVelocity: initialVelocity)
     }
 
-    private init(response: Double, fraction: Double) {
+    private init(response: Double, fraction: Double, initialVelocity: Double) {
         let frequency = 2 * Double.pi / response
-        self.init(mass: 1, stiffness: frequency * frequency, damping: 2 * frequency * fraction)
+        self.init(mass: 1, stiffness: frequency * frequency, damping: 2 * frequency * fraction, initialVelocity: initialVelocity)
     }
 
     var spring: Spring { Spring(mass: mass, stiffness: stiffness, damping: damping) }
 
-    /// How far it has come, as a fraction of the distance, a fraction `t` of its natural period after it began.
+    /// How far it has come, as a fraction of the distance, a fraction `t` of its natural period after it began. The
+    /// speed it starts with is a multiple of the distance, so it is the fraction's own speed toward the target.
     func progress(_ t: Double) -> Double {
         let spring = spring
-        return 1 - spring.remaining(initialVelocity: 0, time: t * spring.response)
+        return 1 - spring.remaining(initialVelocity: initialVelocity, time: t * spring.response)
     }
 }

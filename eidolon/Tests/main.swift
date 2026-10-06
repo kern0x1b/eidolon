@@ -2660,6 +2660,16 @@ closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damp
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.1), 26.4241, "one whose damping is past the critical moves as the critical one, as Apple's does", 0.01)
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.2), 59.3994, "and keeps to it", 0.01)
 closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, dampingRatio: 1.5)), at: 0.1), 35.7740, "so does the interpolating spring of an over-damped one", 0.01)
+// and it starts with the speed it is given, in distances per second (the same host runs, with `initialVelocity:` of 3 and -2)
+check(Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 2) != Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 1), "interpolating springs of another initial velocity are another animation")
+check(Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 2) != Animation.interpolatingSpring(interpolatedSpring), "than one that starts at rest too")
+check(Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 2) == Animation.interpolatingSpring(Spring(response: 0.5, dampingRatio: 0.7), initialVelocity: 2), "and the same velocity is the same animation")
+check(Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: 3) != Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10), "whichever form it was made by")
+check(Animation.interpolatingSpring(duration: 0.5, bounce: 0.3, initialVelocity: 1) != Animation.interpolatingSpring(duration: 0.5, bounce: 0.3), "and of a duration and a bounce")
+closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: 3), at: 0.1), 50.0352, "an initial velocity moves the bar ahead of the one that starts at rest (34.03 at this moment)", 0.01)
+closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: 3), at: 0.2), 97.5210, "and further on too", 0.01)
+closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: -2), at: 0.1), 23.3598, "a negative one holds it back", 0.01)
+closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, dampingRatio: 0.7), initialVelocity: 3), at: 0.1), 53.1733, "as it does for the interpolating spring of a spring", 0.01)
 
 // keyframes, phases and a custom animation: the track is the one that is written, and the views
 // follow it frame by frame
