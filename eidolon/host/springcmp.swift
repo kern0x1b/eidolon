@@ -293,31 +293,47 @@ print("asked Apple's fluid spring", longAsked, "times of springs that rest after
 // .speed and .delay, in every order: Apple's animation is `rate * (t - delay)` seconds into its own time, so a speed after a delay
 // scales it and a delay after a speed does not, and two delays add. The answers come step by step from one context (a fluid
 // spring integrates from the state it kept), with steps finer than a three-hundredth of a second of the animation's own time.
-enum Retime { case speed(Double), delay(Double), complete(Double) }
+enum Retime { case speed(Double), delay(Double), complete(Double), `repeat`(Int, Bool), forever(Bool) }
 func retime(_ animation: Animation, _ ops: [Retime]) -> Animation {
     ops.reduce(animation) { all, op in
-        switch op { case .speed(let s): return all.speed(s); case .delay(let d): return all.delay(d); case .complete(let c): return all.logicallyComplete(after: c) }
+        switch op {
+        case .speed(let s): return all.speed(s)
+        case .delay(let d): return all.delay(d)
+        case .complete(let c): return all.logicallyComplete(after: c)
+        case .repeat(let n, let reverses): return all.repeatCount(n, autoreverses: reverses)
+        case .forever(let reverses): return all.repeatForever(autoreverses: reverses)
+        }
     }
 }
 func retimed(_ retiming: Retiming, _ ops: [Retime]) -> Retiming {
     ops.reduce(retiming) { all, op in
-        switch op { case .speed(let s): return all.speeding(by: s); case .delay(let d): return all.delaying(by: d); case .complete(let c): return all.completing(after: c) }
+        switch op {
+        case .speed(let s): return all.speeding(by: s)
+        case .delay(let d): return all.delaying(by: d)
+        case .complete(let c): return all.completing(after: c)
+        case .repeat(let n, let reverses): return all.repeating(count: Double(max(n, 1)), reverses: reverses)
+        case .forever(let reverses): return all.repeating(count: .infinity, reverses: reverses)
+        }
     }
 }
 var retimedAsked = 0
-func compareRetimed(_ name: String, _ apple: Animation, _ ops: [Retime], distance: Double, natural: Double, course: (Retiming) -> SpringCourse) {
-    let retiming = retimed(Retiming(), ops), mine = course(retiming), length = mine.ended(1000) ?? .infinity
+func compareRetimed(_ name: String, _ apple: Animation, _ ops: [Retime], distance: Double, natural: Double, base: BaseTrack) {
+    let retiming = retimed(Retiming(), ops), mine = AnimationCourse(base, retiming: retiming)
     // an animation asked first for a moment past its end (a negative delay longer than it is) is answered by Apple's fluid spring
     // from the state it began with, one step on, and is not asked here
-    if -retiming.delay >= length { return }
+    if mine.position(elapsed: 0).done { return }
     var context = makeContext()
     let step = 1 / (300 * max(retiming.rate, 1))
-    let limit = length.isFinite ? Int((max(retiming.delay, 0) + length) / step) + 40 : 600
+    // how long it lasts, for how many steps to ask: where it is over by a thousand seconds (one that never is is asked for 600 steps)
+    var length = Double.infinity
+    var probe = 0.0
+    while probe < 1000 { if mine.position(elapsed: probe).done { length = probe; break }; probe += 0.05 }
+    let limit = length.isFinite ? Int(length / step) + 80 : 600
     for j in 0..<limit {
         let t = (Double(j) + 0.5) * step
-        let elapsed = t - retiming.delay
         let got = apple.animate(value: distance, time: t, context: &context)
-        let expected: Double? = elapsed >= length ? nil : distance * mine.at(elapsed)
+        let (fraction, done) = mine.position(elapsed: t)
+        let expected: Double? = done ? nil : distance * fraction
         retimedAsked += 1
         if (got == nil) != (expected == nil) { print("DIFF retimed end", name, ops, "step", j, "apple", got as Any, "mine", expected as Any); return }
         if let got, let expected { note("retimed \(name) \(ops) step \(j)", expected, got) }
@@ -333,7 +349,7 @@ for (r, z) in fluidSprings {
     let spring = Mine(response: r, dampingRatio: z)
     for d in [1.0, 30.0] {
         for ops in orders + [[.speed(-1)], [.delay(1), .speed(-1)]] {
-            compareRetimed("fluid \(r) \(z) distance \(d)", retime(Animation.spring(response: r, dampingFraction: z), ops), ops, distance: d, natural: r) { SpringCourse(fluid: spring, distance: d, retiming: $0) }
+            compareRetimed("fluid \(r) \(z) distance \(d)", retime(Animation.spring(response: r, dampingFraction: z), ops), ops, distance: d, natural: r, base: .fluid(spring, distance: d))
         }
     }
 }
@@ -342,10 +358,61 @@ for (name, held, apple) in [("mass 1 stiffness 100 damping 10", InterpolatingSpr
                             ("speed 3", InterpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: 3), Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: 3)),
                             ("spring", InterpolatingSpring(Mine(response: 0.5, dampingRatio: 0.7)), Animation.interpolatingSpring(Apple(response: 0.5, dampingRatio: 0.7)))] {
     for ops in orders {
-        compareRetimed("interpolating \(name)", retime(apple, ops), ops, distance: 2, natural: held.spring.response) { SpringCourse(interpolating: held, retiming: $0) }
+        compareRetimed("interpolating \(name)", retime(apple, ops), ops, distance: 2, natural: held.spring.response, base: .interpolating(held))
     }
 }
 print("asked Apple", retimedAsked, "times of springs that were sped up, slowed down and delayed")
+
+// .repeatCount and .repeatForever, in every order with .speed and .delay: the calls before it are in every pass (a delay before it is a delay
+// before each pass, and a pass played back to front starts with that delay and plays the animation underneath from its end), the calls after
+// it are around the passes as a whole. Apple's repeat restarts a pass at the first question it is asked after the animation underneath
+// answered nothing, so a pass starts up to one step of the questions late and the passes drift by it: the answers are taken to be Apple's
+// when they are the ones of the port at some moment within the drift, and the end when it is within it
+var repeatedAsked = 0
+func compareRepeated(_ name: String, _ apple: Animation, _ ops: [Retime], base: BaseTrack, step: Double, until: Double) {
+    let retiming = retimed(Retiming(), ops), mine = AnimationCourse(base, retiming: retiming)
+    let passes = retiming.repeated.map { $0.count.isFinite ? Int($0.count) : Int(until) + 1 } ?? 1
+    let drift = Double(passes + 1) * step
+    var context = makeContext()
+    var j = 0
+    while Double(j) * step < until {
+        let t = (Double(j) + 0.5) * step
+        let got = apple.animate(value: 1, time: t, context: &context)
+        repeatedAsked += 1
+        if got == nil {
+            same("repeated \(name) \(ops) is over by \(t) (the port's is at \(mine.position(elapsed: t + step).done))", mine.position(elapsed: t + step).done && !mine.position(elapsed: t - drift - step).done, true)
+            return
+        }
+        if mine.position(elapsed: t - drift - step).done { print("DIFF repeated end", name, ops, "apple still answers at", t, "mine over from", t - drift - step); return }
+        var low = Double.infinity, high = -Double.infinity, jumps = false, last: Double?, nearest = Double.infinity
+        var u = max(t - drift, 0)
+        while u <= t + step {
+            let v = mine.position(elapsed: u).value
+            low = min(low, v); high = max(high, v)
+            if let last, abs(v - last) > 0.5 { jumps = true }
+            last = v
+            nearest = min(nearest, abs(v - got!))
+            u += step / 8
+        }
+        // at the question that finds a pass over Apple's answers where the pass ends (nothing, or all of it), and starts the next at the one after
+        let atPassEnd = (got! == 0 || got! == 1) && (jumps || nearest < step)
+        if !atPassEnd && (got! < low - 1e-9 || got! > high + 1e-9) { print("DIFF repeated", name, ops, "at", t, "apple", got!, "mine between", low, high) }
+        j += 1
+    }
+    if !(retiming.repeated.map { !$0.count.isFinite } ?? false) { print("DIFF repeated end", name, ops, "apple never ends in", until) }
+}
+let repeatedCases: [[Retime]] = [[.repeat(2, false)], [.repeat(3, false)], [.repeat(2, true)], [.repeat(3, true)], [.repeat(4, true)], [.repeat(1, false)], [.repeat(1, true)],
+                                 [.forever(false)], [.forever(true)], [.speed(2), .repeat(2, false)], [.repeat(3, false), .speed(2)], [.speed(0.5), .repeat(2, true)], [.repeat(2, true), .speed(0.5)],
+                                 [.delay(0.5), .repeat(2, false)], [.delay(0.5), .repeat(3, false)], [.delay(0.5), .repeat(2, true)], [.delay(0.5), .repeat(3, true)], [.repeat(2, true), .delay(0.5)], [.repeat(3, false), .delay(0.5)],
+                                 [.speed(2), .delay(0.5), .repeat(2, true)], [.delay(0.5), .speed(2), .repeat(2, true)], [.delay(0.5), .repeat(2, true), .speed(2)], [.delay(1), .repeat(2, false), .delay(1)],
+                                 [.speed(2), .repeat(2, true), .delay(0.5), .speed(0.5)]]
+for ops in repeatedCases {
+    for step in [0.01, 0.0037] {
+        compareRepeated("curve", retime(Animation.linear(duration: 1), ops), ops, base: .lasting(1) { $0 }, step: step, until: 12)
+        compareRepeated("fluid", retime(Animation.spring(response: 0.5, dampingFraction: 0.825), ops), ops, base: .fluid(Mine(response: 0.5, dampingRatio: 0.825), distance: 1), step: step, until: 12)
+    }
+}
+print("asked Apple", repeatedAsked, "times of animations that repeat")
 // what the calls come to is not what makes two animations equal: Apple's animation holds the calls, so a speed of one, a delay of nothing,
 // and two delays that add to another are each another animation than the one without them, and two are equal when the same calls were made
 // in the same order; every sequence of up to three calls from five, on a spring and on a curve, paired with every other

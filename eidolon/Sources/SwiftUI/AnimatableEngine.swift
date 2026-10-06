@@ -93,7 +93,7 @@ final class ValueAnimator {
         self.animation = animation
         self.apply = apply
         let course = animation.course(distance: distance)
-        self.elapsed = { course.position(elapsed: $0 - animation.delay) }
+        self.elapsed = { course.position(elapsed: $0) }
     }
 
     init(delay: Double, total: Double, at: @escaping (CFTimeInterval) -> (value: Double, done: Bool), apply: @escaping (Double) -> Void = { _ in }) {

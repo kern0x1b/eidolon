@@ -315,12 +315,17 @@ struct Retiming: Hashable {
         case speed(Double)
         case delay(Double)
         case complete(Double)
+        /// `repeatCount` and `repeatForever`: `count` passes (infinite for ever), every other one played back to front if it `reverses`.
+        case repeating(count: Double, reverses: Bool)
     }
     private(set) var steps: [Step] = []
+
+    init(steps: [Step] = []) { self.steps = steps }
 
     func speeding(by speed: Double) -> Retiming { appending(.speed(speed)) }
     func delaying(by seconds: Double) -> Retiming { appending(.delay(seconds)) }
     func completing(after seconds: Double) -> Retiming { appending(.complete(seconds)) }
+    func repeating(count: Double, reverses: Bool) -> Retiming { appending(.repeating(count: count, reverses: reverses)) }
 
     private func appending(_ step: Step) -> Retiming {
         var next = self
@@ -343,12 +348,16 @@ struct Retiming: Hashable {
                 logicalEnd = logicalEnd.map { $0 + seconds }
             case .complete(let seconds):
                 logicalEnd = seconds
+            case .repeating:
+                break
             }
         }
         return (rate, delay, logicalEnd)
     }
     var rate: Double { folded.rate }
     var delay: Double { folded.delay }
+    /// The moment of logical completion `logicallyComplete` set, if one did, moved by the calls after it.
+    var givenLogicalEnd: Double? { folded.logicalEnd }
 
     /// The moment the animation is logically complete, in seconds after it was asked to begin: the one it was given, or the end of its
     /// own time of a number of seconds (a spring's response) as it was played.
@@ -357,38 +366,102 @@ struct Retiming: Hashable {
         return now.logicalEnd ?? now.delay + outer(seconds)
     }
 
-    /// The seconds of its own time an animation has been through, a number of seconds after it was asked to begin.
+    /// The seconds of its own time an animation has been through, a number of seconds after it was asked to begin, and none before
+    /// its delay is over.
     func inner(at elapsed: Double) -> Double {
         let now = folded
-        return now.rate > 0 ? now.rate * (elapsed - now.delay) : 0
+        return now.rate > 0 ? max(now.rate * (elapsed - now.delay), 0) : 0
     }
 
     /// The seconds after its delay in which a number of seconds of its own time pass.
     func outer(_ inner: Double) -> Double { rate > 0 ? inner / rate : .infinity }
+
+    /// The seconds after it was asked to begin at which a number of seconds of its own time have passed.
+    func after(_ inner: Double) -> Double { rate > 0 ? delay + inner / rate : .infinity }
+
+    /// The last repeat, if the animation is repeated, and the calls made before it, which every pass is in, and after it, which the
+    /// passes as a whole are in. A repeat made more than once is the last of them: Apple's, made twice, shares the state it keeps
+    /// between the two and answers neither the passes of one inside the passes of the other (`.agent-work/runs/54-hor/r4.swift`:
+    /// `repeatCount(2)` twice is a pass, a second at its start, and a pass, over at 3 s, and for three times two it is over at 7 s), so
+    /// it is not copied, and the repeat made before is not played, as it was not before.
+    var repeated: (count: Double, reverses: Bool, inside: Retiming, outside: Retiming)? {
+        guard let index = steps.lastIndex(where: { if case .repeating = $0 { return true } else { return false } }),
+              case .repeating(let count, let reverses) = steps[index] else { return nil }
+        return (count, reverses, Retiming(steps: Array(steps[..<index])).once, Retiming(steps: Array(steps[(index + 1)...])))
+    }
+
+    /// The animation without the repeat, which an entrance or an exit does not play.
+    var once: Retiming { Retiming(steps: steps.filter { if case .repeating = $0 { return false } else { return true } }) }
 }
 
-/// How a spring animation goes in the seconds after its delay: how far it has come, as a fraction of the distance, and whether it
-/// has ended, at the time of the animation as it was retimed. When it ends is not told ahead: a spring that does not rest (or one
-/// that rests after eleven hours, which Apple's animates as long) is never asked for the end of, only whether it is over by a
-/// moment that has come.
-struct SpringCourse {
-    /// The seconds a pass takes, if it is over by this many seconds after the delay.
+/// How an animation goes in its own time, before it is retimed: how far it has come, as a fraction of the distance, and whether it is
+/// over. When it ends is not told ahead (a spring that does not rest, or one that rests after eleven hours, which Apple's animates as
+/// long, is never asked for the end of): only whether it is over by a moment that has come, and then how long it lasted.
+struct BaseTrack {
+    /// The seconds the animation lasts, if it is over by this many seconds into it.
     let ended: (Double) -> Double?
     let at: (Double) -> Double
 
-    init(fluid spring: Spring, distance: Double, retiming: Retiming) {
+    static func fluid(_ spring: Spring, distance: Double) -> BaseTrack {
         let track = FluidTrack(spring, distance: distance)
-        ended = { retiming.rate > 0 ? track.end(by: retiming.rate * $0).map { $0 / retiming.rate } : nil }
-        at = { track.progress(at: retiming.rate > 0 ? $0 * retiming.rate : 0) }
+        return BaseTrack(ended: { track.end(by: $0) }, at: { track.progress(at: $0) })
     }
 
-    init(interpolating held: InterpolatingSpring, retiming: Retiming) {
-        ended = SpringCourse.over(after: retiming.outer(held.settlingTime))
-        at = { held.progress(at: retiming.rate > 0 ? $0 * retiming.rate : 0) }
+    static func interpolating(_ held: InterpolatingSpring) -> BaseTrack {
+        let length = held.settlingTime
+        return BaseTrack(ended: { length <= $0 ? length : nil }, at: { held.progress(at: $0) })
     }
 
-    /// What `ended` is of a pass that takes a known number of seconds, infinite for one that never ends.
-    static func over(after length: Double) -> (Double) -> Double? { { length <= $0 ? length : nil } }
+    /// An animation of a curve, over a known number of seconds after it began.
+    static func lasting(_ length: Double, progress: @escaping (Double) -> Double) -> BaseTrack {
+        BaseTrack(ended: { length <= $0 ? length : nil }, at: { progress($0 / length) })
+    }
+}
+
+/// How an animation goes in the seconds after it was asked to begin, retimed and repeated as it was: the fraction of the distance it
+/// has come and whether it is over. The calls made before a `repeatCount` are in every pass (a delay before it is a delay before each
+/// pass), the calls after it are around the passes as a whole, and a pass played back to front is the mirror of the pass, one minus where
+/// it is, with its delay at the start as well: not the pass run backwards (`.agent-work/runs/54-hor/r2.swift` and `r3.swift` ask
+/// Apple's of every order, to the step it answers nothing at, and `host/springcmp.swift` compares the numbers).
+struct AnimationCourse {
+    private let ended: (Double) -> Double?
+    private let at: (Double) -> Double
+
+    init(_ base: BaseTrack, retiming: Retiming) {
+        guard let repeated = retiming.repeated else {
+            ended = { elapsed in base.ended(retiming.inner(at: elapsed)).map { retiming.after($0) } }
+            at = { base.at(retiming.inner(at: $0)) }
+            return
+        }
+        let (count, reverses, outside) = (repeated.count, repeated.reverses, repeated.outside)
+        let pass = AnimationCourse(base, retiming: repeated.inside)
+        func value(_ seconds: Double) -> Double {
+            guard let length = pass.ended(seconds) else { return pass.at(seconds) }
+            guard length > 0 else { return 1 }
+            let passes = seconds / length
+            let whole = passes.rounded(.down)
+            let into = pass.at((passes - whole) * length)
+            return reverses && whole.truncatingRemainder(dividingBy: 2) != 0 ? 1 - into : into
+        }
+        func total(_ seconds: Double) -> Double? {
+            guard let length = pass.ended(seconds), count.isFinite, seconds >= count * length else { return nil }
+            return count * length
+        }
+        ended = { elapsed in total(outside.inner(at: elapsed)).map { outside.after($0) } }
+        at = { value(outside.inner(at: $0)) }
+    }
+
+    /// How long it lasts, if it is over at all in finite time; for an animation of a known length (a spring may take hours to say).
+    var length: Double? { ended(.infinity) }
+
+    /// The fraction to apply a number of seconds after the animation was asked to begin, and whether it is over, when it is all of it:
+    /// the value goes to where it was going whatever the last pass was (Apple's animation answers nothing, and the view shows the value
+    /// it was given: a repeat with an even count that plays back to front ends on the end, `.agent-work/runs/58-host/h7.swift`).
+    func position(elapsed: Double) -> (value: Double, done: Bool) {
+        guard elapsed >= 0 else { return (0, false) }
+        if ended(elapsed) != nil { return (1, true) }
+        return (at(elapsed), false)
+    }
 }
 
 /// Where Apple's fluid spring animation (`Animation.spring`, `smooth`, `snappy`, `bouncy`, `interactiveSpring`) is, as a

@@ -11,8 +11,9 @@ public struct Animation: Equatable, Hashable {
     var rate: Double { retiming.rate }
     /// What a spring was given as its blend: held and compared as Apple's animation does, and moving nothing in time.
     var blend = 0.0
-    var legs: Float = 1
-    var autoreverses = false
+    /// How many passes the animation makes and whether every other is played back to front, as `repeatCount` and `repeatForever` set.
+    var legs: Float { Float(retiming.repeated?.count ?? 1) }
+    var autoreverses: Bool { retiming.repeated?.reverses ?? false }
     /// Set when the timing is a spring or one of the newer curves: what the interpolator asks instead of `curve`.
     var timing: Timing?
     /// Set when the animation computes its own values.
@@ -129,62 +130,28 @@ public struct Animation: Equatable, Hashable {
 
     // SwiftUI counts every pass, forwards or back, as one repeat; Core Animation counts a forward and a back together.
     public func repeatCount(_ repeatCount: Int, autoreverses: Bool = true) -> Animation {
-        with {
-            $0.legs = Float(max(repeatCount, 1))
-            $0.autoreverses = autoreverses
-        }
+        with { $0.retiming = retiming.repeating(count: Double(max(repeatCount, 1)), reverses: autoreverses) }
     }
     public func repeatForever(autoreverses: Bool = true) -> Animation {
-        with {
-            $0.legs = .infinity
-            $0.autoreverses = autoreverses
-        }
+        with { $0.retiming = retiming.repeating(count: .infinity, reverses: autoreverses) }
     }
 
     // An entrance or an exit plays once, however the animation around it repeats.
-    var once: Animation { with { $0.legs = 1; $0.autoreverses = false } }
+    var once: Animation { with { $0.retiming = retiming.once } }
 
-    /// How one pass of the animation goes, for something that is `distance` away from where it is going.
-    struct Course {
-        /// The seconds a pass takes, once it is over by a number of seconds into it; not told for a pass that is not (a spring
-        /// that has not come to rest may never).
-        let ended: (Double) -> Double?
-        let legs: Double
-        let autoreverses: Bool
-        /// The fraction of the distance covered a number of seconds into a pass.
-        let at: (Double) -> Double
-
-        /// Where the animation stands a number of seconds after it began (the delay already taken off): the fraction
-        /// to apply, and whether it is over.
-        func position(elapsed: Double) -> (value: Double, done: Bool) {
-            guard elapsed >= 0 else { return (0, false) }
-            guard let length = ended(elapsed) else { return (at(elapsed), false) }
-            if legs.isFinite && elapsed >= legs * length {
-                let backAtStart = autoreverses && Int(legs) % 2 == 0
-                return (backAtStart ? 0 : 1, true)
-            }
-            let passes = elapsed / length
-            let whole = floor(passes)
-            let seconds = (passes - whole) * length
-            return (at(autoreverses && Int(whole) % 2 != 0 ? length - seconds : seconds), false)
-        }
-    }
-
-    func course(distance: Double) -> Course {
-        let ended: (Double) -> Double?, at: (Double) -> Double
+    /// How the animation goes after it was asked to begin, for something that is `distance` away from where it is going.
+    func course(distance: Double) -> AnimationCourse {
+        let base: BaseTrack
         switch timing {
         case .spring(let spring):
-            let course = SpringCourse(fluid: spring, distance: distance, retiming: retiming)
-            (ended, at) = (course.ended, course.at)
+            base = .fluid(spring, distance: distance)
         case .interpolating(let held):
-            let course = SpringCourse(interpolating: held, retiming: retiming)
-            (ended, at) = (course.ended, course.at)
+            base = .interpolating(held)
         default:
-            let own = max(duration, 0.001), retiming = retiming
-            ended = SpringCourse.over(after: retiming.outer(own))
-            at = { progress(retiming.rate > 0 ? $0 * retiming.rate / own : 0) }
+            let own = max(duration, 0.001)
+            base = .lasting(own) { progress($0) }
         }
-        return Course(ended: ended, legs: Double(legs), autoreverses: autoreverses, at: at)
+        return AnimationCourse(base, retiming: retiming)
     }
 
     /// How far the animation of a curve has come at a fraction of its own length.
@@ -197,6 +164,17 @@ public struct Animation: Equatable, Hashable {
 
     /// How long the animation is after its delay, counting a spring by its response, or by what `logicallyComplete` was given.
     var logicalDuration: Double { max(retiming.logicalMoment(naturally: duration) - delay, 0) }
+
+    /// The moment the animation is logically complete, in seconds after it was asked to begin: the one `logicallyComplete` gave, or for a
+    /// spring the end of its response in the first pass, whatever it is repeated (the flag of Apple's flips there, `.agent-work/runs/54-hor/r5.swift`),
+    /// and for any other animation the end of the last pass.
+    var logicalMoment: Double {
+        if let given = retiming.givenLogicalEnd { return given }
+        switch timing {
+        case .spring, .interpolating: return retiming.logicalMoment(naturally: duration)
+        default: return course(distance: 1).length ?? .infinity
+        }
+    }
 
     /// What UIView is told the animation lasts: its duration at the rate it is played.
     var playedDuration: Double { rate > 0 ? duration / rate : duration }
@@ -226,7 +204,7 @@ public struct Animation: Equatable, Hashable {
         if ValueAnimator.manual {
             animations()
             guard let completion else { return }
-            let total = max(delay + (retiming.logicalMoment(naturally: duration) - delay) * Double(legs), 0)
+            let total = max(logicalMoment, 0)
             let over = ValueAnimator(delay: 0, total: total, at: { (min(max($0 / max(total, 0.001), 0), 1), $0 >= total) })
             over.finished = { completion(true) }
             over.start()
