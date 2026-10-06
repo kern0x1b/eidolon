@@ -78,4 +78,28 @@ for m in [0.5, 1.0, 2.0, 3.3] {
 same("critical system and a duration", Mine(mass: 1, stiffness: 157.91367041742973, damping: 25.132741228718345) == Mine(duration: 0.5, bounce: 0),
      Apple(mass: 1, stiffness: 157.91367041742973, damping: 25.132741228718345) == Apple(duration: 0.5, bounce: 0))
 print("compared", pairs, "pairs of springs for equality")
+
+// Animation.spring(_:) of a spring against the animation of a pair of numbers, and against the animation of another spring:
+// Apple's animation holds a response and a fraction taken back out of the spring, the port's holds `asFluid` and
+// compares by `heldNumbers`
+var made: [(Mine, Apple)] = []
+let grid = [0.1, 0.15, 0.25, 0.3, 0.5, 0.75, 1, 1.5, 2, 3], ratios = [0.1, 0.2, 0.3, 0.5, 0.7, 0.825, 0.85, 0.9, 1.0, 1.25, 1.5, 2]
+for r in grid { for z in ratios { made.append((Mine(response: r, dampingRatio: z), Apple(response: r, dampingRatio: z))) } }
+for r in [0.15, 0.5, 1] { for b in [-0.7, -0.2, 0, 0.15, 0.3, 0.9] { made.append((Mine(duration: r, bounce: b), Apple(duration: r, bounce: b))) } }
+for m in [0.5, 1.0, 2.0] { for k in [10.0, 100, 400] { for c in [1.0, 10, 40, 100] { made.append((Mine(mass: m, stiffness: k, damping: c, allowOverDamping: true), Apple(mass: m, stiffness: k, damping: c, allowOverDamping: true))) } } }
+var animations = 0
+for (mine, apple) in made {
+    for r in grid { for z in ratios {
+        animations += 1
+        let direct = Mine(response: r, dampingRatio: z)
+        same("animation of a spring and of response \(r) fraction \(z)", mine.asFluid.heldNumbers == direct.heldNumbers, Animation.spring(apple) == Animation.spring(response: r, dampingFraction: z))
+    } }
+}
+for (mine, apple) in made {
+    for (other, otherApple) in made.prefix(150) {
+        animations += 1
+        same("animation of a spring and of another spring", mine.asFluid.heldNumbers == other.asFluid.heldNumbers, Animation.spring(apple) == Animation.spring(otherApple))
+    }
+}
+print("compared", animations, "pairs of animations for equality")
 print("compared", count, "numbers; worst difference", worst)

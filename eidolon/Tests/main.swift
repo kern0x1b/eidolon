@@ -2604,6 +2604,23 @@ check(Spring(response: 0.5, dampingRatio: 0.7) == Spring(duration: 0.5, bounce: 
 check(Spring(response: 0.5, dampingRatio: 0.7).hashValue == Spring(duration: 0.5, bounce: 0.3).hashValue, "and hash alike")
 check(Spring(mass: 1, stiffness: 157.91367041742973, damping: 25.132741228718345) == Spring(duration: 0.5, bounce: 0), "a spring of a mass, a stiffness and a damping is that of its response and ratio")
 check(Spring(mass: 2, stiffness: 100, damping: 10) != Spring(mass: 1, stiffness: 50, damping: 5), "unless the mass differs, which Apple's tells apart")
+// an animation made of a spring value holds the response and fraction it takes back out of the spring, which are not always
+// the pair the spring was made of (`host/springcmp.swift` compares 46980 pairs of animations with Apple's; these were measured on macOS 27)
+let pairedSpring = Spring(response: 0.5, dampingRatio: 0.7)
+check(Animation.spring(pairedSpring) != Animation.spring(response: 0.5, dampingFraction: 0.7), "an animation of a spring is not the animation of the pair of numbers it was made of when they come back a bit apart")
+check(Animation.spring(pairedSpring) != Animation.spring(duration: 0.5, bounce: 0.3), "nor that of the duration and bounce of it")
+check(Animation.spring(pairedSpring) == Animation.spring(Spring(duration: 0.5, bounce: 0.3)), "but it is the animation of the same spring made the other way")
+check(Animation.spring(pairedSpring).hashValue == Animation.spring(Spring(duration: 0.5, bounce: 0.3)).hashValue, "and hashes as it does")
+check(Animation.spring(Spring(response: 0.25, dampingRatio: 0.7)) != Animation.spring(response: 0.25, dampingFraction: 0.7), "at another response too")
+check(Animation.spring(Spring(response: 0.1, dampingRatio: 0.5)) == Animation.spring(response: 0.1, dampingFraction: 0.5), "while numbers that come back as they went in are the same animation")
+check(Animation.spring(Spring(response: 0.5, dampingRatio: 1)) == Animation.spring(response: 0.5, dampingFraction: 1), "a critical spring does")
+check(Animation.spring(Spring(response: 0.5, dampingRatio: 1.25)) == Animation.spring(response: 0.5, dampingFraction: 1.25), "and an over-damped one")
+check(Animation.spring(Spring(response: 0.5, dampingRatio: 1.25)) != Animation.spring(duration: 0.5, bounce: -0.2), "though not the animation of its bounce")
+check(Animation.spring(pairedSpring, blendDuration: 0.1) != Animation.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.1), "the blend does not change that")
+check(Animation.spring(Spring(response: 0.1, dampingRatio: 0.5), blendDuration: 0.1) == Animation.spring(response: 0.1, dampingFraction: 0.5, blendDuration: 0.1), "or this")
+check(Animation.smooth == Animation.spring(Spring.smooth), "the smooth animation is that of the smooth spring")
+check(Animation.snappy == Animation.spring(Spring.snappy), "and the snappy one")
+check(Animation.bouncy != Animation.spring(Spring.bouncy), "while the bouncy one is a bit apart from its spring's")
 
 // keyframes, phases and a custom animation: the track is the one that is written, and the views
 // follow it frame by frame

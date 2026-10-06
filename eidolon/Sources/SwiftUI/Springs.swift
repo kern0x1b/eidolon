@@ -29,6 +29,24 @@ public struct Spring: Hashable {
         return (2 * Double.pi * root(1 - ratio * ratio) / response, 2 * Double.pi * ratio / response, 1)
     }
 
+    /// The spring `Animation.spring(_:)` keeps of a spring it is given: Apple's animation holds a response and a
+    /// damping fraction, and takes them back out of the spring's stored numbers, so they differ in the last bit from
+    /// the pair the spring was made of. The response is 2 pi over the root of the damped frequency's signed square
+    /// and the decay's, the ratio the decay times that response over 2 pi, and the fraction is one less the bounce
+    /// of that ratio (the bounce of an over-damped one is negative, and its fraction the reciprocal of one more);
+    /// all three to the last bit of Apple's (`host/springcmp.swift`).
+    var asFluid: Spring {
+        let (damped, decay, _) = identity
+        let response = 2 * Double.pi / ((damped >= 0 ? damped * damped : -(damped * damped)) + decay * decay).squareRoot()
+        let ratio = decay * response / (2 * Double.pi)
+        let bounce = ratio <= 1 ? 1 - ratio : 1 / ratio - 1
+        return Spring(response: response, dampingRatio: bounce >= 0 ? 1 - bounce : 1 / (bounce + 1))
+    }
+
+    /// The numbers an animation of this spring is compared by: the ones the spring reads back as, whole, where two
+    /// springs are equal by the three they are stored as.
+    var heldNumbers: [Double] { [response, dampingRatio, mass, stiffness, damping] }
+
     public static func == (lhs: Spring, rhs: Spring) -> Bool {
         let (left, right) = (lhs.identity, rhs.identity)
         return left.damped == right.damped && left.decay == right.decay && left.mass == right.mass
