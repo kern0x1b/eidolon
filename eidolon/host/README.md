@@ -30,3 +30,11 @@ integrates from the state it kept, and a question asked cold far into it is answ
 its staircase of steps of a three-hundredth of a second and with the step after which it answers nothing, over the responses,
 fractions and distances of the program, for a pair of numbers as a distance, and for the springs no one means (a response of
 nothing, a negative or undamped or runaway one, a number that is not one).
+Where Apple's answers stop is measured, not assumed, and there is no limit of the port's own: the fluid spring is asked step by
+step from one context until the step it answers nothing at, for fractions of a thousandth, ten-thousandth and hundred-thousandth
+(a fraction of 0.00001 rests after 12751650 steps, eleven hours and forty-eight minutes, and the port's `FluidTrack` finds the same
+step, taking steps only as far as it is asked). `Spring.settlingDuration` looks at 1013 tenths of a second and answers nothing when the last
+is still out, and a critical interpolating spring is over at once when none of its first 1012 tenths is inside a thousandth; the
+program bisects the response, and the stiffness for masses of a half, one and two, at which Apple's starts to, and compares just
+under and just over (not at the ulp the bisection ends at, where the two sides round differently). The whole program takes
+about four seconds on this host, the long fluid springs included.

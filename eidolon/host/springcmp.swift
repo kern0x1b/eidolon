@@ -227,7 +227,7 @@ print("compared", blended, "blends against none")
 // animation integrates from the state it kept (a question asked cold, far into the animation, is answered wrongly)
 var fluidAsked = 0, fluidEnds = 0
 func compareFluid(_ name: String, _ mine: Mine, _ apple: Animation, distance: Double, limit: Int = 3000) {
-    let track = FluidTrack(mine), end = track.end(distance: distance)
+    let track = FluidTrack(mine, distance: distance), end = track.end(by: Double(limit) / 300) ?? .infinity
     var context = makeContext()
     for k in 0..<limit {
         let t = (Double(k) + 0.5) / 300
@@ -239,7 +239,6 @@ func compareFluid(_ name: String, _ mine: Mine, _ apple: Animation, distance: Do
         let scale = max(1, abs(got))
         note("fluid \(name) distance \(distance) step \(k)", expected / scale, got / scale)
     }
-    if end < Double(limit) / 300 { print("DIFF fluid end", name, "distance", distance, "apple never within", limit, "steps; mine", end) }
 }
 for r in [0.1, 0.15, 0.25, 0.3, 0.5, 0.75, 1, 1.5, 2, 3] {
     for z in [0.1, 0.2, 0.3, 0.5, 0.7, 0.825, 0.9, 1, 1.25, 1.5, 2] {
@@ -260,7 +259,7 @@ print("asked Apple's fluid spring", fluidAsked, "times; it ended", fluidEnds, "o
 var vectorAsked = 0
 for (r, z) in [(0.5, 0.825), (0.3, 0.4), (1.0, 1.0), (0.4, 1.5)] {
     for (x, y) in [(3.0, 4.0), (-0.3, 0.4), (60.0, -80.0), (0.003, 0.004)] {
-        let track = FluidTrack(Mine(response: r, dampingRatio: z)), end = track.end(distance: (x * x + y * y).squareRoot())
+        let track = FluidTrack(Mine(response: r, dampingRatio: z), distance: (x * x + y * y).squareRoot()), end = track.end(by: 10) ?? .infinity
         var context = makeContext(AnimatablePair<Double, Double>.self)
         let animation = Animation.spring(response: r, dampingFraction: z)
         for k in 0..<3000 {
@@ -274,6 +273,22 @@ for (r, z) in [(0.5, 0.825), (0.3, 0.4), (1.0, 1.0), (0.4, 1.5)] {
     }
 }
 print("asked Apple's fluid spring", vectorAsked, "times of a pair")
+// a spring that is hardly damped rests after hours, and Apple's goes on answering until then: no horizon, the same first step it answers
+// nothing at as the one this finds (steps asked one after the other, from one context, as above)
+var longAsked = 0
+for z in [1e-3, 1e-4, 1e-5] {
+    let track = FluidTrack(Mine(response: 0.5, dampingRatio: z), distance: 1), apple = Animation.spring(response: 0.5, dampingFraction: z)
+    var context = makeContext()
+    var k = 0, first: Int?
+    while first == nil && k < 20_000_000 {
+        if apple.animate(value: 1, time: (Double(k) + 0.5) / 300, context: &context) == nil { first = k }
+        k += 1
+    }
+    longAsked += k
+    let mineEnd = track.end(by: 20_000_000.0 / 300).map { Int(($0 * 300).rounded()) }
+    same("response 0.5 ratio \(z) answers until step \(String(describing: mineEnd))", first == mineEnd, true)
+}
+print("asked Apple's fluid spring", longAsked, "times of springs that rest after hours")
 
 // .speed and .delay, in every order: Apple's animation is `rate * (t - delay)` seconds into its own time, so a speed after a delay
 // scales it and a delay after a speed does not, and two delays add. The answers come step by step from one context (a fluid
@@ -291,18 +306,18 @@ func retimed(_ retiming: Retiming, _ ops: [Retime]) -> Retiming {
 }
 var retimedAsked = 0
 func compareRetimed(_ name: String, _ apple: Animation, _ ops: [Retime], distance: Double, natural: Double, course: (Retiming) -> SpringCourse) {
-    let retiming = retimed(Retiming(), ops), mine = course(retiming)
+    let retiming = retimed(Retiming(), ops), mine = course(retiming), length = mine.ended(1000) ?? .infinity
     // an animation asked first for a moment past its end (a negative delay longer than it is) is answered by Apple's fluid spring
     // from the state it began with, one step on, and is not asked here
-    if -retiming.delay >= mine.length { return }
+    if -retiming.delay >= length { return }
     var context = makeContext()
     let step = 1 / (300 * max(retiming.rate, 1))
-    let limit = mine.length.isFinite ? Int((max(retiming.delay, 0) + mine.length) / step) + 40 : 600
+    let limit = length.isFinite ? Int((max(retiming.delay, 0) + length) / step) + 40 : 600
     for j in 0..<limit {
         let t = (Double(j) + 0.5) * step
         let elapsed = t - retiming.delay
         let got = apple.animate(value: distance, time: t, context: &context)
-        let expected: Double? = elapsed >= mine.length ? nil : distance * mine.at(elapsed)
+        let expected: Double? = elapsed >= length ? nil : distance * mine.at(elapsed)
         retimedAsked += 1
         if (got == nil) != (expected == nil) { print("DIFF retimed end", name, ops, "step", j, "apple", got as Any, "mine", expected as Any); return }
         if let got, let expected { note("retimed \(name) \(ops) step \(j)", expected, got) }
@@ -395,6 +410,37 @@ for (t, z, eps) in [(1e-9, 0.5, 0.001), (0.005, 0.5, 0.001), (0.01, 0.5, 0.001),
     settlings += 1
     let (m, a) = ((mine.response, mine.dampingRatio), (apple.response, apple.dampingRatio))
     if !((m.0.isNaN && a.0.isNaN) || abs(m.0 - a.0) <= 5e-5 * abs(a.0)) || !((m.1.isNaN && a.1.isNaN) || abs(m.1 - a.1) <= 1e-12) { print("DIFF settling response for a settling of \(t) at ratio \(z) epsilon \(eps) mine", m, "apple", a) }
+}
+// where it stops answering: Apple's looks at the first 1013 tenths of a second, and the spring that is still out at the last of them is
+// over at once. The response at which it starts to is found by halving, and the answer is asked just under it and just over
+func settleCap(_ what: String, _ ratio: Double, _ target: Double, _ eps: Double, _ v0: Double) {
+    var lo = 1.0, hi = 400.0
+    for _ in 0..<70 {
+        let mid = (lo + hi) / 2
+        if Apple(response: mid, dampingRatio: ratio).settlingDuration(target: target, initialVelocity: v0, epsilon: eps) == 0 { hi = mid } else { lo = mid }
+    }
+    for response in [lo * (1 - 1e-9), hi * (1 + 1e-9), lo * 0.999, hi * 1.001, 150, 300] {
+        settle("\(what) response \(response)", Mine(response: response, dampingRatio: ratio).settlingDuration(target: target, initialVelocity: v0, epsilon: eps),
+               Apple(response: response, dampingRatio: ratio).settlingDuration(target: target, initialVelocity: v0, epsilon: eps))
+    }
+    if Mine(response: lo * (1 - 1e-9), dampingRatio: ratio).settlingDuration(target: target, initialVelocity: v0, epsilon: eps) < 101 { print("DIFF settling cap", what, "answered under 101 s at", lo) }
+}
+for (z, target, eps, v0) in [(1.0, 1.0, 0.001, 0.0), (2.0, 1.0, 0.001, 0.0), (1.0, 5.0, 0.01, 0.0), (1.0, 0.3, 0.001, 3.0), (1.5, 100.0, 1e-4, -4.0)] { settleCap("ratio \(z) target \(target) epsilon \(eps) speed \(v0)", z, target, eps, v0) }
+// and for an interpolating spring that is critical: the stiffness at which it starts to, for three masses, the first tenth inside at
+// 101.2 s on one side and none by then on the other
+func passes(_ apple: Animation) -> Bool {
+    var context = makeContext()
+    return apple.animate(value: 1, time: 0, context: &context) != nil
+}
+for m in [0.5, 1.0, 2.0] {
+    var lo = 1e-4, hi = 1e-1
+    for _ in 0..<60 {
+        let mid = (lo * hi).squareRoot()
+        if passes(Animation.interpolatingSpring(mass: m, stiffness: mid, damping: 2 * (m * mid).squareRoot())) { hi = mid } else { lo = mid }
+    }
+    for k in [lo * (1 - 1e-9), hi * (1 + 1e-9), lo * 0.999, hi * 1.001] { compareEnds("critical cap mass \(m) stiffness \(k)", InterpolatingSpring(mass: m, stiffness: k, damping: 2 * (m * k).squareRoot()), Animation.interpolatingSpring(mass: m, stiffness: k, damping: 2 * (m * k).squareRoot())) }
+    let end = InterpolatingSpring(mass: m, stiffness: hi * (1 + 1e-9), damping: 2 * (m * hi * (1 + 1e-9)).squareRoot()).settlingTime
+    same("critical cap mass \(m) answers up to 101.2 s", abs(end - 101.2) < 1e-9, true)
 }
 print("compared", settlings, "settling durations")
 print("compared", count, "numbers; worst difference", worst)

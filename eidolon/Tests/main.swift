@@ -2534,6 +2534,14 @@ check(Spring(response: 0.5, dampingRatio: 0).settlingDuration.isInfinite, "a spr
 closeTo(Spring(settlingDuration: 1.0, dampingRatio: 0.5, epsilon: 0.001).response, 0.4940815892, "the response of a spring that settles in a second is its own closed form", 1e-4)
 closeTo(Spring(settlingDuration: 1.0, dampingRatio: 1.0, epsilon: 0.001).response, 0.6804834770, "a critical one", 1e-4)
 closeTo(Spring(settlingDuration: 1.0, dampingRatio: 2.0, epsilon: 0.001).dampingRatio, 1, "and one past it is held as the critical", 1e-12)
+// Apple's looks at the first 1013 tenths of a second, to 101.2 s, and answers nothing for a spring that is still out at the last of them
+// (`.agent-work/runs/54-hor/d.swift` bisects the response at which it starts to; the numbers are Apple's)
+closeTo(Spring(response: 60.0, dampingRatio: 1.0).settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 88.2, "a spring that settles in a minute and a half is settled then", 1e-9)
+closeTo(Spring(response: 68.8, dampingRatio: 1.0).settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 101.2, "and one whose last tenth out is the 1011th, at 101.2 s", 1e-9)
+closeTo(Spring(response: 68.9, dampingRatio: 1.0).settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 0, "but one still out at the 1012th is answered with nothing", 1e-9)
+closeTo(Spring(response: 100.0, dampingRatio: 1.0).settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 0, "as one that takes much longer is, not with how long it takes", 1e-9)
+closeTo(Spring(response: 24.3, dampingRatio: 2.0).settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 100.8, "an over-damped one is the same", 1e-9)
+closeTo(Spring(response: 24.5, dampingRatio: 2.0).settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.001), 0, "at the same tenth", 1e-9)
 let bouncySpring = Spring(duration: 0.5, bounce: 0.15)
 closeTo(bouncySpring.dampingRatio, 0.85, "a bounce damps the spring by that much less")
 closeTo(bouncySpring.value(target: 1.0, time: 0.4), 1.001616993, "an under-damped spring passes the target")
@@ -2698,6 +2706,15 @@ closeTo(interpolatingBarWidth(fluidSteps, at: 293.5 / 300, distance: 100), 10000
 let fluidInteractive = Animation.spring(response: 0.15, dampingFraction: 0.86)
 closeTo(interpolatingBarWidth(fluidInteractive, at: 58.5 / 300), 100.0539916, "a short spring is over by the end of its step 58", 1e-3)
 closeTo(interpolatingBarWidth(fluidInteractive, at: 59.5 / 300), 100, "and not after it", 1e-3)
+// a spring that is hardly damped goes on answering for hours, and the end is the step Apple's answers nothing at, however far on it is
+// (`.agent-work/runs/54-hor/pins2.swift`: response 0.5, fraction 0.0001, a distance of 1, step 1275690 is the first it answers nothing at)
+let fluidLong = Animation.spring(response: 0.5, dampingFraction: 0.0001)
+closeTo(interpolatingBarWidth(fluidLong, at: 1275689.5 / 300), 99.9589158, "a spring that rests after seventy minutes is still moving at the last step before", 1e-3)
+closeTo(interpolatingBarWidth(fluidLong, at: 1275690.5 / 300), 100, "and over after it, there being no hour after which it is taken to never rest", 1e-3)
+// a critical interpolating spring that is not inside a thousandth at any of the first 1012 tenths of a second is over at once (mass 1, damping the critical one;
+// Apple's answers 0.1018467 at half a second for stiffness 0.0084, and nothing at all for 0.0083, whose first tenth inside would be after 101.2 s)
+closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 0.0084, damping: 2 * 0.0084.squareRoot()), at: 0.5), 0.1018467, "a critical spring that settles within 101.2 s is moving", 1e-5)
+closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 0.0083, damping: 2 * 0.0083.squareRoot()), at: 0.5), 100, "and one that does not is over before it starts", 1e-5)
 closeTo(interpolatingBarWidth(.bouncy, at: 227.5 / 300), 99.8581835, "the bouncy animation rests at step 228", 1e-3)
 closeTo(interpolatingBarWidth(.bouncy, at: 228.5 / 300), 100, "and no later", 1e-3)
 // the blend of a spring moves nothing in time: a spring that blends for a quarter of a second starts at once, and a delay

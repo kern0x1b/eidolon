@@ -146,8 +146,9 @@ public struct Animation: Equatable, Hashable {
 
     /// How one pass of the animation goes, for something that is `distance` away from where it is going.
     struct Course {
-        /// Seconds a pass takes; infinite where it never ends.
-        let length: Double
+        /// The seconds a pass takes, once it is over by a number of seconds into it; not told for a pass that is not (a spring
+        /// that has not come to rest may never).
+        let ended: (Double) -> Double?
         let legs: Double
         let autoreverses: Bool
         /// The fraction of the distance covered a number of seconds into a pass.
@@ -157,7 +158,7 @@ public struct Animation: Equatable, Hashable {
         /// to apply, and whether it is over.
         func position(elapsed: Double) -> (value: Double, done: Bool) {
             guard elapsed >= 0 else { return (0, false) }
-            guard length.isFinite else { return (at(elapsed), false) }
+            guard let length = ended(elapsed) else { return (at(elapsed), false) }
             if legs.isFinite && elapsed >= legs * length {
                 let backAtStart = autoreverses && Int(legs) % 2 == 0
                 return (backAtStart ? 0 : 1, true)
@@ -170,20 +171,20 @@ public struct Animation: Equatable, Hashable {
     }
 
     func course(distance: Double) -> Course {
-        let length: Double, at: (Double) -> Double
+        let ended: (Double) -> Double?, at: (Double) -> Double
         switch timing {
         case .spring(let spring):
             let course = SpringCourse(fluid: spring, distance: distance, retiming: retiming)
-            (length, at) = (course.length, course.at)
+            (ended, at) = (course.ended, course.at)
         case .interpolating(let held):
             let course = SpringCourse(interpolating: held, retiming: retiming)
-            (length, at) = (course.length, course.at)
+            (ended, at) = (course.ended, course.at)
         default:
             let own = max(duration, 0.001), retiming = retiming
-            length = retiming.outer(own)
+            ended = SpringCourse.over(after: retiming.outer(own))
             at = { progress(retiming.rate > 0 ? $0 * retiming.rate / own : 0) }
         }
-        return Course(length: length, legs: Double(legs), autoreverses: autoreverses, at: at)
+        return Course(ended: ended, legs: Double(legs), autoreverses: autoreverses, at: at)
     }
 
     /// How far the animation of a curve has come at a fraction of its own length.

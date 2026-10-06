@@ -275,18 +275,19 @@ public struct Spring: Hashable {
         guard epsilon > 0 else { return 0 }
         let slowest = z == 1 ? frequency : frequency * (z - (z * z - 1).squareRoot())
         guard slowest > 0 else { return .infinity }
-        let horizon = log(max(1, length(travel) + length(velocity)) / epsilon) / slowest + 8 * response
         var time = 0.0, settled = 0.0
-        while time < horizon && time < Spring.horizon {
-            let next = time + 0.1
+        for _ in 0...Spring.scanned {
             let u = unit(time: time)
-            if length(travel - (A.zero + travel.scaled(by: 1 - u.a) + velocity.scaled(by: u.b))) >= epsilon { settled = next }
-            time = next
+            let out = length(travel - (A.zero + travel.scaled(by: 1 - u.a) + velocity.scaled(by: u.b))) >= epsilon
+            time += 0.1
+            if out { settled = time }
         }
-        return settled
+        return settled == time ? 0 : settled
     }
-    /// A spring that has not settled in a quarter of an hour is taken as one that never does.
-    private static let horizon = 900.0
+    /// Apple looks at the first 1013 of the tenths of a second, the last of them at 101.2 s, and answers nothing (settled at once) when
+    /// that last one is still out: `host/springcmp.swift` bisects the response at which it starts to, for the ratios 1 and 2 and
+    /// four sets of distance, epsilon and speed, and finds the answer 101.2 s on one side of it and none on the other every time.
+    private static let scanned = 1012
 
 }
 
@@ -341,22 +342,28 @@ struct Retiming: Hashable {
     func outer(_ inner: Double) -> Double { rate > 0 ? inner / rate : .infinity }
 }
 
-/// How a spring animation goes in the seconds after its delay: when it is over and how far it has come, as a fraction of the
-/// distance, at the time of the animation as it was retimed.
+/// How a spring animation goes in the seconds after its delay: how far it has come, as a fraction of the distance, and whether it
+/// has ended, at the time of the animation as it was retimed. When it ends is not told ahead: a spring that does not rest (or one
+/// that rests after eleven hours, which Apple's animates as long) is never asked for the end of, only whether it is over by a
+/// moment that has come.
 struct SpringCourse {
-    let length: Double
+    /// The seconds a pass takes, if it is over by this many seconds after the delay.
+    let ended: (Double) -> Double?
     let at: (Double) -> Double
 
     init(fluid spring: Spring, distance: Double, retiming: Retiming) {
-        let track = FluidTrack(spring)
-        length = retiming.outer(track.end(distance: distance))
+        let track = FluidTrack(spring, distance: distance)
+        ended = { retiming.rate > 0 ? track.end(by: retiming.rate * $0).map { $0 / retiming.rate } : nil }
         at = { track.progress(at: retiming.rate > 0 ? $0 * retiming.rate : 0) }
     }
 
     init(interpolating held: InterpolatingSpring, retiming: Retiming) {
-        length = retiming.outer(held.settlingTime)
+        ended = SpringCourse.over(after: retiming.outer(held.settlingTime))
         at = { held.progress(at: retiming.rate > 0 ? $0 * retiming.rate : 0) }
     }
+
+    /// What `ended` is of a pass that takes a known number of seconds, infinite for one that never ends.
+    static func over(after length: Double) -> (Double) -> Double? { { length <= $0 ? length : nil } }
 }
 
 /// Where Apple's fluid spring animation (`Animation.spring`, `smooth`, `snappy`, `bouncy`, `interactiveSpring`) is, as a
@@ -368,50 +375,63 @@ struct SpringCourse {
 /// under a hundredth of it, and the acceleration and the mean of the speeds either side of the step are each under 0.06.
 /// A frequency above the one at which a step carries the position half way is taken as that one, so a response under 0.0296 s
 /// moves as 0.0296 s does; a spring that runs away, or has no number to run by, ends where its position stops being a number.
-/// Every component of a vector is that unit solution times its own distance.
+/// Every component of a vector is that unit solution times its own distance. There is no horizon after which it gives up: a
+/// spring with a damping ratio of a hundred-thousandth rests after eleven hours and forty-eight minutes of the animation's time
+/// in Apple's, and one that is not damped never does (`.agent-work/runs/54-hor/a.swift` asks Apple's at ratios of a
+/// thousandth, ten-thousandth and hundred-thousandth for the step it answers nothing at: 127599, 1275690 and 12751650, the
+/// steps this finds), so the steps are taken as they are asked for and the end is looked for only as far as they have gone.
 final class FluidTrack {
     static let step = 1.0 / 300
     private static let highestFrequency = 0.5.squareRoot() / step
-    /// A spring that has not come to rest in an hour is taken as one that never does.
-    private static let horizon = 3600 * 300
 
     private let stiffness: Double
     private let damping: Double
+    private let size: Double
     private var positions = [0.0]
-    private var speed = 0.0
+    private var speeds = [0.0]
+    /// The first step not yet known to be one that does not end, and the one that does, once there is one.
+    private var tested = 0
+    private var ended: Int?
 
-    init(_ spring: Spring) {
+    init(_ spring: Spring, distance: Double) {
         let response = spring.response
         let frequency = response > 0 ? min(2 * Double.pi / response, FluidTrack.highestFrequency) : (response <= 0 ? FluidTrack.highestFrequency : .nan)
         stiffness = frequency * frequency
         damping = 2 * spring.dampingRatio * frequency
+        size = abs(distance)
+    }
+
+    private func reach(_ index: Int) {
+        while positions.count <= index {
+            let speed = speeds[speeds.count - 1] + FluidTrack.step * (stiffness * (1 - positions[positions.count - 1]) - damping * speeds[speeds.count - 1])
+            speeds.append(speed)
+            positions.append(positions[positions.count - 1] + FluidTrack.step * speed)
+        }
     }
 
     /// The fraction of the distance covered `time` seconds in, where the animation has not ended.
     func progress(at time: Double) -> Double {
         guard time > 0 else { return 0 }
         let index = Int((time / FluidTrack.step).rounded(.up)) - 1
-        while positions.count <= index {
-            speed += FluidTrack.step * (stiffness * (1 - positions[positions.count - 1]) - damping * speed)
-            positions.append(positions[positions.count - 1] + FluidTrack.step * speed)
-        }
+        reach(index)
         return positions[index]
     }
 
-    /// The seconds after which Apple's answers nothing more for a distance to cover, infinite for one that never rests.
-    func end(distance: Double) -> Double {
-        let size = abs(distance)
-        var position = 0.0, speed = 0.0
-        for n in 0..<FluidTrack.horizon {
-            if position.isNaN { return Double(n) * FluidTrack.step }
-            let left = 1 - position
-            let acceleration = stiffness * left - damping * speed
-            let next = speed + FluidTrack.step * acceleration
-            if abs(left) < 0.01 && abs(acceleration) * size < 0.06 && abs(speed + next) / 2 * size < 0.06 { return Double(n) * FluidTrack.step }
-            speed = next
-            position += FluidTrack.step * speed
+    /// The seconds after which Apple's answers nothing more for the distance to cover, if that is no later than `time` seconds in.
+    func end(by time: Double) -> Double? {
+        if let n = ended { return Double(n) * FluidTrack.step <= time ? Double(n) * FluidTrack.step : nil }
+        while Double(tested) * FluidTrack.step <= time {
+            let n = tested
+            reach(n + 1)
+            let left = 1 - positions[n]
+            let acceleration = stiffness * left - damping * speeds[n]
+            if positions[n].isNaN || abs(left) < 0.01 && abs(acceleration) * size < 0.06 && abs(speeds[n] + speeds[n + 1]) / 2 * size < 0.06 {
+                ended = n
+                return Double(n) * FluidTrack.step
+            }
+            tested += 1
         }
-        return .infinity
+        return nil
     }
 }
 
@@ -468,7 +488,8 @@ struct InterpolatingSpring: Hashable {
     /// (`host/springcmp.swift` asks Apple's for every one, and Core Animation for a few thousand more in `.agent-work/runs/33-end`):
     /// it does not depend on the distance. A spring that oscillates is over when the envelope of its swing is a thousandth of the
     /// distance, from the speed it starts with included; one that is critical or past it (clamped to critical), when the first of
-    /// the tenths of a second is reached at which the critical solution is a thousandth of it. A spring with no damping never
+    /// the tenths of a second is reached at which the critical solution is a thousandth of it, over at once if none of the first
+    /// 1012 of them is (`horizon`). A spring with no damping never
     /// rests, and one with no mass, no stiffness, a negative damping or a number that is not one is over before it starts (a damping
     /// that is not a number is the critical one).
     var settlingTime: Double {
@@ -487,8 +508,10 @@ struct InterpolatingSpring: Hashable {
             time += 0.1
             if abs((1 + (omega - initialVelocity) * time) * exp(-omega * time)) < 0.001 { return time }
         }
-        return .infinity
+        return 0
     }
-    /// A critical spring that has not come to rest in an hour is taken as one that never does.
-    private static let horizon = 36000
+    /// Core Animation counts 1012 of the tenths of a second, to 101.2 s, and a critical spring none of which is inside a thousandth is
+    /// over at once: `host/springcmp.swift` bisects the stiffness at which Apple's starts to, and finds the first tenth inside at
+    /// 101.2 s on the side it answers and at 101.3 s or later on the side it does not, for masses a half, one and two.
+    private static let horizon = 1012
 }
