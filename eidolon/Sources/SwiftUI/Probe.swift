@@ -310,6 +310,27 @@ import CoreImage
         return "class factory \(classFactory), initWithOptions \(instanceInit), init \(plainInit)"
     }
 
+    // Whether the Core Image of this process draws what it is given: a red square through the context the filters use,
+    // with no filter, read back. The square has an alpha channel, as the picture of a view always has. A process whose
+    // Core Image answers a transparent picture of the right size (the emulator's does, for a picture with alpha) cannot say
+    // what a filter does to a pixel, and a check of one there would only check the process.
+    public static func coreImageRenders() -> Bool {
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: 4, height: 4), false, 1)
+        UIColor.red.setFill()
+        UIRectFill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        let square = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        guard let source = square?.cgImage else { return false }
+        let input = CIImage(cgImage: source)
+        guard let drawn = ColorFilter.context.createCGImage(input, from: input.extent) else { return false }
+        var bytes = [UInt8](repeating: 0, count: 4)
+        guard let context = CGContext(data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+        context.draw(drawn, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return bytes[3] > 0
+    }
+
     // Which of the Core Image filters these modifiers are built on this release has.
     // What each render of a filtered view was given and what came out of it, for a device where the picture has to be
     // looked at rather than only measured.

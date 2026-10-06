@@ -3240,11 +3240,22 @@ func apiPixel(_ view: some View) -> String? {
     guard let pixel = _Probe(view, width: 60, height: 60).filteredPixel() else { return nil }
     return "\(pixel.r), \(pixel.g), \(pixel.b), \(pixel.a)"
 }
+// A process whose Core Image draws nothing cannot say what a filter does to a pixel (the emulator's: an identity render of a
+// red square with an alpha channel comes back transparent, and one without comes back red, measured), so the checks of a
+// pixel are counted as not run, and say so.
+let apiRenders = _Probe.coreImageRenders()
+let apiSkipReason = "the Core Image of this process draws nothing for a picture with alpha: an identity render of a red square reads back transparent"
+var skippedChecks = 0
+func skipChecks(_ count: Int, _ why: String) {
+    skippedChecks += count
+    print("SKIP \(count) checks: \(why)")
+}
 func apiNear(_ got: String?, _ want: Int, _ within: Int = 4) -> Bool {
     guard let got, let here = Int(got.split(separator: ",").first ?? "") else { return false }
     return abs(here - want) <= within
 }
 
+if apiRenders {
 equal(apiPixel(apiRed().grayscale(1)), "127, 127, 127, 255", "grayscale(1) draws the luminance of the colour as a grey")
 equal(apiPixel(apiRed().grayscale(0)), "255, 0, 0, 255", "grayscale(0) leaves the colour alone")
 equal(apiPixel(apiRed().saturation(2)), "255, 0, 0, 255", "saturation(2) leaves a colour that is already all of its own hue")
@@ -3261,16 +3272,19 @@ equal(apiPixel(apiBlueBlock().hueRotation(.degrees(120))), "255, 0, 0, 255", "a 
 equal(apiPixel(apiRed().hueRotation(.degrees(360))), apiPixel(apiRed().grayscale(0)), "a whole turn of the wheel leaves a colour as it was")
 equal(apiPixel(apiRed().luminanceToAlpha()), "54, 0, 0, 54", "luminanceToAlpha puts the luminance of a colour into its alpha")
 check(apiPixel(Color(red: 1, green: 1, blue: 1).frame(width: 20, height: 20).luminanceToAlpha()) == "255, 255, 255, 255", "and white is opaque")
+} else { skipChecks(15, apiSkipReason) }
 
 // a blur is a picture of the view, no bigger than the view, with the colours on either side of a line mixed
 let apiBlurred = _Probe(HStack(spacing: 0) { Color(red: 1, green: 0, blue: 0); Color(red: 0, green: 0, blue: 1) }
     .frame(width: 40, height: 20).blur(radius: 6), width: 60, height: 60)
 apiBlurred.flush()
 equal(apiBlurred.filteredPicture(0)?.size, CGSize(width: 40, height: 20), "a blurred view is a picture of its own size, blur margin and all")
-let apiBlurMiddle = apiBlurred.filteredPixel(0, at: CGPoint(x: 20, y: 10))
-check(apiBlurMiddle.map { $0.r > 30 && $0.b > 30 } ?? false, "and the middle of it is a mixture of the two colours", String(describing: apiBlurMiddle))
-let apiBlurEdge = apiBlurred.filteredPixel(0, at: CGPoint(x: 1, y: 10))
-check(apiBlurEdge.map { $0.r > 100 && $0.b < 20 } ?? false, "while the edge of it is the colour that was there, fading out", String(describing: apiBlurEdge))
+if apiRenders {
+    let apiBlurMiddle = apiBlurred.filteredPixel(0, at: CGPoint(x: 20, y: 10))
+    check(apiBlurMiddle.map { $0.r > 30 && $0.b > 30 } ?? false, "and the middle of it is a mixture of the two colours", String(describing: apiBlurMiddle))
+    let apiBlurEdge = apiBlurred.filteredPixel(0, at: CGPoint(x: 1, y: 10))
+    check(apiBlurEdge.map { $0.r > 100 && $0.b < 20 } ?? false, "while the edge of it is the colour that was there, fading out", String(describing: apiBlurEdge))
+} else { skipChecks(2, apiSkipReason) }
 check(apiPixel(apiRed().blur(radius: 0)) == nil, "a blur of no radius changes nothing and is not drawn")
 
 // a filter that changes nothing is not drawn, and the picture takes no touches
@@ -3449,6 +3463,6 @@ equal(apiValueName(AttributeScopes.SwiftUIAttributes.KerningAttribute.Value.self
 equal(apiValueName(AttributeScopes.SwiftUIAttributes.TrackingAttribute.Value.self), "CGFloat", "and the tracking one a CGFloat")
 equal(apiValueName(AttributeScopes.SwiftUIAttributes.BaselineOffsetAttribute.Value.self), "CGFloat", "and the baseline offset one a CGFloat")
 
-print("\(checks - failures)/\(checks) checks passed")
+print("\(checks - failures)/\(checks) checks passed" + (skippedChecks > 0 ? ", \(skippedChecks) not run (see SKIP above)" : ""))
 exit(failures == 0 ? 0 : 1)
 
