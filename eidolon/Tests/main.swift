@@ -2660,6 +2660,13 @@ closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damp
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.1), 26.4241, "one whose damping is past the critical moves as the critical one, as Apple's does", 0.01)
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.2), 59.3994, "and keeps to it", 0.01)
 closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, dampingRatio: 1.5)), at: 0.1), 35.7740, "so does the interpolating spring of an over-damped one", 0.01)
+// the blend of a spring moves nothing in time: a spring that blends for a quarter of a second starts at once, and a delay
+// given after it is the delay (`host/springcmp.swift` asks Apple's for the answers of 15 blended springs against none)
+let plainBarWidth = interpolatingBarWidth(.spring(response: 0.5, dampingFraction: 0.825), at: 0.1)
+check(plainBarWidth > 10, "a spring has moved the bar a tenth of a second in")
+closeTo(interpolatingBarWidth(.spring(response: 0.5, dampingFraction: 0.825, blendDuration: 0.25), at: 0.1), plainBarWidth, "and one that blends for a quarter of a second has moved it as far", 1e-6)
+closeTo(interpolatingBarWidth(.interactiveSpring(), at: 0.1), interpolatingBarWidth(.interactiveSpring(blendDuration: 0), at: 0.1), "so has the interactive spring, whose blend is that long", 1e-6)
+closeTo(interpolatingBarWidth(.spring(response: 0.5, dampingFraction: 0.825, blendDuration: 0.25).delay(0.05), at: 0.1), interpolatingBarWidth(.spring(response: 0.5, dampingFraction: 0.825).delay(0.05), at: 0.1), "and a delay after the blend is only the delay", 1e-6)
 // and it starts with the speed it is given, in distances per second (the same host runs, with `initialVelocity:` of 3 and -2)
 check(Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 2) != Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 1), "interpolating springs of another initial velocity are another animation")
 check(Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 2) != Animation.interpolatingSpring(interpolatedSpring), "than one that starts at rest too")

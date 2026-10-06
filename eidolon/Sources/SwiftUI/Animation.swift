@@ -6,6 +6,8 @@ public struct Animation: Equatable, Hashable {
     var curve: Curve
     var duration: Double
     var delay: Double
+    /// What a spring was given as its blend: held and compared as Apple's animation does, and moving nothing in time.
+    var blend = 0.0
     var legs: Float = 1
     var autoreverses = false
     /// Set when the timing is a spring or one of the newer curves: what the interpolator asks instead of `curve`.
@@ -59,7 +61,9 @@ public struct Animation: Equatable, Hashable {
     // An animation holding the spring exactly as it is given, which is what the named forms of it (a response and a
     // fraction, a duration and a bounce, a mass and a stiffness) hold in Apple's too.
     static func holding(_ spring: Spring, blendDuration: Double = 0) -> Animation {
-        Animation(curve: .spring, duration: spring.response, delay: blendDuration, timing: .spring(spring))
+        var held = Animation(curve: .spring, duration: spring.response, delay: 0, timing: .spring(spring))
+        held.blend = blendDuration
+        return held
     }
     static func interpolating(_ held: InterpolatingSpring) -> Animation {
         Animation(curve: .spring, duration: held.spring.response, delay: 0, timing: .interpolating(held))

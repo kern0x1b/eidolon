@@ -161,4 +161,21 @@ for (name, mine, apple) in interpolating {
     }
 }
 print("compared", solved, "values of interpolating springs")
+
+// the blend of a spring moves nothing in time: Apple's answers for a spring are the same whatever blend it was given
+// (and its end and logical completion with them)
+func answersOf(_ animation: Animation, distance: Double, at times: [Double]) -> [Double?] {
+    var context = makeContext()
+    return times.map { animation.animate(value: distance, time: $0, context: &context) }
+}
+var blended = 0
+let blendTimes = (0..<240).map { (Double($0) + 0.5) / 300 }
+for (r, z) in [(0.5, 0.825), (0.15, 0.86), (1.0, 0.5), (0.3, 1.0), (0.4, 1.4)] {
+    let plain = answersOf(Animation.spring(response: r, dampingFraction: z), distance: 1, at: blendTimes)
+    for blend in [0.1, 0.25, 1.0] {
+        blended += 1
+        same("blend \(blend) of response \(r) fraction \(z) moves nothing in time", true, answersOf(Animation.spring(response: r, dampingFraction: z, blendDuration: blend), distance: 1, at: blendTimes) == plain)
+    }
+}
+print("compared", blended, "blends against none")
 print("compared", count, "numbers; worst difference", worst)
