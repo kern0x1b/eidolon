@@ -2583,7 +2583,7 @@ equal(resolvedTrack.keyframes.count, 2, "a keyframe track is the keyframes writt
 closeTo(resolvedTrack.duration, 1.0, "and lasts as long as they do")
 closeTo(resolvedTrack.progress(at: 0.25), 0.25, "halfway through the first keyframe the track is a quarter along")
 closeTo(resolvedTrack.progress(at: 0.75), 0.75, "and halfway through the second, three quarters")
-closeTo(resolvedTrack.value(at: 0.75), 0.65, "each keyframe travels from the value before it to its own")
+closeTo(resolvedTrack.value(at: 0.75), 0.5, "each keyframe travels from the value before it to its own: half way from 0.2 to 0.8")
 closeTo(resolvedTrack.value(at: 0.0), 0.0, "at the start of the track the value is where it started")
 closeTo(resolvedTrack.value(at: 2), 0.8, "and after the last keyframe it is where that one wrote it")
 var springTrack = _ResolvedKeyframes<Double>(initialValue: 0)
