@@ -110,7 +110,7 @@ python3 coverage.py --check                             # the ledger, checked ag
 `application:didFinishLaunchingWithOptions:`; the engine tests are a console binary and go through `xmake emulate run`.
 
 `bridge/guest-abi-check.sh` is gone: it built for arm64 with the iOS 16.4 SDK's stdlib, not the runtime the port ships
-(the reason and the measurement are in `eidolon/README.md`, "Две сборки модуля").
+(the reason and the measurement are in `eidolon/README.md`, in its section on the two builds of the module).
 
 ## Repository layout
 
