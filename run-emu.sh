@@ -12,7 +12,7 @@ mkdir -p "$out"
 # built here first. CHARON_REPO points the package repository at a checkout, CHARON_ADDON at the addon
 # version to build with; both default to what the machine has.
 xmake f -P eidolon -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
-xmake emulate -P eidolon install -d iPhone4,1 -r 6.1.3 > "$out/install.log" 2>&1
+xmake emulate -P eidolon -d iPhone4,1 -r 6.1.3 install > "$out/install.log" 2>&1
 ran=0
 marker=$out/.marked
 : > "$marker"
