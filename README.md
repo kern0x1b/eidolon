@@ -109,15 +109,15 @@ python3 coverage.py --check                             # the ledger, checked ag
 `xmake emulate launch` starts the application the way SpringBoard does, so it reaches
 `application:didFinishLaunchingWithOptions:`; the engine tests are a console binary and go through `xmake emulate run`.
 
-`bridge/guest-abi-check.sh` builds the module for arm64 with library evolution and links a sample app compiled against
-Apple's interface with it, to prove that the symbols such an app needs are all there.
+`bridge/guest-abi-check.sh` is gone: it built for arm64 with the iOS 16.4 SDK's stdlib, not the runtime the port ships
+(the reason and the measurement are in `eidolon/README.md`, "Две сборки модуля").
 
 ## Repository layout
 
 | Path | Holds |
 | --- | --- |
 | `eidolon/` | the module (`Sources/SwiftUI`), the demo app, the engine tests, the probe, the snapshot references, the coverage ledger, and the Charon port (`xmake.lua`, `control`, `Info.plist`) that builds the app, the snapshot bundle and the tests as packages for `xmake emulate` |
-| `bridge/` | the guest-ABI check, the typed API diff against Apple's interface, and the name lists both use |
+| `bridge/` | the typed API diff against Apple's interface, the invented-name gate, and the name lists they use |
 | `combine/` | build and run scripts for the upstream OpenCombine test suite on iOS 6, with its results (Styx's ancestor; Styx carries its own now) |
 | `rtpkg/` | the small xmake project that installs the runtime packages |
 | `docs/` | the research (in Russian) |
@@ -129,7 +129,7 @@ Apple's interface with it, to prove that the symbols such an app needs are all t
 | --- | --- |
 | [`eidolon/README.md`](eidolon/README.md) | the ledger: what is implemented, ignored, simplified or missing; measurements |
 | [`docs/research.md`](docs/research.md) | why Apple's SwiftUI cannot be ported, and the design of this implementation (Russian) |
-| [`bridge/README.md`](bridge/README.md) | the guest-ABI check |
+| [`bridge/README.md`](bridge/README.md) | the guest build by hand: the sample app, the slot table |
 | [`combine/RESULTS.md`](combine/RESULTS.md) | OpenCombine on iOS 6 before the Styx fork: 1448 of 1453 of its tests |
 | [`AGENTS.md`](AGENTS.md) | the contributor guide |
 

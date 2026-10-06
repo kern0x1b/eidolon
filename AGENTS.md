@@ -22,7 +22,7 @@ named `SwiftUI` because every symbol an app takes from SwiftUI is mangled with t
 - `eidolon/xmake.lua`, `eidolon/control`, `eidolon/Info.plist` — the Charon port: the same demo sources built as two
   applications (`EidolonDemo`, and `EidolonSnapshots`, whose Info.plist carries `EidolonSnapshots` so it renders the
   scenarios) and the engine tests as `EidolonTests`, each a Debian package `xmake emulate` installs into the image.
-- `bridge/` — the guest-ABI check and the typed API diff (`api-surface.sh`, `api-diff.py`).
+- `bridge/` — the typed API diff and the invented-name gate (`api-surface.sh`, `api-diff.py`, `api-invented.py`).
 - `combine/` — the pre-Styx port of OpenCombine and its upstream test suite on iOS 6 (`build.sh`, `emu-loop.sh`,
   `gentests.py`, `stage-pkg.sh`), with results in `combine/RESULTS.md`. Historical: Styx, the `Combine` module Eidolon
   actually links, carries its own tests now.
@@ -46,7 +46,8 @@ addon has to be one with `xmake emulate launch` (Charon v0.8.14 or later), named
 names a Charon checkout to take the packages from. The scenarios need a key window, so they run in the application,
 through SpringBoard; the engine tests are a console binary and go through `run`.
 
-A change is done when the engine tests, every snapshot, the ledger check and the guest-ABI check pass. Anything that
+A change is done when the engine tests, every snapshot and the ledger check (`coverage.py --check`, after
+`bridge/api-surface.sh`) pass. Anything that
 touches layout, gestures, animation, dialogs or navigation also gets a run on hardware (an iPad 2 or an iPhone 4S on
 iOS 6.1.3): the repository skill `device-ssh-access` says how to reach one from here.
 
