@@ -31,7 +31,7 @@ grep -a "snapshot\|snapshots done" "$folder/results/app.stdout" 2>/dev/null || t
 # difference, and a difference is the run's failure.
 ls "$out"/shots/*.txt >/dev/null 2>&1 || { echo "no scenario was rendered; the launch log is $out/launch.log" >&2; exit 1; }
 ls eidolon/Snapshots/reference/*.txt | xargs -n1 basename | sort > "$out/wanted"
-if [ -n "$ONLY" ]; then grep -x "$ONLY.txt" "$out/wanted" > "$out/wanted.one" && mv "$out/wanted.one" "$out/wanted"; fi
+if [ -n "${ONLY:-}" ]; then grep -x "$ONLY.txt" "$out/wanted" > "$out/wanted.one" && mv "$out/wanted.one" "$out/wanted"; fi
 ls "$out"/shots/*.txt | xargs -n1 basename | sort > "$out/got"
 if ! missing=$(comm -23 "$out/wanted" "$out/got") || [ -n "$missing" ]; then
   echo "these scenarios were not rendered: $(echo "$missing" | tr '\n' ' ')" >&2
