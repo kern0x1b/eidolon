@@ -346,6 +346,22 @@ for (name, held, apple) in [("mass 1 stiffness 100 damping 10", InterpolatingSpr
     }
 }
 print("asked Apple", retimedAsked, "times of springs that were sped up, slowed down and delayed")
+// what the calls come to is not what makes two animations equal: Apple's animation holds the calls, so a speed of one, a delay of nothing,
+// and two delays that add to another are each another animation than the one without them, and two are equal when the same calls were made
+// in the same order; every sequence of up to three calls from five, on a spring and on a curve, paired with every other
+let equalityOps: [Retime] = [.speed(1), .speed(2), .delay(0), .delay(1), .complete(1)]
+var equalitySequences: [[Retime]] = [[]]
+for _ in 0..<3 { equalitySequences += equalitySequences.filter { $0.count == equalitySequences.map(\.count).max()! }.flatMap { sequence in equalityOps.map { sequence + [$0] } } }
+for base in [Animation.linear(duration: 1), Animation.spring(response: 0.5, dampingFraction: 0.8)] {
+    for first in equalitySequences {
+        for second in equalitySequences {
+            let equalMine = retimed(Retiming(), first) == retimed(Retiming(), second), equalApple = retime(base, first) == retime(base, second)
+            same("retimed \(first) == \(second)", equalMine, equalApple)
+            if equalApple { same("retimed \(first) hashes as \(second)", retimed(Retiming(), first).hashValue == retimed(Retiming(), second).hashValue, true) }
+        }
+    }
+}
+print("compared", equalitySequences.count * equalitySequences.count * 2, "pairs of retimed animations for equality")
 
 // Spring.settlingDuration, in every form: Apple's settles a spring that oscillates when the envelope of its swing is under epsilon
 // (the logarithm of the distance plus what the speed adds to the decay, over epsilon, over the decay, and no less than nothing), and

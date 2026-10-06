@@ -2616,6 +2616,17 @@ check(Animation.interactiveSpring == Animation.spring(duration: 0.15, bounce: 0.
 check(Animation.interactiveSpring != Animation.spring(duration: 0.15, bounce: 0.15), "and not the plain spring of those two numbers, which blends for nothing")
 check(Animation.smooth != Animation.bouncy, "two springs of the same length are told apart by their bounce")
 check(Animation.spring(duration: 0.5).delay(0.2) != Animation.spring(duration: 0.5), "a delay makes another animation")
+// an animation holds the calls made on it, not the time they come to (Apple's `==` and `hashValue` of the same animations,
+// `.agent-work/runs/55-r5a`: every sequence of up to three calls from five, paired)
+check(Animation.linear.speed(1) != Animation.linear, "a speed of one is another animation than none")
+check(Animation.linear.delay(0) != Animation.linear, "and a delay of nothing")
+check(Animation.linear.delay(1).delay(1) != Animation.linear.delay(2), "two delays that add to one are not that one")
+check(Animation.linear.speed(2).speed(0.5) != Animation.linear.speed(1), "nor are two speeds")
+check(Animation.linear.speed(2).delay(1) != Animation.linear.delay(0.5).speed(2), "a speed and a delay in the other order, that come to the same time, are not equal")
+check(Animation.linear.logicallyComplete(after: 1) != Animation.linear, "an animation that is logically complete after a time is not the one that is not")
+check(Animation.linear.speed(2).delay(1) == Animation.linear.speed(2).delay(1), "the same calls in the same order are equal")
+check(Animation.linear.speed(2).delay(1).hashValue == Animation.linear.speed(2).delay(1).hashValue, "and hash alike")
+check(Animation.spring().speed(2).delay(1) == Animation.spring().speed(2).delay(1) && Animation.spring().speed(2) != Animation.spring().speed(3), "on a spring too")
 check(Animation.timingCurve(.circularEaseIn, duration: 2) != Animation.linear(duration: 2), "and so does a timing curve")
 check(Animation.timingCurve(0.42, 0, 1, 1, duration: 1) == Animation.timingCurve(.easeIn, duration: 1), "the four points of a timingCurve are the control points of the Bezier")
 // the two ways of naming a spring are one spring in Apple's framework, which compares what it stores of it

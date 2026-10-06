@@ -46,7 +46,7 @@ public struct Animation: Equatable, Hashable {
     init(curve: Curve, duration: Double, delay: Double, timing: Timing? = nil) {
         self.curve = curve
         self.duration = duration
-        self.retiming.delay = delay
+        if delay != 0 { retiming = retiming.delaying(by: delay) }
         self.timing = timing
     }
 

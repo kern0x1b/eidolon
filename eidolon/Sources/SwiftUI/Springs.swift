@@ -306,37 +306,62 @@ extension VectorArithmetic {
 /// it (`host/springcmp.swift` asks Apple's for every order of two and three of them). Each of the two moves the moment of
 /// logical completion, which is given in the time of the animation as it was when it was set. An animation that is not
 /// moving in time (a speed of nothing or less) stays at its start and is never over.
+/// What is held is the calls, as Apple's animation holds them (every one is a layer around the animation it was made on), so that
+/// two animations are equal when the same calls were made in the same order and not when they come to the same time: a speed of
+/// one, a delay of nothing, and two delays that add to another are each another animation than the one without them
+/// (`host/springcmp.swift` asks Apple's `==` and `hashValue` of every sequence of up to three calls).
 struct Retiming: Hashable {
-    var rate = 1.0
-    var delay = 0.0
-    var logicalEnd: Double?
+    enum Step: Hashable {
+        case speed(Double)
+        case delay(Double)
+        case complete(Double)
+    }
+    private(set) var steps: [Step] = []
 
-    func speeding(by speed: Double) -> Retiming {
+    func speeding(by speed: Double) -> Retiming { appending(.speed(speed)) }
+    func delaying(by seconds: Double) -> Retiming { appending(.delay(seconds)) }
+    func completing(after seconds: Double) -> Retiming { appending(.complete(seconds)) }
+
+    private func appending(_ step: Step) -> Retiming {
         var next = self
-        next.rate *= speed
-        if speed > 0 { next.delay /= speed; next.logicalEnd = logicalEnd.map { $0 / speed } }
+        next.steps.append(step)
         return next
     }
 
-    func delaying(by seconds: Double) -> Retiming {
-        var next = self
-        next.delay += seconds
-        next.logicalEnd = logicalEnd.map { $0 + seconds }
-        return next
+    /// What the calls come to: the rate, the delay in the time the animation is played in, and the moment of logical completion
+    /// the last `logicallyComplete` set, moved by the calls after it.
+    private var folded: (rate: Double, delay: Double, logicalEnd: Double?) {
+        var rate = 1.0, delay = 0.0
+        var logicalEnd: Double?
+        for step in steps {
+            switch step {
+            case .speed(let speed):
+                rate *= speed
+                if speed > 0 { delay /= speed; logicalEnd = logicalEnd.map { $0 / speed } }
+            case .delay(let seconds):
+                delay += seconds
+                logicalEnd = logicalEnd.map { $0 + seconds }
+            case .complete(let seconds):
+                logicalEnd = seconds
+            }
+        }
+        return (rate, delay, logicalEnd)
     }
-
-    func completing(after seconds: Double) -> Retiming {
-        var next = self
-        next.logicalEnd = seconds
-        return next
-    }
+    var rate: Double { folded.rate }
+    var delay: Double { folded.delay }
 
     /// The moment the animation is logically complete, in seconds after it was asked to begin: the one it was given, or the end of its
     /// own time of a number of seconds (a spring's response) as it was played.
-    func logicalMoment(naturally seconds: Double) -> Double { logicalEnd ?? delay + outer(seconds) }
+    func logicalMoment(naturally seconds: Double) -> Double {
+        let now = folded
+        return now.logicalEnd ?? now.delay + outer(seconds)
+    }
 
     /// The seconds of its own time an animation has been through, a number of seconds after it was asked to begin.
-    func inner(at elapsed: Double) -> Double { rate > 0 ? rate * (elapsed - delay) : 0 }
+    func inner(at elapsed: Double) -> Double {
+        let now = folded
+        return now.rate > 0 ? now.rate * (elapsed - now.delay) : 0
+    }
 
     /// The seconds after its delay in which a number of seconds of its own time pass.
     func outer(_ inner: Double) -> Double { rate > 0 ? inner / rate : .infinity }
