@@ -2728,13 +2728,13 @@ if let scroller = scrollerOf(scrolled) {
 let plainScroller = scrollerOf(_Probe(ScrollView { Color.red }.scrollIndicators(.hidden), width: 50, height: 50))
 check(plainScroller?.showsVerticalScrollIndicator == false, "and the view's own flag still decides when the environment says nothing")
 
-// SymbolVariants: the flags, their combinations and the name a variant gives a symbol — the whole
+// SymbolVariants: the flags, their combinations and the name a variant gives a symbol - the whole
 // type is OpenSwiftUI's, and this checks it says what its own documentation says.
 check(SymbolVariants.none == SymbolVariants.none, "the empty variant is one value")
 check(SymbolVariants.fill != SymbolVariants.none, "and the filled one is not the empty one")
 check(SymbolVariants.fill.contains(.fill), "a filled variant contains fill")
 // `contains` is a subset test, and the empty variant is a subset of every one of them, so a filled
-// variant does contain the empty one — that is what the flags are, not a defect in the vendored code
+// variant does contain the empty one - that is what the flags are, not a defect in the vendored code
 check(SymbolVariants.fill.contains(.none), "and contains the empty one, as an empty set is a subset of any")
 check(!SymbolVariants.none.contains(.fill), "where the empty one does not contain a filled")
 check(SymbolVariants.circle.contains(.circle), "and a circle variant contains circle")
@@ -3144,7 +3144,7 @@ check(openValue is OpenWindowAction, "the action reads itself as the openWindow 
 OpenWindowAction.currentWindowID = nil
 
 // A widget: a configuration, a bundle, and the builder that collects the bundle's members. iOS 6.1.3
-// has no widget host, so nothing here is ever shown — as in an app with no widget extension.
+// has no widget host, so nothing here is ever shown - as in an app with no widget extension.
 struct ClockConfiguration: WidgetConfiguration {
     var body: some WidgetConfiguration { EmptyWidgetConfiguration() }
 }
@@ -3230,7 +3230,7 @@ check(apiCellColour.map { $0.isEqual(apiRowColour) } ?? false, "a row background
       String(describing: apiCellColour))
 check(!(apiCellColour?.isEqual(UIColor.white) ?? false), "and not the colour a cell has by default", String(describing: apiCellColour))
 
-// The colour filters, read as a pixel of the picture the filter produced, as "r, g, b, a" — and nothing at all when the
+// The colour filters, read as a pixel of the picture the filter produced, as "r, g, b, a" - and nothing at all when the
 // view has no picture. The primaries are spelled out: the system colours of SwiftUI are not the primaries, and the numbers
 // below are what Core Image of this release answers for them.
 func apiRed() -> some View { Color(red: 1, green: 0, blue: 0).frame(width: 20, height: 20) }
@@ -3397,7 +3397,7 @@ equal(_Probe.sharedItems([42]), ["42"], "and an item of a type the release canno
 check(_Unsupported.used.contains("exportableToServices"), "and it says that the sheet of iOS 6 has no completion")
 
 // The blend modes of SwiftUI, measured: of the filters they name, this release has three, and a layer rendered with one
-// of them comes out the colour of the layer — which is why .blendMode is declared absent rather than attached to a filter
+// of them comes out the colour of the layer - which is why .blendMode is declared absent rather than attached to a filter
 // that does nothing.
 let apiBlendNames = ["CIMultiplyCompositing", "CIScreenCompositing", "CIOverlayCompositing", "CIDarkenCompositing",
                      "CILightenCompositing", "CIColorDodgeCompositing", "CIColorBurnCompositing", "CISoftLightCompositing",
@@ -3415,7 +3415,7 @@ check(apiBlends.filter { !$0.hasSuffix("absent") }.allSatisfy { $0.hasSuffix("25
 // writes it under. That mapping is the observable part of the family and every attribute has a case for it.
 //
 // What cannot be observed here is the value on the string the *screen* drew, because reading it means resolving a text
-// and resolving a text creates a UIFont — and a font traps the headless test process on a device (measured: EidolonTests
+// and resolving a text creates a UIFont - and a font traps the headless test process on a device (measured: EidolonTests
 // aborts with Trace/BPT trap the first time a font is created, with or without a screen). So the keys are checked here
 // and the values are left to the snapshot scenarios, which draw on a screen where a font is a font and not a trap.
 let apiNSFont = AttributeScopes.SwiftUIAttributes.key(of: AttributeScopes.SwiftUIAttributes.FontAttribute.name)
@@ -3451,7 +3451,7 @@ equal(AttributeScopes.SwiftUIAttributes.TrackingAttribute.name, "NSTracking", "a
 equal(AttributeScopes.SwiftUIAttributes.BaselineOffsetAttribute.name, "NSBaselineOffset", "and the baseline offset one")
 
 // the value types are the port's own, as they are in Apple's: the font, the colour, the line style, a number
-// the value types are the port's own, as they are in Apple's: the font, the colour, the line style, a number — read by
+// the value types are the port's own, as they are in Apple's: the font, the colour, the line style, a number - read by
 // name, because a typealias to a nominal type is not compared with ==
 func apiValueName(_ type: Any.Type) -> String { "\(type)".components(separatedBy: ".").last ?? "\(type)" }
 equal(apiValueName(AttributeScopes.SwiftUIAttributes.FontAttribute.Value.self), "Font", "the font attribute carries a Font")

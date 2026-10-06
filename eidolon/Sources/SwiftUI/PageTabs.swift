@@ -249,12 +249,12 @@ public struct TabContentBuilder<TabValue: Hashable> {
         tabContentRows(content)
     }
     /// A TabView's selection may be an optional of what its tabs carry, and then the tabs are of the
-    /// wrapped value: `TabView(selection: $mailbox) { ForEach(mailboxes) { … } }` selects on a `Mailbox`.
+    /// wrapped value: `TabView(selection: $mailbox) { ForEach(mailboxes) { ... } }` selects on a `Mailbox`.
     @_disfavoredOverload
     public static func buildExpression<C: TabContent, V: Hashable>(_ content: C) -> [_TabContentRow]
         where C.TabValue == V, TabValue == V? { tabContentRows(content) }
     /// The builder of a TabView with no selection carries no tab value of its own, so it takes tab content of
-    /// any value -- which is what `TabView { ForEach(mailboxes) { … } }` is: the tabs name themselves.
+    /// any value -- which is what `TabView { ForEach(mailboxes) { ... } }` is: the tabs name themselves.
     @_disfavoredOverload
     public static func buildExpression<C: TabContent>(_ content: C) -> [_TabContentRow] where TabValue == Never {
         tabContentRows(content)

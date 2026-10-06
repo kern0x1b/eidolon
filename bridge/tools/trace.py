@@ -4,8 +4,8 @@
 The row list a gap tool prints is a bare member name, and a bare name is not a place: `stretch` is
 `Image.ResizingMode.stretch` and is declared as `case tile` / `case stretch` **inside** `Image` in
 SwiftUICore, with no prefix on the line at all. So the name is looked up whole, the enclosing type is
-composed from the nesting — every `struct`, `enum` and `class` pushes, every `extension X` sets the base
-to `X` — and the file, the line and that enclosing type come out.
+composed from the nesting - every `struct`, `enum` and `class` pushes, every `extension X` sets the base
+to `X` - and the file, the line and that enclosing type come out.
 
 Usage: trace.py NAMES-FILE [--out table.tsv]      (names are `Image.ResizingMode.stretch`)
 """
@@ -53,7 +53,7 @@ def find(name, path, label):
 
     The line is examined **before** the stack is popped, and an entry is popped only when the braces
     have closed it: `case stretch` stands at depth two inside `extension SwiftUICore.Image` and inside
-    `ResizingMode`, and the owner is `Image.ResizingMode`. Popping first — the first version did —
+    `ResizingMode`, and the owner is `Image.ResizingMode`. Popping first - the first version did -
     collapsed it to `Image` and then to nothing, and five public members read as absent.
     """
     want = qualified(name)

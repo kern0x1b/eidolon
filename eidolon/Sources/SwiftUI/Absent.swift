@@ -100,7 +100,7 @@ extension View {
     }
     public func copyable<T>(_ payload: @autoclosure @escaping () -> [T]) -> some View {
         // the edit menu of this release belongs to a text view, so what a view of its own offers on a long press is the
-        // release's own sheet, with the same Copy item — and what is copied is the payload, as the pasteboard holds it
+        // release's own sheet, with the same Copy item - and what is copied is the payload, as the pasteboard holds it
         onLongPressGesture {
             showReleaseMenu([("Copy", { copyToPasteboard(payload()) })], in: UIApplication.shared.keyWindow?.rootViewController?.view)
         }

@@ -7,8 +7,8 @@ members indented under them. So the owner is a stack by **indentation**: a decla
 every entry whose indent is *i* or deeper and pushes itself; an attribute line and a `where` continuation
 change nothing; and a member's owner is the joined names on the stack at that line.
 
-An `extension X` pushes `X` with the module prefix dropped — `extension SwiftUICore.Image` is `Image`, and
-`extension SwiftUI.Anchor.Source` is `Anchor.Source` — so a member of `Anchor.Source` is never filed under
+An `extension X` pushes `X` with the module prefix dropped - `extension SwiftUICore.Image` is `Image`, and
+`extension SwiftUI.Anchor.Source` is `Anchor.Source` - so a member of `Anchor.Source` is never filed under
 `Anchor` and a member of a nested `ResizingMode` is `Image.ResizingMode`.
 """
 import re
@@ -34,7 +34,7 @@ def indent_of(line):
 def is_declaration(line):
     stripped = line.strip()
     # not `startswith('@')`: a declaration may carry its own attributes, and the pattern
-    # already allows them — `@frozen public enum Orientation` is a declaration, not an attribute
+    # already allows them - `@frozen public enum Orientation` is a declaration, not an attribute
     if not stripped or stripped.startswith('//'):
         return None
     m = DECL.match(stripped)
@@ -47,7 +47,7 @@ def walk(lines, trace=False):
     """yields (line number, text, owner-as-written or None) for every line of an interface
 
     A preprocessor line and an attribute line are neither a declaration nor a member: they must not push
-    and must not pop, and `#if compiler(…)` in particular sits at the indent of the block it guards, so
+    and must not pop, and `#if compiler(...)` in particular sits at the indent of the block it guards, so
     treating it as one closes the block above it.
     """
     stack = []                       # (indent, name)

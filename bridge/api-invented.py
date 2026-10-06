@@ -39,8 +39,8 @@ if not os.path.exists(SURFACE):
 
 # The surface file is what bridge/surface-swiftui.sh writes: the interfaces of every module SwiftUI
 # reaches through its `@_exported import` lines, read by swift-syntax's SwiftParser. A parser sees what
-# regular expressions cannot — an associatedtype witness printed as a `var`, a nested `typealias` printed
-# as a property, an enum `case`, a `subscript`, a static in a constrained extension — and every such row
+# regular expressions cannot - an associatedtype witness printed as a `var`, a nested `typealias` printed
+# as a property, an enum `case`, a `subscript`, a static in a constrained extension - and every such row
 # used to be a name Apple declares and this gate called invented.
 apple = set()
 for line in open(SURFACE, errors='replace'):

@@ -2,7 +2,7 @@
 """surf-diff.py: what a rewrite of the extractor lost, as sets, not as totals.
 
 A row is a `(owner, leaf member name)` pair. The old extraction's owner column is wrong for every member
-of a type nested in one — that is what the rewrite fixes — so a row that is in both files under a
+of a type nested in one - that is what the rewrite fixes - so a row that is in both files under a
 different owner is a *move*, and it is paired by the leaf name **and** the line the interface declares it
 on, because a bare name has several homes and only the line says which one moved.
 
@@ -141,7 +141,7 @@ def main():
         sys.exit(1)
     only_old, only_new = old - new, new - old
     table = index()
-    # where each name sits in the NEW file, by (name, file, line) — the pairing that says "moved" is the
+    # where each name sits in the NEW file, by (name, file, line) - the pairing that says "moved" is the
     # same declaration at another owner, not merely the same name
     new_leaves_by_line = collections.defaultdict(set)
     for owner, kind, name in new:

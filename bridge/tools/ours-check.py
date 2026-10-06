@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ours-check.py: the two controls the brace tokenizer in ours.py has to pass.
 
-1. An `Anchor.Source` extension — TextModifiers.swift:168 — must produce `bounds` and `rect`, which a
+1. An `Anchor.Source` extension - TextModifiers.swift:168 - must produce `bounds` and `rect`, which a
    walk at the wrong depth attributes to nothing.
 2. A brace inside a string, a raw string, a line comment and a block comment must not move the depth; a
    real brace must.

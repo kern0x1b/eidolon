@@ -344,7 +344,7 @@ public extension KeyframesBuilder {
 }
 
 /// The steps of a keyframe track, in the order they are written. The port's own accumulator: the
-/// builders hand their keyframes to one of these, and Apple has no such type — a `KeyframeTrackContent`
+/// builders hand their keyframes to one of these, and Apple has no such type - a `KeyframeTrackContent`
 /// is what a keyframe conforms to.
 struct KeyframeTrackSteps<Value>: KeyframeTrackContent where Value: Animatable {
     public var steps: [_ResolvedKeyframeTrackContent<Value>]

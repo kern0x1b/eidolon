@@ -5,7 +5,7 @@ A negative: a member of a type the band does not own is never filed under one it
 lives in AdAttributionKit and has nothing to do with `Image`, and an earlier owner filed it there.
 
 Four positives: a type nested in `Image` is owned by `Image.<nested>`, and none of its members is filed
-under `Image`. The counts are what the interfaces have — ResizingMode 2, Orientation 8 cases plus `allCases`
+under `Image`. The counts are what the interfaces have - ResizingMode 2, Orientation 8 cases plus `allCases`
 and `rawValue`, Interpolation 3, TemplateRenderingMode 1.
 
 Usage: surf-check.py [SURFACE-TSV]      or  SURFACE_TSV=... surf-check.py
@@ -40,7 +40,7 @@ def main():
     # a bare name from a type the band does not own: CoarseConversionValue is AdAttributionKit's, and
     # an owner that filed it under Image would put it here
     # exactly one name: CoarseConversionValue is AdAttributionKit's, and nothing the band owns nests a
-    # type of that name. `Representation` is NOT foreign — it is nested in Image at 26.2 and is a positive.
+    # type of that name. `Representation` is NOT foreign - it is nested in Image at 26.2 and is a positive.
     owned = owners.get('Image', 0)
     print(f'{"ok  " if owned <= MAX_IMAGE_OWN else "FAIL"} Image owns no more than the {MAX_IMAGE_OWN} '
           f'rows the interfaces give it: {owned}')

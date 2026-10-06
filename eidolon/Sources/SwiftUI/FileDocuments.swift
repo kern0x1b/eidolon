@@ -5,7 +5,7 @@ import Foundation
 
 /// A document an app opens, edits and saves. Apple's shape from the SDK of 16.4
 /// (`SwiftUI.swiftinterface:3103`), with one substitution: `readableContentTypes` and
-/// `writableContentTypes` are `[UTType]`, and `UniformTypeIdentifiers` is not a framework of iOS 6 — a
+/// `writableContentTypes` are `[UTType]`, and `UniformTypeIdentifiers` is not a framework of iOS 6 - a
 /// document type is named by its identifier there, which is what a `UTType` wraps, so they are `[String]`
 /// and the names are the ones the release of iOS 6 knows (`kUTTypePlainText` and its neighbours).
 public protocol FileDocument {

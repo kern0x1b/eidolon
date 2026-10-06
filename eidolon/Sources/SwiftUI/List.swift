@@ -252,7 +252,7 @@ final class ListController: NSObject, UITableViewDataSource, UITableViewDelegate
 
     // The table of iOS 6 draws one hairline between every pair of rows, in the table's own colour, and a cell of that iOS
     // has no separator inset to shorten it. A row that hides the line, or gives it another colour, therefore covers it
-    // with a line of its own — drawn where the release draws its: one point tall, at the bottom of the row, from one
+    // with a line of its own - drawn where the release draws its: one point tall, at the bottom of the row, from one
     // edge of the cell to the other.
     func applySeparator(_ cell: UITableViewCell, _ row: ListRow) {
         let hiding = row.traits.separator == .hidden

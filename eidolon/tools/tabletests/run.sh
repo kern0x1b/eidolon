@@ -1,5 +1,5 @@
 #!/bin/bash
-# run.sh: type-check the two table snippets against the module this tree builds — positive must compile,
+# run.sh: type-check the two table snippets against the module this tree builds - positive must compile,
 # negative must be rejected. The positive one says a table can be written over a collection of rows and
 # that the row value reaches through ForEach and Group as the element's own type; the negative one says a
 # Text is not table content. Build the module first (eidolon/build.sh), which writes eidolon/out/mods.
@@ -48,13 +48,13 @@ check_one() {
 }
 check_one positive compiles
 check_one negative "conform to 'TableRowContent'"
-# the second negative: a bare `if` in a widget bundle. Apple's own builder has no overload for one —
+# the second negative: a bare `if` in a widget bundle. Apple's own builder has no overload for one -
 # its two `buildOptional` forms (SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:21949 and :21970)
 # take the marker intersection and a `W: Widget`, neither of which an `if` without `#available`
-# produces — so the `if` reaches the type checker as `any Widget` and is refused. The widget API is
+# produces - so the `if` reaches the type checker as `any Widget` and is refused. The widget API is
 # iOS 14 and this tree targets iOS 6, so the check is about the builder and not about availability.
 # a bare `if` yields `any Widget`, which the available marker intersection does not take either, so
-# it is refused at the type checker — Apple's overload set refuses it too, by refusing to bind `W`
+# it is refused at the type checker - Apple's overload set refuses it too, by refusing to bind `W`
 check_one negative-widget-bundle "could not be inferred" "-disable-availability-checking"
 # and the same with a named widget type in the `if`, which is what tells the generic unavailable
 # overload from a concrete one (arm64e-apple-ios.swiftinterface:21970)

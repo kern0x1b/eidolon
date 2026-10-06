@@ -3,7 +3,7 @@
 ledger counts against is generated rather than kept by hand.
 
 The list used to be hand-kept and had been since the repository's first commit, which is how a family
-the interface declares — `TextEditorStyle` and its three styles — was missing from it. It is now every
+the interface declares - `TextEditorStyle` and its three styles - was missing from it. It is now every
 public type and typealias the SDK of 26.2 declares in the module of this framework, and
 `apple-types-ios.txt` the part of it an iOS app can actually use.
 
@@ -22,7 +22,7 @@ sdk = sys.argv[1] if len(sys.argv) > 1 else os.environ.get(
     'APPLE_26_SDK', os.path.expanduser('~/Git/projects/ios/charon/.agent-work/sdk-26.2/iPhoneOS26.2.sdk'))
 frameworks = os.path.join(sdk, 'System/Library/Frameworks')
 # the modules the inventory covers: SwiftUI's own surface, which is what an app writes against.
-# The standard library, Foundation and UIKit are reachable through it and are not listed here —
+# The standard library, Foundation and UIKit are reachable through it and are not listed here -
 # the hand-kept list never had them, and `SCOPE` widens the list when a review asks for it.
 SCOPE = os.environ.get('APPLE_26_SCOPE', 'SwiftUI,SwiftUICore')
 stdlib = os.path.join(sdk, 'usr/lib/swift')
@@ -101,8 +101,8 @@ def main():
     for module, names in sorted(per_module.items()):
         print(f'  {module}: {len(names)} types')
     print(f'  apple-types.txt: {len(everything)} types, {len(on_ios)} of them usable on iOS')
-    print(f'  added {len(added)}: {" ".join(added[:20])}{" …" if len(added) > 20 else ""}')
-    print(f'  removed {len(removed)}: {" ".join(removed[:20])}{" …" if len(removed) > 20 else ""}')
+    print(f'  added {len(added)}: {" ".join(added[:20])}{" ..." if len(added) > 20 else ""}')
+    print(f'  removed {len(removed)}: {" ".join(removed[:20])}{" ..." if len(removed) > 20 else ""}')
 
 
 if __name__ == '__main__':

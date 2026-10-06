@@ -244,8 +244,8 @@ func copyToPasteboard<T>(_ payload: [T]) {
 // other type is written as its own description, one item per line.
 func pasteboardText<T>(_ payload: [T]) -> String { payload.map { "\($0)" }.joined(separator: "\n") }
 
-// What the share sheet of the release is given: its items are what an activity of this release can take — a string, a
-// URL, an image — and a payload of any other type is offered as its own description, the way the pasteboard takes one.
+// What the share sheet of the release is given: its items are what an activity of this release can take - a string, a
+// URL, an image - and a payload of any other type is offered as its own description, the way the pasteboard takes one.
 func activityItems<T>(_ payload: [T]) -> [Any] {
     payload.map { value -> Any in
         if value is String || value is URL || value is UIImage { return value }

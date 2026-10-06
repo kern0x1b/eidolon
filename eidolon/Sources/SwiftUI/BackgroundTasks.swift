@@ -2,7 +2,7 @@ import Foundation
 
 // A task the system runs in the background for an app, and the work it hands back. Apple's shape from
 // the SDK of 26.2 (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:18160`): a `Sendable` struct of
-// two generic parameters — the request it is given and the response it answers with — and an empty body
+// two generic parameters - the request it is given and the response it answers with - and an empty body
 // of its own, with the URL-session flavour and the others in an extension.
 //
 // iOS 6.1.3 has no `URLSession`, and no other way an app hands work to the system from the background

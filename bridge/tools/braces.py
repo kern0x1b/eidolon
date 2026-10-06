@@ -6,8 +6,8 @@ from that line on any walk over the file sits at the wrong depth and attributes 
 line is read as Swift: `//`, `/* */`, a plain string, a multi-line one and a raw one with any number of
 hashes carry no brace, and a block comment or a multi-line literal carries its state to the next line.
 
-One function, used by both halves of the comparison — `surf.py` over Apple's interfaces and `ours.py`
-over ours — so a depth is counted the same way on each side.
+One function, used by both halves of the comparison - `surf.py` over Apple's interfaces and `ours.py`
+over ours - so a depth is counted the same way on each side.
 
 Returns (opened, closed, in_block, in_multiline, hashes).
 """

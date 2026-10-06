@@ -1,5 +1,5 @@
 #!/bin/bash
-# run.sh: type-check the two tab-value snippets against the module this tree builds — positive must
+# run.sh: type-check the two tab-value snippets against the module this tree builds - positive must
 # compile, negative must be rejected for the reason it exists: a tab's value must be Hashable.
 # Build the module first (eidolon/build.sh). The exit code is the gate.
 set -u

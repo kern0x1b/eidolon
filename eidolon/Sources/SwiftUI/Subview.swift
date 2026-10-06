@@ -210,7 +210,7 @@ public struct _SubviewGroup: View, PrimitiveView, GroupView {
 /// The children a view holds, in the order they are laid out. The engine reads a view's children the
 /// way it reads them everywhere else: through the group a wrapper stands for, and through the content
 /// a modifier wraps, until it reaches something that *is* the content. That is what SwiftUI's
-/// `ForEach(subviews:)` reads, and it is why `Group { … }` and a modified `Group { … }` hand over their
+/// `ForEach(subviews:)` reads, and it is why `Group { ... }` and a modified `Group { ... }` hand over their
 /// children rather than themselves.
 ///
 /// A custom view that only stands for a group is read through its body, as SwiftUI reads it: `View`'s

@@ -3,9 +3,9 @@ import CoreGraphics
 
 // MARK: - the one window a scene has
 
-/// A window of an app, as a scene. Apple declares it for macOS only — the four annotations on the type
+/// A window of an app, as a scene. Apple declares it for macOS only - the four annotations on the type
 /// are `@available(macOS 13.0, *)`, `@available(iOS, unavailable)`, `@available(tvOS, unavailable)` and
-/// `@available(watchOS, unavailable)` (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:2740-2743`) —
+/// `@available(watchOS, unavailable)` (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:2740-2743`) -
 /// and this port carries it because a scene is what the engine's root is, over the one `UIWindow` iOS 6
 /// has. The initialisers are Apple's, one for a `Text`, one for a `LocalizedStringKey` and one disfavoured
 /// for anything `StringProtocol`.
@@ -46,7 +46,7 @@ public struct Window<Content>: Scene where Content: View {
 
 /// Opens a window by its id, with a value. Apple declares it for iOS 16 and up and not at all for tvOS or
 /// watchOS (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:8191-8197`), and marks no member of it
-/// unavailable on iOS — while the `Window` scene it opens is macOS-only on the same file. That pair is
+/// unavailable on iOS - while the `Window` scene it opens is macOS-only on the same file. That pair is
 /// what this port answers from: iOS has the action and one window, so opening the id that is not the
 /// current one has nothing to open, and the action says so in the journal.
 public struct OpenWindowAction {
@@ -79,7 +79,7 @@ public struct OpenWindowAction {
 
 /// The content a presented window shows, with the value the caller opened it with. Apple's shape from
 /// the SDK of 16.4 (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:264`): `Data: Decodable &
-/// Encodable & Hashable`, `Content: View`, and a body of `Never` — it is a view the window hosts, not one
+/// Encodable & Hashable`, `Content: View`, and a body of `Never` - it is a view the window hosts, not one
 /// it draws.
 public struct PresentedWindowContent<Data, Content>: View where Data: Codable & Hashable, Content: View {
     public typealias Body = Never

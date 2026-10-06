@@ -2,8 +2,8 @@ import UIKit
 import CoreGraphics
 
 // How a view's layer is rasterised, which is what the release of a view is made of. Apple's type is
-// nested — `_RendererConfiguration.RasterizationOptions` in both the SDK of 16.4
-// (`arm64e-apple-ios.swiftinterface:17490`) and the one of 26.2 — so it is nested here too, and the
+// nested - `_RendererConfiguration.RasterizationOptions` in both the SDK of 16.4
+// (`arm64e-apple-ios.swiftinterface:17490`) and the one of 26.2 - so it is nested here too, and the
 // interface spells the seven properties and `init()` and gives no initial value for any of them.
 //
 // The seven defaults are the framework's own, read off it on the host with
@@ -14,7 +14,7 @@ import CoreGraphics
 /// The configuration of the release that draws a view. This is Apple's own name, exactly: both the
 /// SDK of 16.4 (`arm64e-apple-ios.swiftinterface:17488`) and the one of 26.2 declare
 /// `_RendererConfiguration` with `RasterizationOptions` nested in it. An underscored name in Swift is
-/// public, so the host can be asked for the defaults, and it answers — see the seven values below.
+/// public, so the host can be asked for the defaults, and it answers - see the seven values below.
 public struct _RendererConfiguration {
     public struct RasterizationOptions {
         public var colorMode: ColorRenderingMode
@@ -40,7 +40,7 @@ public struct _RendererConfiguration {
 }
 
 // No environment key: Apple's type is a parameter of the APIs that take it, and neither SDK declares
-// one in `EnvironmentValues` — the reverse check is what caught that the first version of this file had.
+// one in `EnvironmentValues` - the reverse check is what caught that the first version of this file had.
 
 extension _RendererConfiguration.RasterizationOptions {
     /// The layer settings the release's own rasterisation asks for. `shouldRasterize` and the scale are

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """surf.py: the 26.2 SwiftUI + SwiftUICore surface for the types this band owns, one line per declaration.
 
-Reads the SDK's own `.swiftinterface` files — SwiftUI and SwiftUICore, the two halves Apple split the
-surface between — from `$APPLE_26_SDK`, which defaults to the charon SDK 26.2 checkout under `$HOME`.
+Reads the SDK's own `.swiftinterface` files - SwiftUI and SwiftUICore, the two halves Apple split the
+surface between - from `$APPLE_26_SDK`, which defaults to the charon SDK 26.2 checkout under `$HOME`.
 Braces are counted by `braces.py`, the same counter `ours.py` uses over our own sources, so a depth means
 the same thing on both sides.
 

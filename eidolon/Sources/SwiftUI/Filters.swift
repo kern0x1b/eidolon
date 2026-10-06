@@ -79,7 +79,7 @@ struct ColorFilter {
     }
 
     // A turn of the colour wheel turns the hue of every pixel and leaves its saturation and its value as they were. A
-    // colour matrix cannot do that — it is a linear map and a turn of the hue is not one — and this release's Core Image
+    // colour matrix cannot do that - it is a linear map and a turn of the hue is not one - and this release's Core Image
     // has no CIHueRotate, so the turn is made over the pixels of the picture, in the space the picture is in.
     private func hueRotated(_ image: CGImage, by radians: Double) -> CGImage? {
         let width = image.width, height = image.height
@@ -158,7 +158,7 @@ struct ColorFilter {
     }
 
     // Swift gives +[CIContext contextWithOptions:] and -[CIContext initWithOptions:] the same spelling,
-    // CIContext(options:), and only one of the two is in iOS 6's Core Image — so the class method is asked whether it is
+    // CIContext(options:), and only one of the two is in iOS 6's Core Image - so the class method is asked whether it is
     // there and called by its own name when it is, which is the one this release has.
     // Core Image draws on the GPU through an EAGLContext it makes itself. Where OpenGL ES cannot make one (the emulator
     // has none), a context made with no options does not fail: Core Image writes through a null pointer and the process

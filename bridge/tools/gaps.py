@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """gaps.py: the rows of the 26.2 surface that ours.py finds no declaration for.
 
-A row is `Type#member`. An enum's case counts as declared, and so does a type we only alias — both
+A row is `Type#member`. An enum's case counts as declared, and so does a type we only alias - both
 because the declaration is there, whichever way it is written. A type we genuinely lack stays on the list,
 and the tool is checked against one: a name that is in Apple's surface and in no source of ours.
 

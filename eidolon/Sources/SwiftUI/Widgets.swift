@@ -6,8 +6,8 @@ import CoreGraphics
 /// A widget: a configuration, and nothing that draws on this device. Apple declares it for iOS 14 and up
 /// and not for tvOS (`SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface:19484-19489`).
 ///
-/// iOS 6.1.3 has no widget host — a widget is a view the system puts on a home screen, and the system of
-/// iOS 6 has no such place — so a widget written here is never shown, exactly as a widget is in an app
+/// iOS 6.1.3 has no widget host - a widget is a view the system puts on a home screen, and the system of
+/// iOS 6 has no such place - so a widget written here is never shown, exactly as a widget is in an app
 /// whose extension is not installed. The protocol and its body are what the port carries; the host is
 /// what the platform does not have.
 @available(iOS 14.0, macOS 11.0, watchOS 9.0, *)
@@ -71,7 +71,7 @@ public struct WidgetBundleBuilder {
     }
     /// The second of the interface's two forms
     /// (`arm64e-apple-ios.swiftinterface:21970`), unavailable and **generic**, with Apple's message: a
-    /// bare `if` in a bundle — whether it yields `any Widget` or a named widget type — is a compile
+    /// bare `if` in a bundle - whether it yields `any Widget` or a named widget type - is a compile
     /// error there, and has to be an error here too. The generic shape is what makes that true of both.
     @available(*, unavailable, message: "if statements in a WidgetBundleBuilder can only be used with #available clauses")
     public static func buildOptional<W>(_ widget: W?) -> any Widget & _LimitedAvailabilityWidgetMarker where W: Widget {
@@ -195,7 +195,7 @@ struct EmptyWidget: Widget {
 // `WidgetConfiguration`, `@available(iOS 16.1, macOS 13.0, watchOS 9.1, *)` and unavailable on tvOS.
 //
 // The availability is kept, and it means what it means there: on iOS 6 there is no widget host at all, so
-// this configuration — like every other in this file — is never asked for a body.
+// this configuration - like every other in this file - is never asked for a body.
 @available(iOS 16.1, macOS 13.0, watchOS 9.1, *)
 @available(tvOS, unavailable)
 @frozen public struct LimitedAvailabilityConfiguration: WidgetConfiguration {

@@ -1,6 +1,6 @@
 import UIKit
 
-/// How a navigation move looks. iOS 6 has one move to make — the release's own push — so a
+/// How a navigation move looks. iOS 6 has one move to make - the release's own push - so a
 /// transition chooses which of the release's animations a push gets, and `zoom` is the push.
 public protocol NavigationTransition {}
 

@@ -3,7 +3,7 @@ import CoreGraphics
 // A damped harmonic oscillator: the spring SwiftUI's newer animations are built on. It is kept the way
 // it was built, because that is what decides what the other numbers read back: a spring made of a
 // duration and a bounce or of a response and a ratio reports the stiffness and the damping its own pair
-// implies — an over-damped one carries the factor that keeps the ratio — while a spring made of a mass, a
+// implies - an over-damped one carries the factor that keeps the ratio - while a spring made of a mass, a
 // stiffness and a damping reports those three as they were given. Every one of the numbers below is what
 // Apple's own framework answers for the same spring (.agent-work/host/*.out hold the measurements).
 public struct Spring: Hashable {
@@ -14,7 +14,7 @@ public struct Spring: Hashable {
     }
     var form: Form
 
-    /// The undamped angular frequency, `2π / response`.
+    /// The undamped angular frequency, `2 pi / response`.
     var frequency: Double { 2 * Double.pi / max(response, .leastNormalMagnitude) }
 
     public init(response: Double, dampingRatio: Double) {

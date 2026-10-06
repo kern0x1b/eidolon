@@ -7,7 +7,7 @@ import Foundation
 // Apple's declarations carry cannot be made at all, and a declaration that cannot be made is a reason, not a type. What
 // survives is what the release can act on: an attributed string with the keys the attributes name.
 //
-// Each attribute is *observed* on the string the engine builds, under the NSAttributedString key its name is — the value
+// Each attribute is *observed* on the string the engine builds, under the NSAttributedString key its name is - the value
 // that went in is the value that is read back. Five of the nine the engine's text carries (the font, the foreground
 // colour, the two line styles, the kerning) and are checked in tests/main.swift by reading the drawn label. The other
 // four are what the release cannot carry, and each of those says so in the log and is checked by what the string does

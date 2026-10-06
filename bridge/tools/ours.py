@@ -4,7 +4,7 @@ One line per declaration: type, kind, name. A source-level stand-in for the dige
 used while the module is still building.
 
 Two things it gets right that it did not before, and both cost a review:
-  * an enum's `case` is a member in every reading — it is written under the enum's name, and Apple
+  * an enum's `case` is a member in every reading - it is written under the enum's name, and Apple
     declares it as a `case` or a `static`, so it is recorded as all three;
   * a `typealias` is a declaration of the name it binds, and the thing it binds counts as declared
     too, so a type we only alias is not reported as one we lack."""
@@ -104,7 +104,7 @@ for path in files:
             if m:
                 owner = m.group(1)
                 out.append((owner, 'type', m.group(1), os.path.basename(path)))
-                # a one-line type body — `enum X { case a, b }` — is all on this line, so its members are
+                # a one-line type body - `enum X { case a, b }` - is all on this line, so its members are
                 # read here and not at depth one, which it never reaches
                 if '{' in s and '}' in s[s.index('{') + 1:]:
                     inline = s[s.index('{') + 1:s.rindex('}')]
@@ -129,7 +129,7 @@ for path in files:
                     owner = None
         elif re.match(r'extension\s+[\w.]+', s):
             # An `extension` line opens a new section wherever it stands, and the walk reaches it at
-            # whatever depth the file has drifted to — TextModifiers.swift:168 is one. The owner is the
+            # whatever depth the file has drifted to - TextModifiers.swift:168 is one. The owner is the
             # whole extended name without its module, so a member of `Anchor.Source` is recorded under
             # `Anchor.Source` and not under `Source`, which is what a name that belongs to neither the
             # type nor its nested type would look like.

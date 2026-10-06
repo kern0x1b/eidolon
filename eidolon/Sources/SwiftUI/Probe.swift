@@ -256,7 +256,7 @@ import CoreImage
         return list.rows[index].traits.badge
     }
 
-    // What stands between a row and the row below it: the table's own hairline, or the line the row draws over it — and
+    // What stands between a row and the row below it: the table's own hairline, or the line the row draws over it - and
     // what colour that line is.
     public func rowSeparator(_ index: Int) -> (rowLine: Bool, coversTheTables: Bool, colour: UIColor?) {
         guard let list = listNode, let table = list.uiView as? UITableView, index < list.rows.count else { return (false, false, nil) }
@@ -370,7 +370,7 @@ import CoreImage
     }
 
     // What a blocking .submitScope does to the return key of a field of several lines. The editor itself cannot be
-    // built in the headless process — a UITextView sets a font, and a font traps it — so the question is put to the
+    // built in the headless process - a UITextView sets a font, and a font traps it - so the question is put to the
     // delegate's own decision, and the scope a screen sets is read from the environment a view of that screen sees.
     // What a payload is copied as, as the copy does it: the pasteboard of a session that has none is not the question.
     public static func copiedText(_ payload: [String]) -> String { pasteboardText(payload) }

@@ -62,7 +62,7 @@ func swipeButtons(_ view: any View, destructive: Bool = false, tint: UIColor? = 
     }
     if let group = view as? GroupView { return group.childViews.flatMap { swipeButtons($0, destructive: destructive, tint: tint) } }
     if let modified = view as? ModifiedViewLike {
-        // .tint(…) on a swipe button is the colour of its background
+        // .tint(...) on a swipe button is the colour of its background
         var inner = tint
         if let environment = modified.modifierValue as? EnvironmentModifier {
             var values = EnvironmentValues()
