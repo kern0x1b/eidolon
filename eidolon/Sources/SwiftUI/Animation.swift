@@ -80,8 +80,9 @@ public struct Animation: Equatable, Hashable {
         Animation(curve: .linear, duration: duration, delay: 0, timing: .curve(curve))
     }
     public static func timingCurve(_ c0x: Double, _ c0y: Double, _ c1x: Double, _ c1y: Double, duration: Double = 0.35) -> Animation {
-        timingCurve(.bezier(startControlPoint: UnitPoint(x: CGFloat(c0x), y: CGFloat(c0y)),
-                            endControlPoint: UnitPoint(x: CGFloat(c1x), y: CGFloat(c1y))), duration: duration)
+        // the four numbers go in as they are: a UnitPoint holds CGFloats, which are Floats on this architecture, and a
+        // control point that went through one would no longer be the number it was given
+        timingCurve(UnitCurve(.bezier(c0x, c0y, c1x, c1y)), duration: duration)
     }
     public func timingCurve(_ curve: UnitCurve, duration: Double) -> Animation {
         Animation.timingCurve(curve, duration: duration)
