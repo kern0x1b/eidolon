@@ -134,21 +134,17 @@ public struct Transaction {
     public var isContinuous: Bool = false
     /// Whether an interactive dismissal follows the finger's speed when it ends.
     public var tracksVelocity: Bool = false
-    /// The closures added by `addAnimationCompletion(criteria:_:)`, in the order they were added; a copy of the transaction
-    /// holds the same ones, so a closure that has run has run for every copy.
-    var completions: [CompletionToken] = []
+    /// The closures added by `addAnimationCompletion(criteria:_:)`; a copy of the transaction holds the same list, so a
+    /// closure added through one copy is the other's, and one that has run has run for every copy.
+    var completionList: CompletionList?
     public init() {}
     public init(animation: Animation?) { self.animation = animation }
 }
 
 public func withTransaction<Result>(_ transaction: Transaction, _ body: () throws -> Result) rethrows -> Result {
     let previous = Updates.pendingCompletions
-    Updates.pendingCompletions = transaction.completions
-    defer {
-        // a change in the body took the closures for its flush; what is still here, nothing in the body asked to render
-        Updates.deferCompletions(Updates.pendingCompletions)
-        Updates.pendingCompletions = previous
-    }
+    Updates.pendingCompletions = transaction.completionList?.tokens ?? []
+    defer { Updates.pendingCompletions = previous }
     return try withAnimation(transaction.disablesAnimations ? nil : transaction.animation, body)
 }
 

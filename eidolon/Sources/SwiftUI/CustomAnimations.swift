@@ -118,6 +118,9 @@ public struct AnimationCompletionCriteria: Hashable {
 final class CompletionToken {
     let criteria: AnimationCompletionCriteria
     private var action: (() -> Void)?
+    /// An animation holds it: the change in a transaction's body that took it for that animation's end, so the transaction
+    /// going away does not run it.
+    var claimed = false
 
     init(criteria: AnimationCompletionCriteria, action: @escaping () -> Void) {
         self.criteria = criteria
@@ -131,10 +134,27 @@ final class CompletionToken {
     }
 }
 
+/// The closures of a transaction and its copies. Apple's framework runs the closures a transaction still holds, that no
+/// animation took, when the last copy of it goes away: the ones that wait for the animation of a logically complete
+/// view, newest first, then the ones that wait for its removal, newest first (macOS 27, `.agent-work/runs/7-dup/h.swift`).
+final class CompletionList {
+    var tokens: [CompletionToken] = []
+
+    deinit {
+        let waiting = tokens.filter { !$0.claimed }
+        for token in waiting.reversed() where !token.criteria.isRemoved { token.run() }
+        for token in waiting.reversed() where token.criteria.isRemoved { token.run() }
+    }
+}
+
 extension Transaction {
     /// A closure to run when the animations of this transaction are over. SwiftUI calls it once the
     /// animation has logically finished, or once the view is gone, whichever the criteria ask for.
     public mutating func addAnimationCompletion(criteria: AnimationCompletionCriteria = .logicallyComplete, _ completion: @escaping () -> Void) {
-        completions.append(CompletionToken(criteria: criteria, action: completion))
+        let token = CompletionToken(criteria: criteria, action: completion)
+        let list = completionList ?? CompletionList()
+        list.tokens.append(token)
+        completionList = list
+        Updates.expect(token)
     }
 }

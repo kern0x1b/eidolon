@@ -405,15 +405,17 @@ enum Updates {
     /// The same closures once a change in that body has scheduled a flush: the body is over by the time the flush runs,
     /// and the transaction with it, so they are taken at the change.
     static var completionsForFlush: [CompletionToken] = []
-    /// The closures of a transaction whose body changed nothing that renders: no flush was scheduled for them, so they
-    /// wait for the next turn, as Apple's do, and run when it comes whether or not anything animates.
-    static var completionsWithoutChange: [CompletionToken] = []
+    /// Every closure added to a transaction, in the order it was added, until it has run: the ones no change took for an
+    /// animation (nothing in the body of withTransaction rendered, or the transaction was never used) run at the next turn,
+    /// as Apple's do, whether or not anything animates. A transaction that is gone before the turn has run them already.
+    static var completionsExpected: [WeakCompletion] = []
     static var hosts: [WeakHost] = []
     static var flushCount = 0
 
     static func schedule(_ node: CompositeNode) {
         if !dirty.contains(where: { $0 === node }) { dirty.append(node) }
         animationForFlush = pendingAnimation ?? node.env.animation ?? animationForFlush
+        for token in pendingCompletions { token.claimed = true }
         completionsForFlush += pendingCompletions
         pendingCompletions = []
         guard !scheduled else { return }
@@ -421,10 +423,9 @@ enum Updates {
         DispatchQueue.main.async { flush() }
     }
 
-    /// Hands over what a transaction's body left behind: closures that no change in it took for a flush.
-    static func deferCompletions(_ left: [CompletionToken]) {
-        guard !left.isEmpty else { return }
-        completionsWithoutChange += left
+    /// A closure was added to a transaction: it runs at the next turn unless a change takes it for an animation first.
+    static func expect(_ token: CompletionToken) {
+        completionsExpected.append(WeakCompletion(token: token))
         guard !scheduled else { return }
         scheduled = true
         DispatchQueue.main.async { flush() }
@@ -435,9 +436,9 @@ enum Updates {
         flushCount += 1
         let completions = completionsForFlush
         completionsForFlush = []
-        let unchanged = completionsWithoutChange
-        completionsWithoutChange = []
-        defer { for completion in unchanged { completion.run() } }
+        let expected = completionsExpected
+        completionsExpected = []
+        defer { for completion in expected { if let token = completion.token, !token.claimed { token.run() } } }
         let nodes = dirty.sorted { $0.depth < $1.depth }
         dirty = []
         var rendered: [CompositeNode] = []
@@ -477,6 +478,8 @@ enum Updates {
 }
 
 struct WeakHost { weak var host: _HostingViewController? }
+
+struct WeakCompletion { weak var token: CompletionToken? }
 
 func sameValues(_ a: [ObjectIdentifier: Any], _ b: [ObjectIdentifier: Any]) -> Bool {
     guard a.count == b.count else { return false }

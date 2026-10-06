@@ -2752,6 +2752,48 @@ equal(reusedRuns.sorted(), ["logically", "removed"], "a transaction used for sev
 withTransaction(reusedTransaction) {}
 _flushTransactions()
 equal(reusedRuns.count, 2, "and does not run them again in a later turn")
+// when the completions run, and in what order (macOS 27, `.agent-work/runs/7-dup/`: h.swift, k.swift, m.swift): a transaction
+// still held at the next turn runs them in the order they were added, nested uses and a transaction never used included;
+// one let go before it, as its last holder goes, runs them at once, the logical ones newest first, then the removed ones
+var turnOrder: [String] = []
+var turnHeld = Transaction()
+turnHeld.addAnimationCompletion(criteria: .removed) { turnOrder.append("R1") }
+turnHeld.addAnimationCompletion { turnOrder.append("L2") }
+turnHeld.addAnimationCompletion(criteria: .removed) { turnOrder.append("R3") }
+turnHeld.addAnimationCompletion { turnOrder.append("L4") }
+var turnOuter = Transaction()
+turnOuter.addAnimationCompletion { turnOrder.append("outer") }
+var turnInner = Transaction()
+turnInner.addAnimationCompletion { turnOrder.append("inner") }
+withTransaction(turnOuter) { withTransaction(turnInner) {} }
+equal(turnOrder, [], "completions of transactions that changed nothing, nested, wait for the turn")
+_flushTransactions()
+equal(turnOrder, ["R1", "L2", "R3", "L4", "outer", "inner"], "a transaction held to the turn runs its completions in the order they were added, unused or nested")
+var releasedLog: [String] = []
+func releasedOrder() -> [String] {
+    var gone = Transaction()
+    gone.addAnimationCompletion { releasedLog.append("L1") }
+    gone.addAnimationCompletion(criteria: .removed) { releasedLog.append("R2") }
+    gone.addAnimationCompletion { releasedLog.append("L3") }
+    gone.addAnimationCompletion(criteria: .removed) { releasedLog.append("R4") }
+    withTransaction(gone) {}
+    return releasedLog
+}
+let releasedDuring = releasedOrder()
+equal(releasedDuring, [], "a transaction still held does not run its completions in its body")
+equal(releasedLog, ["L3", "L1", "R4", "R2"], "one let go before the turn runs them as its last holder goes, logical ones newest first, then removed ones")
+_flushTransactions()
+equal(releasedLog.count, 4, "and not again at the turn")
+var sharedRuns = 0
+var sharedFirst = Transaction()
+sharedFirst.addAnimationCompletion { sharedRuns += 1 }
+do {
+    var sharedSecond = sharedFirst
+    sharedSecond.addAnimationCompletion { sharedRuns += 10 }
+}
+equal(sharedRuns, 0, "a copy of a transaction shares its completions: letting one copy go runs nothing while another is held")
+_flushTransactions()
+equal(sharedRuns, 11, "and the closure added through the copy is the original's too")
 struct IdleError: Error {}
 var idleThrown = 0
 var throwingTransaction = Transaction()
