@@ -3156,8 +3156,39 @@ let readBack = try? NoteDocument(configuration: FileDocumentReadConfiguration<No
     contentType: NoteDocument.readableContentTypes[0], file: Data(contentsOf: noteURL), fileURL: noteURL))
 equal(readBack?.text, "the first line\n", "and the document reads what the file holds")
 let written = try? NoteDocument(text: "the second line\n").fileWrapper(
-    configuration: FileDocumentWriteConfiguration<NoteDocument>(contentType: "public.text", originalURL: noteURL))
+    configuration: FileDocumentWriteConfiguration<NoteDocument>(contentType: "public.text"))
 equal(written?.regularFileContents, Data("the second line\n".utf8), "and a document writes the bytes it is asked for")
+
+// a document that is a package writes over the file it was read from: Apple's `existingFile` is what it is handed
+final class PackageNote: FileDocument {
+    static var readableContentTypes: [String] { ["public.folder"] }
+    static var writableContentTypes: [String] { ["public.folder"] }
+    var text: String
+    init(text: String = "") { self.text = text }
+    required init(configuration: FileDocumentReadConfiguration<PackageNote>) throws { self.text = "" }
+
+    func fileWrapper(configuration: FileDocumentWriteConfiguration<PackageNote>) throws -> FileWrapper {
+        let package = configuration.existingFile ?? FileWrapper(directoryWithFileWrappers: [:])
+        if let old = package.fileWrappers?["text.txt"] { package.removeFileWrapper(old) }
+        let part = FileWrapper(regularFileWithContents: Data(text.utf8))
+        part.preferredFilename = "text.txt"
+        package.addFileWrapper(part)
+        return package
+    }
+}
+let existingPackage = FileWrapper(directoryWithFileWrappers: [
+    "image.png": FileWrapper(regularFileWithContents: Data([1, 2, 3])),
+    "text.txt": FileWrapper(regularFileWithContents: Data("old".utf8)),
+])
+let rewritten = try? PackageNote(text: "new").fileWrapper(
+    configuration: FileDocumentWriteConfiguration<PackageNote>(contentType: "public.folder", existingFile: existingPackage))
+check(rewritten === existingPackage, "a package document is written over the file it is handed")
+equal(rewritten?.fileWrappers?["text.txt"]?.regularFileContents, Data("new".utf8), "the part it changed is the new one")
+equal(rewritten?.fileWrappers?["image.png"]?.regularFileContents, Data([1, 2, 3]), "and the part it did not touch is kept")
+let freshPackage = try? PackageNote(text: "new").fileWrapper(
+    configuration: FileDocumentWriteConfiguration<PackageNote>(contentType: "public.folder"))
+equal(freshPackage?.fileWrappers?.keys.sorted(), ["text.txt"], "and one that has no file yet is a package of its own part")
+equal(FileDocumentWriteConfiguration<PackageNote>(contentType: "public.folder").existingFile == nil, true, "which a configuration says by holding none")
 
 // A window: one scene over the one UIWindow of iOS 6, and the action that opens it.
 let windowScene = Window("Notes", id: "notes") { Text(verbatim: "the window's content") }

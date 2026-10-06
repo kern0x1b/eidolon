@@ -36,13 +36,13 @@ public struct FileDocumentReadConfiguration<Document> {
 
 public struct FileDocumentWriteConfiguration<Document> {
     public var contentType: String
-    /// Where the document was read from. Apple's `FileDocumentWriteConfiguration` has `existingFile`, not this,
-    /// so it is kept out of the public names (nothing in the port reads it yet).
-    var originalURL: URL?
+    /// The file the document is written over, as Apple's `existingFile`: a document that is a package
+    /// keeps what it did not change by adding its parts to this wrapper, and nil for a document not yet saved.
+    public let existingFile: FileWrapper?
 
-    public init(contentType: String, originalURL: URL? = nil) {
+    public init(contentType: String, existingFile: FileWrapper? = nil) {
         self.contentType = contentType
-        self.originalURL = originalURL
+        self.existingFile = existingFile
     }
 }
 
