@@ -294,3 +294,45 @@ extension VectorArithmetic {
         return copy
     }
 }
+
+/// What Apple's interpolating spring holds: a mass, a stiffness and a damping, exactly as they were given or as the
+/// spring it was made of reads them back. It is not the animation of a response and a fraction, so it is never equal
+/// to one. Damping past the critical is held as given and solved as critical, as Apple's solves it
+/// (`host/springcmp.swift` compares the held numbers and the solved values).
+struct InterpolatingSpring: Hashable {
+    var mass: Double
+    var stiffness: Double
+    var damping: Double
+
+    init(mass: Double, stiffness: Double, damping: Double) {
+        self.mass = mass
+        self.stiffness = stiffness
+        self.damping = damping
+    }
+
+    /// The spring an interpolating spring is made of: its mass is one, and its stiffness and damping are those of the
+    /// response and fraction the spring comes back out as (`asFluid`), not the spring's own stiffness and damping, which
+    /// differ in the last bits and, for an over-damped or a heavy one, in much more.
+    init(_ spring: Spring) {
+        let fluid = spring.asFluid
+        self.init(response: fluid.response, fraction: fluid.dampingRatio)
+    }
+
+    /// One made of a duration and a bounce holds the duration and the fraction of the bounce as they are.
+    init(duration: Double, bounce: Double) {
+        self.init(response: duration, fraction: Spring(duration: duration, bounce: bounce).dampingRatio)
+    }
+
+    private init(response: Double, fraction: Double) {
+        let frequency = 2 * Double.pi / response
+        self.init(mass: 1, stiffness: frequency * frequency, damping: 2 * frequency * fraction)
+    }
+
+    var spring: Spring { Spring(mass: mass, stiffness: stiffness, damping: damping) }
+
+    /// How far it has come, as a fraction of the distance, a fraction `t` of its natural period after it began.
+    func progress(_ t: Double) -> Double {
+        let spring = spring
+        return 1 - spring.remaining(initialVelocity: 0, time: t * spring.response)
+    }
+}

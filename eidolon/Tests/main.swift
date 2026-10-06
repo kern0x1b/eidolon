@@ -2621,6 +2621,45 @@ check(Animation.spring(Spring(response: 0.1, dampingRatio: 0.5), blendDuration: 
 check(Animation.smooth == Animation.spring(Spring.smooth), "the smooth animation is that of the smooth spring")
 check(Animation.snappy == Animation.spring(Spring.snappy), "and the snappy one")
 check(Animation.bouncy != Animation.spring(Spring.bouncy), "while the bouncy one is a bit apart from its spring's")
+// an interpolating spring is another kind of animation than a fluid one, holding the mass, stiffness and damping its spring
+// comes back as (macOS 27, `.agent-work/runs/17-isp/`: d.swift for the equalities, i.swift for the values; `host/springcmp.swift`
+// compares 79524 pairs of them and 282 sets of held numbers)
+let interpolatedSpring = Spring(response: 0.5, dampingRatio: 0.7)
+check(Animation.interpolatingSpring(interpolatedSpring) != Animation.spring(interpolatedSpring), "an interpolating spring is not the fluid animation of its spring")
+check(Animation.interpolatingSpring(Spring(response: 0.1, dampingRatio: 0.5)) != Animation.spring(Spring(response: 0.1, dampingRatio: 0.5)), "nor of a spring whose numbers come back as they went in")
+check(Animation.interpolatingSpring(interpolatedSpring) == Animation.interpolatingSpring(Spring(response: 0.5, dampingRatio: 0.7)), "but it is that of the same spring made again")
+check(Animation.interpolatingSpring(interpolatedSpring).hashValue == Animation.interpolatingSpring(Spring(response: 0.5, dampingRatio: 0.7)).hashValue, "and hashes as it does")
+check(Animation.interpolatingSpring(duration: 0.5, bounce: 0.3) != Animation.interpolatingSpring(interpolatedSpring), "the duration and bounce of it are a bit apart, as for the fluid one")
+check(Animation.interpolatingSpring(duration: 0.5, bounce: 0.3) != Animation.interpolatingSpring(Spring(duration: 0.5, bounce: 0.3)), "and not even the same as the spring of them")
+check(Animation.interpolatingSpring(duration: 0.5, bounce: 0.2) == Animation.interpolatingSpring(duration: 0.5, bounce: 0.2), "while the same two numbers are the same animation")
+check(Animation.interpolatingSpring(stiffness: 100, damping: 10) != Animation.spring(), "the default interpolating spring is not the default spring")
+check(Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10) == Animation.interpolatingSpring(Spring(mass: 1, stiffness: 100, damping: 10)), "an interpolating spring of a mass, stiffness and damping is that of the spring of them")
+check(Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10) != Animation.interpolatingSpring(mass: 1, stiffness: 100.00000000000001, damping: 10), "to the last bit of the stiffness")
+check(Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10) != Animation.interpolatingSpring(mass: 2, stiffness: 100, damping: 10), "and of the mass")
+check(Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 50) != Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 20), "a damping past the critical is held as given, not as the critical one")
+var interpolatingBarAnimation = Animation.linear
+struct InterpolatingBarCase: View {
+    @State private var progress = 0.0
+    var body: some View {
+        let _ = register { withAnimation(interpolatingBarAnimation) { progress = 1 } }
+        GrowingBar(progress: progress).fill(Color.red).frame(width: 100, height: 10)
+    }
+}
+/// How wide a bar of 100 that an animation grows is a number of seconds after it began.
+func interpolatingBarWidth(_ animation: Animation, at time: Double) -> Double {
+    interpolatingBarAnimation = animation
+    _Probe.useVirtualClock()
+    let probe = _Probe(InterpolatingBarCase(), width: 100, height: 10)
+    _ = frames(probe)
+    actions.removeLast()()
+    probe.flush()
+    _Probe.advanceAnimations(to: time)
+    return Double(shapeLayers(probe).first?.path?.boundingBoxOfPath.size.width ?? -1)
+}
+closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 10), at: 0.1), 34.0300, "an interpolating spring of a mass, stiffness and damping moves as the spring does", 0.01)
+closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.1), 26.4241, "one whose damping is past the critical moves as the critical one, as Apple's does", 0.01)
+closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 50), at: 0.2), 59.3994, "and keeps to it", 0.01)
+closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, dampingRatio: 1.5)), at: 0.1), 35.7740, "so does the interpolating spring of an over-damped one", 0.01)
 
 // keyframes, phases and a custom animation: the track is the one that is written, and the views
 // follow it frame by frame

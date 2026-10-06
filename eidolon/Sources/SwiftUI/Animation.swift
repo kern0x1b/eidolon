@@ -18,23 +18,25 @@ public struct Animation: Equatable, Hashable {
     enum Timing: Hashable {
         case curve(UnitCurve)
         case spring(Spring)
+        case interpolating(InterpolatingSpring)
 
         // Two animations of springs are equal by the numbers they hold, to the last bit, which is finer than two springs
         // being equal (a pair of numbers one bit apart is the same spring and another animation, as in Apple's).
-        private var held: [Double]? {
-            guard case .spring(let spring) = self else { return nil }
-            return spring.heldNumbers
-        }
-
         static func == (lhs: Timing, rhs: Timing) -> Bool {
-            if case .curve(let left) = lhs, case .curve(let right) = rhs { return left == right }
-            guard let left = lhs.held, let right = rhs.held else { return false }
-            return left == right
+            switch (lhs, rhs) {
+            case (.curve(let left), .curve(let right)): return left == right
+            case (.spring(let left), .spring(let right)): return left.heldNumbers == right.heldNumbers
+            case (.interpolating(let left), .interpolating(let right)): return left == right
+            default: return false
+            }
         }
 
         func hash(into hasher: inout Hasher) {
-            if case .curve(let curve) = self { hasher.combine(curve); return }
-            hasher.combine(held)
+            switch self {
+            case .curve(let curve): hasher.combine(0); hasher.combine(curve)
+            case .spring(let spring): hasher.combine(1); hasher.combine(spring.heldNumbers)
+            case .interpolating(let held): hasher.combine(2); hasher.combine(held)
+            }
         }
     }
 
@@ -58,6 +60,9 @@ public struct Animation: Equatable, Hashable {
     // fraction, a duration and a bounce, a mass and a stiffness) hold in Apple's too.
     static func holding(_ spring: Spring, blendDuration: Double = 0) -> Animation {
         Animation(curve: .spring, duration: spring.response, delay: blendDuration, timing: .spring(spring))
+    }
+    static func interpolating(_ held: InterpolatingSpring) -> Animation {
+        Animation(curve: .spring, duration: held.spring.response, delay: 0, timing: .interpolating(held))
     }
     // A spring handed over as a value comes back out of the animation as the numbers it is stored as, not as the pair it
     // was made of, so it is another animation than the one made of that pair when those differ in the last bit.
@@ -93,13 +98,13 @@ public struct Animation: Equatable, Hashable {
     }
     public static var bouncy: Animation { bouncy() }
     public static func interpolatingSpring(mass: Double = 1.0, stiffness: Double, damping: Double, initialVelocity: Double = 0.0) -> Animation {
-        holding(Spring(mass: mass, stiffness: stiffness, damping: damping))
+        interpolating(InterpolatingSpring(mass: mass, stiffness: stiffness, damping: damping))
     }
     public static func interpolatingSpring(_ spring: Spring, initialVelocity: Double = 0.0) -> Animation {
-        holding(spring)
+        interpolating(InterpolatingSpring(spring))
     }
     public static func interpolatingSpring(duration: Double = 0.5, bounce: Double = 0, initialVelocity: Double = 0.0) -> Animation {
-        holding(Spring(duration: duration, bounce: bounce))
+        interpolating(InterpolatingSpring(duration: duration, bounce: bounce))
     }
     public static func timingCurve(_ curve: UnitCurve, duration: Double) -> Animation {
         Animation(curve: .linear, duration: duration, delay: 0, timing: .curve(curve))
@@ -141,6 +146,7 @@ public struct Animation: Equatable, Hashable {
         case .none: return Easing.apply(curve, t)
         case .curve(let unit): return unit.value(at: t)
         case .spring(let spring): return 1 - spring.remaining(initialVelocity: 0, time: t * spring.response)
+        case .interpolating(let held): return held.progress(t)
         }
     }
 

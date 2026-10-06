@@ -102,4 +102,55 @@ for (mine, apple) in made {
     }
 }
 print("compared", animations, "pairs of animations for equality")
+
+// Animation.interpolatingSpring: Apple's is a SpringAnimation holding a mass, a stiffness and a damping (the numbers of the
+// spring it was made of read back, or the ones it was given), not the fluid animation of a response and a fraction. The held
+// numbers are read out of it by reflection; its values are asked of it through an AnimationContext, which has no public
+// initializer, so one is put together in memory from an AnimationState and EnvironmentValues (a 26-byte struct: the state at
+// 0, the environment at 8, two flags after them). The port's own types are InterpolatingSpring, Springs.swift.
+func makeContext() -> AnimationContext<Double> {
+    let memory = UnsafeMutableRawPointer.allocate(byteCount: 32, alignment: 8)
+    memory.initializeMemory(as: UInt8.self, repeating: 0, count: 32)
+    memory.storeBytes(of: AnimationState<Double>(), toByteOffset: 0, as: AnimationState<Double>.self)
+    memory.storeBytes(of: EnvironmentValues(), toByteOffset: 8, as: EnvironmentValues.self)
+    return memory.load(as: AnimationContext<Double>.self)
+}
+func heldBy(_ animation: Animation) -> [Double]? {
+    let fields = Mirror(reflecting: Mirror(reflecting: animation).children.first!.value).children
+    guard fields.contains(where: { $0.label == "stiffness" }) else { return nil }
+    return ["mass", "stiffness", "damping"].map { name in fields.first { $0.label == name }!.value as! Double }
+}
+var interpolating: [(String, InterpolatingSpring, Animation)] = []
+func hold(_ spring: Mine) -> InterpolatingSpring { InterpolatingSpring(spring) }
+for (mine, apple) in made { interpolating.append(("spring", hold(mine), Animation.interpolatingSpring(apple))) }
+for r in [0.15, 0.5, 1] { for b in [-0.9, -0.5, -0.2, 0, 0.15, 0.3, 0.4, 0.9] { interpolating.append(("duration \(r) bounce \(b)", InterpolatingSpring(duration: r, bounce: b), Animation.interpolatingSpring(duration: r, bounce: b))) } }
+for m in [0.5, 1.0, 2.0] { for k in [10.0, 50, 100, 400] { for c in [1.0, 5, 10, 40, 100, 3 * (m * k).squareRoot(), 2 * (m * k).squareRoot()] {
+    interpolating.append(("mass \(m) stiffness \(k) damping \(c)", InterpolatingSpring(mass: m, stiffness: k, damping: c), Animation.interpolatingSpring(mass: m, stiffness: k, damping: c)))
+} } }
+var held = 0
+for (name, mine, apple) in interpolating {
+    held += 1
+    same("held numbers of \(name)", heldBy(apple) == [mine.mass, mine.stiffness, mine.damping], true)
+    same("interpolating \(name) is not the animation of a spring", false, apple == Animation.spring(response: 0.5, dampingFraction: 0.7) || apple == Animation.spring(duration: 0.5, bounce: 0.3))
+}
+print("compared", held, "interpolating springs' held numbers")
+var interpolatingPairs = 0
+for (_, mine, apple) in interpolating {
+    for (_, other, otherApple) in interpolating {
+        interpolatingPairs += 1
+        same("interpolating springs equal", mine == other, apple == otherApple)
+        if apple == otherApple { same("interpolating springs hash alike", true, apple.hashValue == otherApple.hashValue) }
+    }
+}
+print("compared", interpolatingPairs, "pairs of interpolating springs for equality")
+var solved = 0
+for (name, mine, apple) in interpolating {
+    var context = makeContext()
+    for t in [0.0, 0.01, 0.05, 0.1, 0.2, 0.4, 0.8, 1.5] {
+        guard let got = apple.animate(value: 1.0, time: t, context: &context) else { continue }
+        solved += 1
+        note("interpolating \(name) at \(t)", mine.progress(t / mine.spring.response), got)
+    }
+}
+print("compared", solved, "values of interpolating springs")
 print("compared", count, "numbers; worst difference", worst)

@@ -19,3 +19,9 @@ and the type is underscored — which in Swift is public, so the host can name i
 `springcmp.swift` compares the port's `Spring` with Apple's `SwiftUI.Spring` over value, velocity, update and the
 Animatable forms of both, for critical, under-damped and over-damped springs; the command is in its header, and
 its last line is `compared N numbers; worst difference ...` after a `DIFF` line for every number that is not Apple's.
+It also compares equality and hashing of springs and of the animations made of them, and, for
+`Animation.interpolatingSpring`, the mass, stiffness and damping Apple's animation holds (read out of it by reflection)
+and the values it answers. Those values are asked of `Animation.animate(value:time:context:)`, whose `AnimationContext`
+has no public initializer, so the program builds one in memory from an `AnimationState` and `EnvironmentValues`
+(a 26-byte struct on this host: the state at offset 0, the environment at 8, two flags after); if a later macOS changes
+that layout, the values come out wrong or the program crashes, and the held numbers and equalities still stand alone.
