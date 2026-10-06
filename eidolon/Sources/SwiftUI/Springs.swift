@@ -103,59 +103,49 @@ public struct Spring: Hashable {
 
     // MARK: the shape of the motion, as a fraction of the distance
 
-    // What is still to cover at a moment, for a spring that starts at zero with a given initial
-    // velocity and would finish at one. The closed solution of the second-order system, which is what
-    // Apple's own values follow to nine decimals.
-    private func coefficients(_ w: Double, _ z: Double, _ v0: Double) -> (a: Double, b: Double, c: Double) {
+    // The distance still to cover, for a spring that has `r` of it to go and a speed `v` toward the target, is
+    // `r * a(t) - v * b(t)`: `a` is what is left of a unit distance that starts at rest, `b` what is left of a
+    // distance of nothing that starts with a unit of speed toward the target (the target is reached by moving
+    // against the distance, so the speed enters with a minus). Both solve the second-order system exactly, and
+    // `da` and `db` are their slopes. Every component of a vector is a spring of its own, and a speed that is
+    // not along the way to the target still moves the component it is in.
+    private func unit(time: Double) -> (a: Double, da: Double, b: Double, db: Double) {
+        if time <= 0 { return (1, 0, 0, 1) }
+        let w = frequency, z = dampingRatio
+        guard w.isFinite else { return (0, 0, 0, 0) }
         if z < 1 {
+            let decay = z * w
             let wd = w * (1 - z * z).squareRoot()
-            return (z * w, wd, (v0 + z * w) / wd)
-        }
-        if z == 1 { return (w, 0, v0 + w) }
-        let root = w * (z * z - 1).squareRoot()
-        return (-z * w + root, -z * w - root, 0)
-    }
-
-    func remaining(initialVelocity: Double, time: Double) -> Double {
-        if time <= 0 { return 1 }
-        let w = frequency, z = dampingRatio
-        guard w.isFinite else { return 0 }
-        if z < 1 {
-            let (a, b, c) = coefficients(w, z, initialVelocity)
-            return exp(-a * time) * (cos(b * time) + c * sin(b * time))
-        }
-        if z == 1 { return exp(-w * time) * (1 + (initialVelocity + w) * time) }
-        let (fast, slow, _) = coefficients(w, z, initialVelocity)
-        let second = (initialVelocity - fast) / (slow - fast)
-        return (1 - second) * exp(fast * time) + second * exp(slow * time)
-    }
-
-    // The same solution's slope: how fast the distance still to cover is shrinking.
-    private func remainingSlope(initialVelocity: Double, time: Double) -> Double {
-        if time <= 0 { return 0 }
-        let w = frequency, z = dampingRatio
-        guard w.isFinite else { return 0 }
-        if z < 1 {
-            let (a, b, c) = coefficients(w, z, initialVelocity)
-            return exp(-a * time) * ((-a + b * c) * cos(b * time) + (-a * c - b) * sin(b * time))
+            let e = exp(-decay * time), c = cos(wd * time), n = sin(wd * time)
+            return (e * (c + decay / wd * n), -e * n * w * w / wd, e * n / wd, e * (c - decay / wd * n))
         }
         if z == 1 {
-            let slope = initialVelocity + w
-            return exp(-w * time) * (slope - w * (1 + slope * time))
+            let e = exp(-w * time)
+            return (e * (1 + w * time), -e * w * w * time, time * e, e * (1 - w * time))
         }
-        let (fast, slow, _) = coefficients(w, z, initialVelocity)
-        let second = (initialVelocity - fast) / (slow - fast)
-        return (1 - second) * fast * exp(fast * time) + second * slow * exp(slow * time)
+        let root = w * (z * z - 1).squareRoot()
+        let slow = -z * w + root, fast = -z * w - root
+        let es = exp(slow * time), ef = exp(fast * time)
+        let gap = slow - fast
+        return ((slow * ef - fast * es) / gap, slow * fast * (ef - es) / gap, (es - ef) / gap, (slow * es - fast * ef) / gap)
+    }
+
+    // The same for a distance of one and a speed that is a share of it: what an animation of a single value follows.
+    func remaining(initialVelocity: Double, time: Double) -> Double {
+        let u = unit(time: time)
+        return u.a - initialVelocity * u.b
     }
 
     // MARK: where the system is
 
     public func value<V: VectorArithmetic>(target: V, initialVelocity: V = .zero, time: Double) -> V {
-        V.zero + target.scaled(by: 1 - remaining(initialVelocity: share(initialVelocity, of: target), time: time))
+        let u = unit(time: time)
+        return V.zero + target.scaled(by: 1 - u.a) + initialVelocity.scaled(by: u.b)
     }
 
     public func velocity<V: VectorArithmetic>(target: V, initialVelocity: V = .zero, time: Double) -> V {
-        target.scaled(by: 0 - remainingSlope(initialVelocity: share(initialVelocity, of: target), time: time))
+        let u = unit(time: time)
+        return target.scaled(by: 0 - u.da) + initialVelocity.scaled(by: u.db)
     }
 
     public func force<V: VectorArithmetic>(target: V, position: V, velocity: V) -> V {
@@ -165,14 +155,16 @@ public struct Spring: Hashable {
     public func value<V: Animatable>(fromValue: V, toValue: V, initialVelocity: V, time: Double) -> V {
         var result = fromValue
         let travel = toValue.animatableData - fromValue.animatableData
-        result.animatableData = fromValue.animatableData + travel.scaled(by: 1 - remaining(initialVelocity: share(initialVelocity.animatableData, of: travel), time: time))
+        let u = unit(time: time)
+        result.animatableData = fromValue.animatableData + travel.scaled(by: 1 - u.a) + initialVelocity.animatableData.scaled(by: u.b)
         return result
     }
 
     public func velocity<V: Animatable>(fromValue: V, toValue: V, initialVelocity: V, time: Double) -> V {
         var result = toValue
         let travel = toValue.animatableData - fromValue.animatableData
-        result.animatableData = travel.scaled(by: 0 - remainingSlope(initialVelocity: share(initialVelocity.animatableData, of: travel), time: time))
+        let u = unit(time: time)
+        result.animatableData = travel.scaled(by: 0 - u.da) + initialVelocity.animatableData.scaled(by: u.db)
         return result
     }
 
@@ -186,9 +178,11 @@ public struct Spring: Hashable {
     /// `deltaTime` seconds is afterwards, which is what a frame-driven animator asks for.
     public func update<V: VectorArithmetic>(value: inout V, velocity: inout V, target: V, deltaTime: Double) {
         let travel = target - value
-        let start = share(velocity, of: travel)
-        value += travel.scaled(by: 1 - remaining(initialVelocity: start, time: deltaTime))
-        velocity = travel.scaled(by: 0 - remainingSlope(initialVelocity: start, time: deltaTime))
+        let u = unit(time: deltaTime)
+        let moved = travel.scaled(by: 1 - u.a) + velocity.scaled(by: u.b)
+        let speed = travel.scaled(by: 0 - u.da) + velocity.scaled(by: u.db)
+        value += moved
+        velocity = speed
     }
 
     // MARK: when it is over
@@ -235,9 +229,12 @@ public struct Spring: Hashable {
     // MARK: the arithmetic of a vector
 
     private func magnitude<A: VectorArithmetic>(of value: A) -> Double { value.magnitudeSquared.squareRoot() }
+    // The part of a speed that is along the way to the target, as a share of the distance, negative when it is away.
     private func share<A: VectorArithmetic>(_ velocity: A, of travel: A) -> Double {
-        let length = magnitude(of: travel)
-        return length > 0 ? magnitude(of: velocity) / length : 0
+        let length = travel.magnitudeSquared
+        guard length > 0 else { return 0 }
+        let along = ((velocity + travel).magnitudeSquared - velocity.magnitudeSquared - length) / 2
+        return along / length
     }
 }
 
