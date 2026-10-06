@@ -142,10 +142,15 @@ public struct Animation: Equatable, Hashable {
     }
 
     func run(_ animations: @escaping () -> Void, completion: ((Bool) -> Void)? = nil) {
-        // A test driving the clock itself has no render server to hand the animation to.
+        // A test driving the clock itself has no render server to hand the animation to: the changes are made at once, and
+        // the animation is over when that clock says its length has passed.
         if ValueAnimator.manual {
             animations()
-            completion?(true)
+            guard let completion else { return }
+            let total = logicalDuration * Double(legs)
+            let over = ValueAnimator(delay: delay, total: total, at: { (min(max($0 / max(total, 0.001), 0), 1), $0 >= total) })
+            over.finished = { completion(true) }
+            over.start()
             return
         }
         if timing != nil {

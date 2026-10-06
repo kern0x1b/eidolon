@@ -2661,6 +2661,7 @@ struct CompletionCase: View {
     @ObservedObject var store: CompletionStore
     var body: some View { Color.red.frame(width: store.width, height: 10) }
 }
+_Probe.useVirtualClock()
 let completionStore = CompletionStore()
 var completed = 0
 var completionTransaction = Transaction(animation: .linear(duration: 0.2))

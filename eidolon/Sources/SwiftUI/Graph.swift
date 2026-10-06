@@ -400,14 +400,19 @@ enum Updates {
     static var scheduled = false
     static var pendingAnimation: Animation?
     static var animationForFlush: Animation?
-    /// The closures `Transaction.addAnimationCompletion` left for the animation now starting.
+    /// The closures `Transaction.addAnimationCompletion` left while a transaction's body is running.
     static var pendingCompletions: [(criteria: AnimationCompletionCriteria, run: () -> Void)] = []
+    /// The same closures once a change in that body has scheduled a flush: the body is over by the time the flush runs,
+    /// and the transaction with it, so they are taken at the change.
+    static var completionsForFlush: [(criteria: AnimationCompletionCriteria, run: () -> Void)] = []
     static var hosts: [WeakHost] = []
     static var flushCount = 0
 
     static func schedule(_ node: CompositeNode) {
         if !dirty.contains(where: { $0 === node }) { dirty.append(node) }
         animationForFlush = pendingAnimation ?? node.env.animation ?? animationForFlush
+        completionsForFlush += pendingCompletions
+        pendingCompletions = []
         guard !scheduled else { return }
         scheduled = true
         DispatchQueue.main.async { flush() }
@@ -416,8 +421,8 @@ enum Updates {
     static func flush() {
         scheduled = false
         flushCount += 1
-        let completions = pendingCompletions
-        pendingCompletions = []
+        let completions = completionsForFlush
+        completionsForFlush = []
         let nodes = dirty.sorted { $0.depth < $1.depth }
         dirty = []
         var rendered: [CompositeNode] = []
@@ -438,7 +443,7 @@ enum Updates {
             let changed = hosts.compactMap { $0.host }.filter { host in rendered.contains { $0.env.host === host } }
             // Nothing here is interactive, so a view that is removed is over at the same moment its
             // animation is: both criteria of a completion are called when the animation finishes.
-            animation.run({ for host in changed { host.view.layoutIfNeeded() } }, completion: { _ in
+            animation.run({ for host in changed { host.view.layoutIfNeeded() } }, completion: completions.isEmpty ? nil : { _ in
                 for completion in completions { completion.run() }
             })
         } else {
