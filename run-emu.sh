@@ -10,8 +10,11 @@ out=$PWD/runs.noindex/$name
 mkdir -p "$out"
 # xmake emulate needs the packages it copies already in the store, so the port is configured and
 # built here first. CHARON_REPO points the package repository at a checkout, CHARON_ADDON at the addon
-# version to build with; both default to what the machine has.
-xmake f -P eidolon -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
+# version to build with; both default to what the machine has. -c: without it xmake keeps the package
+# versions it resolved at the last configure, so a pin that moved (a new version in the recipe, another
+# CHARON_REPO) was not installed and the run tested the tree it had tested before; nothing the script
+# sets lives in the cache it clears.
+xmake f -c -P eidolon -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
 xmake emulate -P eidolon -d iPhone4,1 -r 6.1.3 install > "$out/install.log" 2>&1
 ran=0
 marker=$out/.marked

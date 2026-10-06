@@ -40,7 +40,7 @@ eidolon/build.sh                                    # begins with the ledger che
 ../snapshots.sh                                     # 37 rendered scenarios against eidolon/Snapshots/reference/
 ```
 
-`run-emu.sh` and `snapshots.sh` drive the Charon emulator: `xmake f -P eidolon`, then `xmake emulate install` and
+`run-emu.sh` and `snapshots.sh` drive the Charon emulator: `xmake f -c -P eidolon` (`-c`, so the package the pin names is the one installed), then `xmake emulate install` and
 either `emulate run /usr/libexec/EidolonTests` or `emulate launch space.kern0x1b.eidolon.snapshots until-exit`. The
 addon has to be one with `xmake emulate launch` (Charon v0.8.14 or later), named by `CHARON_ADDON`; `CHARON_REPO`
 names a Charon checkout to take the packages from. The scenarios need a key window, so they run in the application,
