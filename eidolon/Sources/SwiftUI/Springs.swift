@@ -14,6 +14,33 @@ public struct Spring: Hashable {
     }
     var form: Form
 
+    // Two springs are equal when Apple's would be: Apple's stores a spring as its damped frequency, its decay
+    // constant and its mass, so the spring of a response and a ratio is the spring of a duration and the bounce
+    // that makes the same ratio, whatever pair they were given as. The numbers are the ones Apple stores, to the
+    // last bit (checked over sweeps of every form, `host/springcmp.swift`); an over-damped spring's frequency is
+    // the negative root, a critical one's is zero.
+    private var identity: (damped: Double, decay: Double, mass: Double) {
+        func root(_ square: Double) -> Double { square >= 0 ? square.squareRoot() : -(-square).squareRoot() }
+        if case .system(let mass, let stiffness, let damping) = form {
+            let decay = damping / (2 * mass)
+            return (root(stiffness / mass - decay * decay), decay, mass)
+        }
+        let ratio = dampingRatio
+        return (2 * Double.pi * root(1 - ratio * ratio) / response, 2 * Double.pi * ratio / response, 1)
+    }
+
+    public static func == (lhs: Spring, rhs: Spring) -> Bool {
+        let (left, right) = (lhs.identity, rhs.identity)
+        return left.damped == right.damped && left.decay == right.decay && left.mass == right.mass
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        let key = identity
+        hasher.combine(key.damped)
+        hasher.combine(key.decay)
+        hasher.combine(key.mass)
+    }
+
     /// The undamped angular frequency, `2 pi / response`.
     var frequency: Double { 2 * Double.pi / max(response, .leastNormalMagnitude) }
 

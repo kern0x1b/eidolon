@@ -2590,6 +2590,20 @@ check(Animation.smooth != Animation.bouncy, "two springs of the same length are 
 check(Animation.spring(duration: 0.5).delay(0.2) != Animation.spring(duration: 0.5), "a delay makes another animation")
 check(Animation.timingCurve(.circularEaseIn, duration: 2) != Animation.linear(duration: 2), "and so does a timing curve")
 check(Animation.timingCurve(0.42, 0, 1, 1, duration: 1) == Animation.timingCurve(.easeIn, duration: 1), "the four points of a timingCurve are the control points of the Bezier")
+// the two ways of naming a spring are one spring in Apple's framework, which compares what it stores of it
+// (`host/springcmp.swift` compares 791 pairs of springs with the port's; the animations below were measured on macOS 27)
+check(Animation.spring(response: 0.5, dampingFraction: 0.7) == Animation.spring(duration: 0.5, bounce: 0.3), "a spring of a response and a damping fraction is the spring of a duration and a bounce")
+check(Animation.spring(response: 0.5, dampingFraction: 0.7).hashValue == Animation.spring(duration: 0.5, bounce: 0.3).hashValue, "and hashes as it does")
+check(Animation.spring(response: 0.5, dampingFraction: 1) == Animation.spring(duration: 0.5, bounce: 0), "a fraction of one is no bounce")
+check(Animation.spring(response: 0.5, dampingFraction: 1.25) == Animation.spring(duration: 0.5, bounce: -0.2), "and one over it a negative bounce")
+check(Animation.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.1) == Animation.spring(duration: 0.5, bounce: 0.3, blendDuration: 0.1), "with the blend they share")
+check(Animation.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.1) != Animation.spring(response: 0.5, dampingFraction: 0.7), "and not without it")
+check(Animation.interactiveSpring(response: 0.15, dampingFraction: 0.86, blendDuration: 0.25) == Animation.spring(duration: 0.15, bounce: 0.14, blendDuration: 0.25), "the interactive spring of a fraction is the spring of its bounce")
+check(Animation.spring() != Animation.spring(duration: 0.5, bounce: 0.175), "while a bounce that is not the fraction's last bit is another spring, as it is in Apple's")
+check(Spring(response: 0.5, dampingRatio: 0.7) == Spring(duration: 0.5, bounce: 0.3), "the springs themselves are equal")
+check(Spring(response: 0.5, dampingRatio: 0.7).hashValue == Spring(duration: 0.5, bounce: 0.3).hashValue, "and hash alike")
+check(Spring(mass: 1, stiffness: 157.91367041742973, damping: 25.132741228718345) == Spring(duration: 0.5, bounce: 0), "a spring of a mass, a stiffness and a damping is that of its response and ratio")
+check(Spring(mass: 2, stiffness: 100, damping: 10) != Spring(mass: 1, stiffness: 50, damping: 5), "unless the mass differs, which Apple's tells apart")
 
 // keyframes, phases and a custom animation: the track is the one that is written, and the views
 // follow it frame by frame
