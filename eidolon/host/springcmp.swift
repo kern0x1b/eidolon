@@ -257,4 +257,61 @@ for (r, z) in [(0.5, 0.825), (0.3, 0.4), (1.0, 1.0), (0.4, 1.5)] {
     }
 }
 print("asked Apple's fluid spring", vectorAsked, "times of a pair")
+// .speed and .delay, in every order: Apple's animation is `rate * (t - delay)` seconds into its own time, so a speed after a delay
+// scales it and a delay after a speed does not, and two delays add. The answers come step by step from one context (a fluid
+// spring integrates from the state it kept), with steps finer than a three-hundredth of a second of the animation's own time.
+enum Retime { case speed(Double), delay(Double), complete(Double) }
+func retime(_ animation: Animation, _ ops: [Retime]) -> Animation {
+    ops.reduce(animation) { all, op in
+        switch op { case .speed(let s): return all.speed(s); case .delay(let d): return all.delay(d); case .complete(let c): return all.logicallyComplete(after: c) }
+    }
+}
+func retimed(_ retiming: Retiming, _ ops: [Retime]) -> Retiming {
+    ops.reduce(retiming) { all, op in
+        switch op { case .speed(let s): return all.speeding(by: s); case .delay(let d): return all.delaying(by: d); case .complete(let c): return all.completing(after: c) }
+    }
+}
+var retimedAsked = 0
+func compareRetimed(_ name: String, _ apple: Animation, _ ops: [Retime], distance: Double, natural: Double, course: (Retiming) -> SpringCourse) {
+    let retiming = retimed(Retiming(), ops), mine = course(retiming)
+    // an animation asked first for a moment past its end (a negative delay longer than it is) is answered by Apple's fluid spring
+    // from the state it began with, one step on, and is not asked here
+    if -retiming.delay >= mine.length { return }
+    var context = makeContext()
+    let step = 1 / (300 * max(retiming.rate, 1))
+    let limit = mine.length.isFinite ? Int((max(retiming.delay, 0) + mine.length) / step) + 40 : 600
+    for j in 0..<limit {
+        let t = (Double(j) + 0.5) * step
+        let elapsed = t - retiming.delay
+        let got = apple.animate(value: distance, time: t, context: &context)
+        let expected: Double? = elapsed >= mine.length ? nil : distance * mine.at(elapsed)
+        retimedAsked += 1
+        if (got == nil) != (expected == nil) { print("DIFF retimed end", name, ops, "step", j, "apple", got as Any, "mine", expected as Any); return }
+        if let got, let expected { note("retimed \(name) \(ops) step \(j)", expected, got) }
+        if got != nil { same("retimed \(name) \(ops) is logically complete from its moment, step \(j)", context.isLogicallyComplete, t >= retiming.logicalMoment(naturally: natural)) }
+        if got == nil { return }
+    }
+}
+let orders: [[Retime]] = [[], [.speed(2)], [.speed(0.5)], [.delay(1)], [.delay(-0.25)], [.delay(0.1)], [.speed(2), .delay(1)], [.delay(1), .speed(2)], [.speed(2), .speed(2)],
+                          [.delay(1), .delay(1)], [.delay(1), .speed(0.5), .delay(0.5)], [.speed(0.5), .delay(1), .speed(2)], [.speed(3), .delay(-0.2)], [.speed(0)], [.delay(0.4), .speed(0)],
+                          [.complete(0.2)], [.complete(0.2), .speed(2)], [.speed(2), .complete(0.2)], [.complete(0.2), .delay(1)], [.delay(1), .complete(0.2)], [.speed(2), .delay(1), .complete(0.9), .speed(0.5)]]
+let fluidSprings = [(0.5, 0.825), (0.15, 0.86), (0.35, 0.4)]
+for (r, z) in fluidSprings {
+    let spring = Mine(response: r, dampingRatio: z)
+    for d in [1.0, 30.0] {
+        for ops in orders + [[.speed(-1)], [.delay(1), .speed(-1)]] {
+            compareRetimed("fluid \(r) \(z) distance \(d)", retime(Animation.spring(response: r, dampingFraction: z), ops), ops, distance: d, natural: r) { SpringCourse(fluid: spring, distance: d, retiming: $0) }
+        }
+    }
+}
+for (name, held, apple) in [("mass 1 stiffness 100 damping 10", InterpolatingSpring(mass: 1, stiffness: 100, damping: 10), Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10)),
+                            ("critical", InterpolatingSpring(mass: 1, stiffness: 100, damping: 50), Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 50)),
+                            ("speed 3", InterpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: 3), Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: 3)),
+                            ("spring", InterpolatingSpring(Mine(response: 0.5, dampingRatio: 0.7)), Animation.interpolatingSpring(Apple(response: 0.5, dampingRatio: 0.7)))] {
+    for ops in orders {
+        compareRetimed("interpolating \(name)", retime(apple, ops), ops, distance: 2, natural: held.spring.response) { SpringCourse(interpolating: held, retiming: $0) }
+    }
+}
+print("asked Apple", retimedAsked, "times of springs that were sped up, slowed down and delayed")
+
 print("compared", count, "numbers; worst difference", worst)

@@ -69,7 +69,7 @@ final class TextNode: LayoutNode {
                 if env.contentTransition.kind == .fade, label.text != nil, let animation = Updates.animationForFlush ?? env.animation {
                     let fade = CATransition()
                     fade.type = CATransitionType.fade
-                    fade.duration = animation.duration
+                    fade.duration = animation.playedDuration
                     label.layer.add(fade, forKey: "contentTransition")
                 }
                 label.text = resolved

@@ -2700,6 +2700,45 @@ closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damp
 closeTo(interpolatingBarWidth(.interpolatingSpring(mass: 1, stiffness: 100, damping: 10, initialVelocity: -2), at: 1.5), 99.93119673, "and later for one away from it (1.5000274 s)", 1e-3)
 closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, dampingRatio: 0.7)), at: 0.6), 100.07367005, "the interpolating spring of a spring of half a second is still moving at 0.6 s", 1e-3)
 closeTo(interpolatingBarWidth(.interpolatingSpring(Spring(response: 0.5, dampingRatio: 0.7)), at: 1.0), 100, "and over at 1 s (0.863 s)", 1e-3)
+// `.speed` and `.delay` put an animation in time as `rate * (t - delay)`: a speed after a delay scales the delay, a delay after a speed does
+// not, two delays add, and the animation ends and is logically complete in the time that gives (`host/springcmp.swift` asks Apple's
+// for 113009 answers of 64 retimed springs; the numbers here are its answers at the middle of a step of the animation's own time)
+let retimedFluid = Animation.spring(response: 0.5, dampingFraction: 0.825)
+closeTo(interpolatingBarWidth(retimedFluid.speed(2), at: 99.5 / 600), 98.6387221, "a spring at twice the speed is where it is at twice the time", 1e-3)
+closeTo(interpolatingBarWidth(retimedFluid.speed(2), at: 157.5 / 600), 100.5769034, "and is over at half the time: still on its way", 1e-3)
+closeTo(interpolatingBarWidth(retimedFluid.speed(2), at: 158.5 / 600), 100, "then over", 1e-3)
+closeTo(interpolatingBarWidth(retimedFluid.speed(2).delay(1), at: 1 + 99.5 / 600), 98.6387221, "a delay after the speed is a delay of a second", 1e-3)
+closeTo(interpolatingBarWidth(retimedFluid.speed(2).delay(1), at: 0.9), 0, "which holds it back that long", 1e-3)
+closeTo(interpolatingBarWidth(retimedFluid.delay(1).speed(2), at: 0.5 + 99.5 / 600), 98.6387221, "a delay before the speed is halved by it", 1e-3)
+closeTo(interpolatingBarWidth(retimedFluid.delay(0.3).delay(0.3), at: 0.6 + 29.5 / 300), 39.0798008, "two delays are the sum of them", 1e-3)
+closeTo(interpolatingBarWidth(retimedFluid.delay(0.3).delay(0.3), at: 0.5), 0, "and not the last", 1e-3)
+let retimedInterpolating = Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 10)
+closeTo(interpolatingBarWidth(retimedInterpolating.speed(2), at: 0.35), 97.4358962, "an interpolating spring at twice the speed", 1e-3)
+closeTo(interpolatingBarWidth(retimedInterpolating.speed(2), at: 0.73), 99.9296259, "is still moving at the half of the 1.4727 s it takes", 1e-3)
+closeTo(interpolatingBarWidth(retimedInterpolating.speed(2), at: 0.74), 100, "and is over at it", 1e-3)
+closeTo(interpolatingBarWidth(retimedInterpolating.delay(1).speed(2), at: 0.85), 97.4358962, "a delay before the speed is halved for it as well", 1e-3)
+var retimedCompletions = 0
+func logicallyCompleted(_ animation: Animation, by time: Double) -> Bool {
+    _Probe.useVirtualClock()
+    let store = CompletionStore()
+    retimedCompletions = 0
+    var transaction = Transaction(animation: animation)
+    transaction.addAnimationCompletion { retimedCompletions += 1 }
+    let probe = _Probe(CompletionCase(store: store), width: 100, height: 20)
+    _ = frames(probe)
+    withTransaction(transaction) { store.width = 40 }
+    probe.flush()
+    _Probe.advanceAnimations(to: time)
+    return retimedCompletions > 0
+}
+check(!logicallyCompleted(retimedFluid.speed(2), by: 0.24) && logicallyCompleted(retimedFluid.speed(2), by: 0.26), "a spring at twice the speed is logically complete at half its response")
+check(!logicallyCompleted(retimedFluid.delay(1).speed(2), by: 0.74) && logicallyCompleted(retimedFluid.delay(1).speed(2), by: 0.76), "after a delay the speed halves, and the delay with it")
+check(!logicallyCompleted(retimedFluid.speed(2).delay(1), by: 1.24) && logicallyCompleted(retimedFluid.speed(2).delay(1), by: 1.26), "and not after a speed")
+check(!logicallyCompleted(retimedFluid.delay(1).logicallyComplete(after: 0.2), by: 0.19) && logicallyCompleted(retimedFluid.delay(1).logicallyComplete(after: 0.2), by: 0.21), "an animation that is logically complete after a time is, in the time it is then in")
+check(!logicallyCompleted(retimedFluid.logicallyComplete(after: 0.2).delay(1), by: 1.19) && logicallyCompleted(retimedFluid.logicallyComplete(after: 0.2).delay(1), by: 1.21), "and a delay after it moves it")
+check(!logicallyCompleted(retimedFluid.logicallyComplete(after: 0.2).speed(2), by: 0.09) && logicallyCompleted(retimedFluid.logicallyComplete(after: 0.2).speed(2), by: 0.11), "as does a speed")
+check(!logicallyCompleted(retimedFluid.speed(0), by: 100), "an animation sped up by nothing never gets anywhere")
+closeTo(interpolatingBarWidth(retimedFluid.speed(0), at: 100), 0, "and is where it began", 1e-3)
 // and it starts with the speed it is given, in distances per second (the same host runs, with `initialVelocity:` of 3 and -2)
 check(Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 2) != Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 1), "interpolating springs of another initial velocity are another animation")
 check(Animation.interpolatingSpring(interpolatedSpring, initialVelocity: 2) != Animation.interpolatingSpring(interpolatedSpring), "than one that starts at rest too")

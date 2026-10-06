@@ -5,15 +5,16 @@ public struct Animation: Equatable, Hashable {
     enum Curve: Equatable, Hashable { case linear, easeIn, easeOut, easeInOut, spring }
     var curve: Curve
     var duration: Double
-    var delay: Double
+    /// Where `.speed`, `.delay` and `.logicallyComplete` have put the animation in time.
+    var retiming = Retiming()
+    var delay: Double { retiming.delay }
+    var rate: Double { retiming.rate }
     /// What a spring was given as its blend: held and compared as Apple's animation does, and moving nothing in time.
     var blend = 0.0
     var legs: Float = 1
     var autoreverses = false
     /// Set when the timing is a spring or one of the newer curves: what the interpolator asks instead of `curve`.
     var timing: Timing?
-    /// The moment the animation counts as over, when that is not its duration: a spring's own settling.
-    var logicalEnd: Double?
     /// Set when the animation computes its own values.
     var custom: CustomAnimationBox?
 
@@ -45,7 +46,7 @@ public struct Animation: Equatable, Hashable {
     init(curve: Curve, duration: Double, delay: Double, timing: Timing? = nil) {
         self.curve = curve
         self.duration = duration
-        self.delay = delay
+        self.retiming.delay = delay
         self.timing = timing
     }
 
@@ -121,10 +122,10 @@ public struct Animation: Equatable, Hashable {
     public func timingCurve(_ curve: UnitCurve, duration: Double) -> Animation {
         Animation.timingCurve(curve, duration: duration)
     }
-    public func delay(_ delay: Double) -> Animation { with { $0.delay = delay } }
-    public func speed(_ speed: Double) -> Animation { with { $0.duration = duration / max(speed, 0.0001) } }
+    public func delay(_ delay: Double) -> Animation { with { $0.retiming = retiming.delaying(by: delay) } }
+    public func speed(_ speed: Double) -> Animation { with { $0.retiming = retiming.speeding(by: speed) } }
     /// The moment the animation's own curve says it is over, which for a spring is when it settles.
-    public func logicallyComplete(after duration: Double) -> Animation { with { $0.logicalEnd = duration } }
+    public func logicallyComplete(after duration: Double) -> Animation { with { $0.retiming = retiming.completing(after: duration) } }
 
     // SwiftUI counts every pass, forwards or back, as one repeat; Core Animation counts a forward and a back together.
     public func repeatCount(_ repeatCount: Int, autoreverses: Bool = true) -> Animation {
@@ -169,16 +170,20 @@ public struct Animation: Equatable, Hashable {
     }
 
     func course(distance: Double) -> Course {
+        let length: Double, at: (Double) -> Double
         switch timing {
         case .spring(let spring):
-            let track = FluidTrack(spring)
-            return Course(length: track.end(distance: distance), legs: Double(legs), autoreverses: autoreverses, at: { track.progress(at: $0) })
+            let course = SpringCourse(fluid: spring, distance: distance, retiming: retiming)
+            (length, at) = (course.length, course.at)
         case .interpolating(let held):
-            return Course(length: held.settlingTime, legs: Double(legs), autoreverses: autoreverses, at: { held.progress(at: $0) })
+            let course = SpringCourse(interpolating: held, retiming: retiming)
+            (length, at) = (course.length, course.at)
         default:
-            let length = max(duration, 0.001)
-            return Course(length: length, legs: Double(legs), autoreverses: autoreverses, at: { progress($0 / length) })
+            let own = max(duration, 0.001), retiming = retiming
+            length = retiming.outer(own)
+            at = { progress(retiming.rate > 0 ? $0 * retiming.rate / own : 0) }
         }
+        return Course(length: length, legs: Double(legs), autoreverses: autoreverses, at: at)
     }
 
     /// How far the animation of a curve has come at a fraction of its own length.
@@ -189,8 +194,11 @@ public struct Animation: Equatable, Hashable {
         }
     }
 
-    /// How long the animation is, counting a spring by how long it takes to settle.
-    var logicalDuration: Double { logicalEnd ?? duration }
+    /// How long the animation is after its delay, counting a spring by its response, or by what `logicallyComplete` was given.
+    var logicalDuration: Double { max(retiming.logicalMoment(naturally: duration) - delay, 0) }
+
+    /// What UIView is told the animation lasts: its duration at the rate it is played.
+    var playedDuration: Double { rate > 0 ? duration / rate : duration }
 
     func with(_ change: (inout Animation) -> Void) -> Animation {
         var copy = self
@@ -217,8 +225,8 @@ public struct Animation: Equatable, Hashable {
         if ValueAnimator.manual {
             animations()
             guard let completion else { return }
-            let total = logicalDuration * Double(legs)
-            let over = ValueAnimator(delay: delay, total: total, at: { (min(max($0 / max(total, 0.001), 0), 1), $0 >= total) })
+            let total = max(delay + (retiming.logicalMoment(naturally: duration) - delay) * Double(legs), 0)
+            let over = ValueAnimator(delay: 0, total: total, at: { (min(max($0 / max(total, 0.001), 0), 1), $0 >= total) })
             over.finished = { completion(true) }
             over.start()
             return
@@ -227,7 +235,7 @@ public struct Animation: Equatable, Hashable {
             _Unsupported.note("Animation.spring", "UIView of iOS 6 animates with one of four named curves and knows no spring, so a UIView property follows the nearest of the four; the engine's own frame-by-frame animations are driven by the spring itself")
         }
         let cycles = autoreverses ? legs / 2 : legs
-        UIView.animate(withDuration: duration, delay: delay, options: options, animations: {
+        UIView.animate(withDuration: playedDuration, delay: delay, options: options, animations: {
             if self.legs > 1 && self.legs.isFinite { UIView.setAnimationRepeatCount(cycles) }
             animations()
         }, completion: completion)

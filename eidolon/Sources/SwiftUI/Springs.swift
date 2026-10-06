@@ -295,6 +295,66 @@ extension VectorArithmetic {
     }
 }
 
+/// Where an animation stands in time once `.speed`, `.delay` and `.logicallyComplete` have been applied to it, in the order
+/// they were: the animation is `rate * (t - delay)` seconds into its own time `t` seconds after it was asked to begin, so a
+/// speed of two halves the delay before it as well as the animation after it, and a delay after a speed is not scaled by
+/// it (`host/springcmp.swift` asks Apple's for every order of two and three of them). Each of the two moves the moment of
+/// logical completion, which is given in the time of the animation as it was when it was set. An animation that is not
+/// moving in time (a speed of nothing or less) stays at its start and is never over.
+struct Retiming: Hashable {
+    var rate = 1.0
+    var delay = 0.0
+    var logicalEnd: Double?
+
+    func speeding(by speed: Double) -> Retiming {
+        var next = self
+        next.rate *= speed
+        if speed > 0 { next.delay /= speed; next.logicalEnd = logicalEnd.map { $0 / speed } }
+        return next
+    }
+
+    func delaying(by seconds: Double) -> Retiming {
+        var next = self
+        next.delay += seconds
+        next.logicalEnd = logicalEnd.map { $0 + seconds }
+        return next
+    }
+
+    func completing(after seconds: Double) -> Retiming {
+        var next = self
+        next.logicalEnd = seconds
+        return next
+    }
+
+    /// The moment the animation is logically complete, in seconds after it was asked to begin: the one it was given, or the end of its
+    /// own time of a number of seconds (a spring's response) as it was played.
+    func logicalMoment(naturally seconds: Double) -> Double { logicalEnd ?? delay + outer(seconds) }
+
+    /// The seconds of its own time an animation has been through, a number of seconds after it was asked to begin.
+    func inner(at elapsed: Double) -> Double { rate > 0 ? rate * (elapsed - delay) : 0 }
+
+    /// The seconds after its delay in which a number of seconds of its own time pass.
+    func outer(_ inner: Double) -> Double { rate > 0 ? inner / rate : .infinity }
+}
+
+/// How a spring animation goes in the seconds after its delay: when it is over and how far it has come, as a fraction of the
+/// distance, at the time of the animation as it was retimed.
+struct SpringCourse {
+    let length: Double
+    let at: (Double) -> Double
+
+    init(fluid spring: Spring, distance: Double, retiming: Retiming) {
+        let track = FluidTrack(spring)
+        length = retiming.outer(track.end(distance: distance))
+        at = { track.progress(at: retiming.rate > 0 ? $0 * retiming.rate : 0) }
+    }
+
+    init(interpolating held: InterpolatingSpring, retiming: Retiming) {
+        length = retiming.outer(held.settlingTime)
+        at = { held.progress(at: retiming.rate > 0 ? $0 * retiming.rate : 0) }
+    }
+}
+
 /// Where Apple's fluid spring animation (`Animation.spring`, `smooth`, `snappy`, `bouncy`, `interactiveSpring`) is, as a
 /// fraction of the distance. It does not solve its spring: it steps it, a three-hundredth of a second at a time, with
 /// the semi-implicit Euler step, and answers for every moment of a step the position the step began with, so the curve is a

@@ -67,7 +67,7 @@ func syncSubviews(_ container: UIView, _ nodes: [LayoutNode]) {
     for v in container.subviews where !wanted.contains(where: { $0 === v }) {
         if let whole = Transitions.spec(for: v), let animation = whole.removal.animation ?? whole.animation ?? animation {
             let spec = whole.removal
-            UIView.animate(withDuration: animation.duration, delay: animation.delay, options: animation.once.options, animations: {
+            UIView.animate(withDuration: animation.playedDuration, delay: animation.delay, options: animation.once.options, animations: {
                 spec.apply(v, entering: false)
             }, completion: { _ in
                 spec.reset(v)
@@ -85,7 +85,7 @@ func syncSubviews(_ container: UIView, _ nodes: [LayoutNode]) {
         }
         if isNew, let spec = Transitions.spec(for: v), let animation = spec.animation ?? animation {
             spec.apply(v, entering: true)
-            UIView.animate(withDuration: animation.duration, delay: animation.delay, options: animation.once.options, animations: {
+            UIView.animate(withDuration: animation.playedDuration, delay: animation.delay, options: animation.once.options, animations: {
                 spec.reset(v)
             }, completion: nil)
         }

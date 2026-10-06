@@ -72,7 +72,6 @@ extension Animation {
     public init<A: CustomAnimation>(_ base: A) {
         curve = .linear
         duration = 0
-        delay = 0
         custom = CustomAnimationBox(base)
     }
 
