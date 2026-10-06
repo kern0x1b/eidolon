@@ -3075,19 +3075,23 @@ raster.prefersDisplayCompositing = true
 raster.maxDrawableCount = 1
 check(raster.isOpaque && raster.prefersDisplayCompositing && raster.maxDrawableCount == 1, "and the three of them are the port's to set")
 // and the options reach a real layer, through the one view that rasterises: `drawingGroup`
-func layerOf(_ probe: _Probe) -> CALayer? {
+// the layer the red square is drawn into: the view that holds the leaf of that size
+func layerOf(_ probe: _Probe, size: CGSize) -> CALayer? {
     var found: CALayer?
-    func walk(_ v: UIView) { if !v.subviews.isEmpty { found = found ?? v.layer }; v.subviews.forEach(walk) }
+    func walk(_ v: UIView) { if v.subviews.isEmpty, v.bounds.size == size { found = found ?? v.superview?.layer }; v.subviews.forEach(walk) }
     walk(probe.hostView)
     return found
 }
 let drawn = _Probe(Color.red.frame(width: 40, height: 40).drawingGroup(), width: 60, height: 60)
 _ = frames(drawn)
-if let layer = layerOf(drawn) {
+if let layer = layerOf(drawn, size: CGSize(width: 40, height: 40)) {
     check(layer.shouldRasterize, "a drawing group rasterises the layer of iOS 6")
     check(layer.rasterizationScale == UIScreen.main.scale, "at the scale of the screen")
-    check(layer.isOpaque, "and opaque, as the options the framework answers with say")
+    check(!layer.isOpaque, "and leaves it not opaque, as drawingGroup(opaque: false) is by default")
 } else { check(false, "a drawing group has a layer of its own") }
+let drawnOpaque = _Probe(Color.red.frame(width: 40, height: 40).drawingGroup(opaque: true), width: 60, height: 60)
+_ = frames(drawnOpaque)
+check(layerOf(drawnOpaque, size: CGSize(width: 40, height: 40))?.isOpaque == true, "and opaque when the call says so")
 
 // A document: a real file, opened through the group and read back.
 final class NoteDocument: FileDocument {
