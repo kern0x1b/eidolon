@@ -2284,22 +2284,9 @@ diffProbe.flush()
 equal(rowWidths(diffProbe), [7, 8], "and can be filled again")
 UIView.setAnimationsEnabled(true)
 
-// swipe actions: handed to the table's delegate as UIKit's own contextual actions when the backports provide them
-@objc(UIContextualAction) final class StandInAction: NSObject {
-    @objc var backgroundColor: UIColor?
-    var title = "", style = 0
-    var handler: AnyObject?
-    @objc(contextualActionWithStyle:title:handler:) static func make(_ style: Int, _ title: String, _ handler: AnyObject) -> StandInAction {
-        let action = StandInAction(); action.style = style; action.title = title; action.handler = handler; return action
-    }
-}
-@objc(UISwipeActionsConfiguration) final class StandInConfiguration: NSObject {
-    var actions: [StandInAction] = []
-    @objc var performsFirstActionWithFullSwipe = true
-    @objc(configurationWithActions:) static func make(_ actions: [Any]) -> StandInConfiguration {
-        let configuration = StandInConfiguration(); configuration.actions = actions.compactMap { $0 as? StandInAction }; return configuration
-    }
-}
+// swipe actions: handed to the table's delegate as UIKit's own contextual actions when the backports provide them. The
+// program carries libUIKitBackports, which defines UIContextualAction and UISwipeActionsConfiguration, so these are its
+// classes; a program that defined them too would have two implementations of one class in one process.
 var bridgeSwiped: [String] = []
 struct BridgeSwipeCase: View {
     var body: some View {
@@ -2313,22 +2300,18 @@ struct BridgeSwipeCase: View {
         }
     }
 }
-_ = StandInAction.self; _ = StandInConfiguration.self
 let bridgeProbe = _Probe(BridgeSwipeCase(), width: 320, height: 300)
-if let trailing = bridgeProbe.swipeConfiguration(row: 0, leading: false) as? StandInConfiguration {
+if let trailing = bridgeProbe.swipeConfiguration(row: 0, leading: false) as? UISwipeActionsConfiguration {
     equal(trailing.actions.map { $0.title }, ["Archive", "Delete"], "trailing swipe actions are the buttons, in order")
-    equal(trailing.actions.map { $0.style }, [0, 1], "a destructive button is a destructive action")
-    check(trailing.actions[0].backgroundColor == UIColor.blue || trailing.actions[0].backgroundColor != nil, "a tinted button has that background")
+    equal(trailing.actions.map { $0.style.rawValue }, [0, 1], "a destructive button is a destructive action")
+    equal(trailing.actions[0].backgroundColor, UIColor(red: 0.0, green: 0.478, blue: 1.0, alpha: 1), "a tinted button has that background")
     check(trailing.performsFirstActionWithFullSwipe, "a full swipe runs the first by default")
-    typealias Done = @convention(block) (Bool) -> Void
-    typealias Run = @convention(block) (AnyObject, AnyObject, Done) -> Void
-    let run = unsafeBitCast(trailing.actions[1].handler, to: Run.self)
     var completed = false
-    run(trailing.actions[1], UIView(), { completed = $0 })
+    trailing.actions[1].handler(trailing.actions[1], UIView(), { completed = $0 })
     equal(bridgeSwiped, ["delete"], "an action runs its button")
     check(completed, "and tells UIKit it is done")
 } else { check(false, "the table answers a trailing swipe with a configuration") }
-if let leading = bridgeProbe.swipeConfiguration(row: 1, leading: true) as? StandInConfiguration {
+if let leading = bridgeProbe.swipeConfiguration(row: 1, leading: true) as? UISwipeActionsConfiguration {
     equal(leading.actions.map { $0.title }, ["Pin"], "a leading swipe has its own actions")
     check(!leading.performsFirstActionWithFullSwipe, "and allowsFullSwipe: false is kept")
 } else { check(false, "the table answers a leading swipe with a configuration") }
