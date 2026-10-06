@@ -2796,18 +2796,29 @@ func downButton(_ probe: _Probe) -> UIButton? {
     return first(probe.hostView)
 }
 
+/// What UIControl.sendActions(for:) does, without the application it sends through: this process has none
+/// (UIApplication.shared is nil, measured), so a control sends nothing, and its registered actions are performed here.
+func deliver(_ event: UIControl.Event, to control: UIControl) {
+    for target in control.allTargets {
+        for name in control.actions(forTarget: target, forControlEvent: event) ?? [] {
+            _ = (target as? NSObject)?.perform(NSSelectorFromString(name), with: control)
+        }
+    }
+}
+
 let pressed = _Probe(PressProbeCase(), width: 120, height: 40)
 _ = frames(pressed)
 let pressedUp = opacitiesOf(pressed)
 if let pressButton = downButton(pressed) {
+    // a finger sets the highlight and then sends touchDown; the style follows the event, not the property
     pressButton.isHighlighted = true
-    pressed.hostView.setNeedsLayout()
+    deliver(.touchDown, to: pressButton)
     pressed.flush()
     let pressedDown = opacitiesOf(pressed)
     check(pressedUp != pressedDown, "a .plain button redraws its body when the press reaches the style")
     check(pressedDown.contains { $0 <= 0.4 + 0.001 }, "and draws it at the pressed opacity the style asked for")
     pressButton.isHighlighted = false
-    pressed.hostView.setNeedsLayout()
+    deliver(.touchUpInside, to: pressButton)
     pressed.flush()
     check(opacitiesOf(pressed) == pressedUp, "and goes back to what it drew before")
 } else { check(false, "the probe's plain button has a UIButton in it") }
@@ -2818,7 +2829,7 @@ let appleFrames = frames(appleStyle)
 check(!appleFrames.isEmpty, "a custom PrimitiveButtonStyle written the Apple way draws its label")
 if let custom = downButton(appleStyle) {
     custom.isHighlighted = true
-    appleStyle.hostView.setNeedsLayout()
+    deliver(.touchDown, to: custom)
     appleStyle.flush()
     check(!frames(appleStyle).isEmpty, "and keeps drawing it while the button is down")
 }
