@@ -2527,7 +2527,7 @@ closeTo(lazySpring.settlingDuration(target: 1.0, initialVelocity: 0, epsilon: 0.
 closeTo(Spring(mass: 1, stiffness: 100, damping: 10).response, 0.628318531, "a spring of a mass, a stiffness and a damping reads its response off them")
 closeTo(Spring(mass: 1, stiffness: 100, damping: 10).dampingRatio, 0.5, "and its damping ratio")
 closeTo(Spring(mass: 1, stiffness: 100, damping: 100).dampingRatio, 1, "while more damping than critical is refused")
-closeTo(Spring(mass: 1, stiffness: 100, damping: 100, allowOverDamping: true).dampingRatio, 1, "unless it is asked for")
+closeTo(Spring(mass: 1, stiffness: 100, damping: 100, allowOverDamping: true).dampingRatio, 5, "unless it is asked for, and then it is the ratio of the three numbers")
 closeTo(Spring.smooth.bounce, 0, "the smooth spring does not bounce")
 closeTo(Spring.snappy.bounce, 0.15, "the snappy one a little")
 closeTo(Spring.bouncy.bounce, 0.3, "and the bouncy one more")
