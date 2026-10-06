@@ -2737,6 +2737,21 @@ _flushTransactions()
 equal(idleOrder, ["body", "logically", "removed"], "it runs on the next turn, in the order they were added")
 _flushTransactions()
 equal(idleOrder.count, 3, "and once")
+// a completion runs once, whatever number of times the transaction that holds it is used (macOS 27, `.agent-work/runs/7-dup/t.swift`:
+// the same value twice, a copy of it, again after a turn, nested in itself)
+var reusedRuns: [String] = []
+var reusedTransaction = Transaction()
+reusedTransaction.addAnimationCompletion { reusedRuns.append("logically") }
+reusedTransaction.addAnimationCompletion(criteria: .removed) { reusedRuns.append("removed") }
+withTransaction(reusedTransaction) {}
+withTransaction(reusedTransaction) {}
+let reusedCopy = reusedTransaction
+withTransaction(reusedCopy) { withTransaction(reusedTransaction) {} }
+_flushTransactions()
+equal(reusedRuns.sorted(), ["logically", "removed"], "a transaction used for several withTransaction calls in one turn runs each completion once")
+withTransaction(reusedTransaction) {}
+_flushTransactions()
+equal(reusedRuns.count, 2, "and does not run them again in a later turn")
 struct IdleError: Error {}
 var idleThrown = 0
 var throwingTransaction = Transaction()

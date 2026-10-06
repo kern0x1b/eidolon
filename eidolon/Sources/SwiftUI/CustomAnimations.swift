@@ -113,10 +113,28 @@ public struct AnimationCompletionCriteria: Hashable {
     public static let removed = AnimationCompletionCriteria(isRemoved: true)
 }
 
+/// One closure added by `Transaction.addAnimationCompletion`: it runs once, whichever copy of the transaction it was added
+/// to or used through, and however many times the transaction is used.
+final class CompletionToken {
+    let criteria: AnimationCompletionCriteria
+    private var action: (() -> Void)?
+
+    init(criteria: AnimationCompletionCriteria, action: @escaping () -> Void) {
+        self.criteria = criteria
+        self.action = action
+    }
+
+    func run() {
+        guard let action else { return }
+        self.action = nil
+        action()
+    }
+}
+
 extension Transaction {
     /// A closure to run when the animations of this transaction are over. SwiftUI calls it once the
     /// animation has logically finished, or once the view is gone, whichever the criteria ask for.
     public mutating func addAnimationCompletion(criteria: AnimationCompletionCriteria = .logicallyComplete, _ completion: @escaping () -> Void) {
-        completions.append((criteria, completion))
+        completions.append(CompletionToken(criteria: criteria, action: completion))
     }
 }
