@@ -2538,7 +2538,7 @@ for _ in 0..<6 { Spring(duration: 0.5).update(value: &steppedValue, velocity: &s
 closeTo(steppedValue, plainSpring.value(target: 1.0, time: 0.1), "six frames of a spring are where its curve says")
 closeTo(steppedSpeed, plainSpring.velocity(target: 1.0, time: 0.1), "and carry its velocity")
 // a spring that starts with a speed, which is positive toward larger values: Apple's framework on macOS 27,
-// `.agent-work/runs/4-oracle/spring2.swift` (the over-damped velocity is left out: Apple's is its own value's slope plus the distance)
+// `.agent-work/runs/4-oracle/spring2.swift`
 let underSpring = Spring(duration: 0.5, bounce: 0.3)
 closeTo(plainSpring.value(target: 1.0, initialVelocity: 2.0, time: 0.1), 0.414661465, "a speed toward the target carries a critical spring further")
 closeTo(plainSpring.velocity(target: 1.0, initialVelocity: 2.0, time: 0.1), 4.348291049, "and is spent in its velocity")
@@ -2559,6 +2559,26 @@ closeTo(restartedSpeed, 4.369427366, "does the same")
 let cornerToCorner = CGPoint(x: 0.2, y: 0.4)
 closeTo(plainSpring.value(fromValue: cornerToCorner, toValue: CGPoint(x: 1, y: 1), initialVelocity: .zero, time: 0.3).x, 0.912027151, "a spring from a value it did not start at")
 closeTo(plainSpring.velocity(fromValue: cornerToCorner, toValue: CGPoint(x: 1, y: 1), initialVelocity: .zero, time: 0.3).x, 0.873734220, "and its velocity there", 1e-5)
+// an over-damped spring's velocity is, in Apple's framework, its own slope plus the distance still to go
+// (`host/springcmp.swift` compares the port's Spring with Apple's on macOS 27; these are Apple's numbers)
+closeTo(lazySpring.velocity(target: 1.0, time: 0.1), 2.8673339704995, "an over-damped spring's velocity is its slope and the distance besides")
+closeTo(lazySpring.velocity(target: 1.0, initialVelocity: 2.0, time: 0.5), 1.7293350704213515, "and with a speed it started at")
+let lazyPair = lazySpring.velocity(target: AnimatablePair(2.5, -1.5), initialVelocity: AnimatablePair(2.0, -1.0), time: 0.1)
+closeTo(lazyPair.first, 7.440358581112397, "the distance of every component is added to its own velocity")
+closeTo(lazyPair.second, -4.437012783181074, "also where it is negative")
+let lazyFromTo = lazySpring.velocity(fromValue: CGPoint(x: 0.2, y: 1), toValue: CGPoint(x: 1, y: 0), initialVelocity: CGPoint(x: 1, y: 2), time: 0.3)
+closeTo(Double(lazyFromTo.x), 1.9293637062223987, "a velocity from one value to another has it too", 1e-5)
+closeTo(Double(lazyFromTo.y), -2.7339363849611606, "in each of its components", 1e-5)
+var lazyValue = 0.25, lazySpeed = 1.5
+lazySpring.update(value: &lazyValue, velocity: &lazySpeed, target: 1, deltaTime: 0.1)
+closeTo(lazyValue, 0.41169987784032, "a step of an over-damped spring reaches where Apple's does")
+closeTo(lazySpeed, 2.354518219022361, "and leaves the speed Apple's leaves")
+lazyValue = 0; lazySpeed = 0
+for _ in 0..<6 { lazySpring.update(value: &lazyValue, velocity: &lazySpeed, target: 1, deltaTime: 1.0 / 60) }
+closeTo(lazyValue, 0.2746903731983113, "six frames of it carry that speed into the next step")
+closeTo(lazySpeed, 4.784768612138549, "and end at Apple's speed")
+let heavySpring = Spring(mass: 1, stiffness: 100, damping: 100, allowOverDamping: true)
+closeTo(heavySpring.velocity(target: 1.0, time: 0.1), 1.9225026009525898, "a spring of a mass, a stiffness and too much damping has it as well")
 
 check(Animation.spring == Animation.spring(duration: 0.5, bounce: 0), "the default spring is a half-second spring that does not bounce")
 check(Animation.smooth == Animation.spring(duration: 0.5, bounce: 0), "and the smooth animation is that spring")

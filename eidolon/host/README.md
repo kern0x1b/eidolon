@@ -15,3 +15,7 @@ Those are the seven defaults of `_RendererConfiguration.RasterizationOptions` in
 `eidolon/Sources/SwiftUI/Rasterizations.swift`. The SDK interface declares the seven properties and a
 bare `init()` and gives no value for any of them, so the framework itself is the only source there is,
 and the type is underscored — which in Swift is public, so the host can name it.
+
+`springcmp.swift` compares the port's `Spring` with Apple's `SwiftUI.Spring` over value, velocity, update and the
+Animatable forms of both, for critical, under-damped and over-damped springs; the command is in its header, and
+its last line is `compared N numbers; worst difference ...` after a `DIFF` line for every number that is not Apple's.

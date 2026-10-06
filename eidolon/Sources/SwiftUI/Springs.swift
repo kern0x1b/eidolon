@@ -127,7 +127,10 @@ public struct Spring: Hashable {
         let slow = -z * w + root, fast = -z * w - root
         let es = exp(slow * time), ef = exp(fast * time)
         let gap = slow - fast
-        return ((slow * ef - fast * es) / gap, slow * fast * (ef - es) / gap, (es - ef) / gap, (slow * es - fast * ef) / gap)
+        // Apple's over-damped slope is its own derivative plus the unit distance, so a speed read from a spring that
+        // does not oscillate is one more than the curve's slope for every unit of distance (measured against
+        // SwiftUI.Spring on macOS: velocity, update and the Animatable form all carry it, the value does not).
+        return ((slow * ef - fast * es) / gap, slow * fast * (ef - es) / gap - 1, (es - ef) / gap, (slow * es - fast * ef) / gap)
     }
 
     // The same for a distance of one and a speed that is a share of it: what an animation of a single value follows.
