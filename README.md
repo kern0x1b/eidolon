@@ -101,7 +101,7 @@ Everything is compiled with availability checking **on**, against the same Swift
 ../run-emu.sh                                           # the engine tests, in the emulator
 ../snapshots.sh [--accept]                              # rendered scenarios against tree references
 ../perf.sh                                              # in-app timings of deeply nested layouts
-xmake -P eidolon emulate -d iPhone4,1 -r 6.1.3 launch space.kern0x1b.eidolon.demo
+xmake emulate -P eidolon -d iPhone4,1 -r 6.1.3 launch space.kern0x1b.eidolon.demo
 python3 coverage.py --check                             # the ledger, checked against the code
 ../bridge/prepare-fw.sh && ../bridge/api-surface.sh     # the typed API diff against Apple's interface
 ```
