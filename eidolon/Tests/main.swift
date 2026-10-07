@@ -3314,6 +3314,34 @@ if let custom = downButton(appleStyle) {
     check(!frames(appleStyle).isEmpty, "and keeps drawing it while the button is down")
 }
 
+// a primitive style's `configuration.trigger()` performs the button's action, and its role is the button's: the
+// configuration is built by the node, and an empty action there made a style that triggers the button inert
+var triggerStyleFired = 0
+var triggerStyleRole: ButtonRole?
+var triggerStyleTrigger: (() -> Void)?
+public struct TriggerStyle: PrimitiveButtonStyle {
+    public init() {}
+    public func makeBody(configuration: PrimitiveButtonStyleConfiguration) -> some View {
+        triggerStyleRole = configuration.role
+        triggerStyleTrigger = { configuration.trigger() }
+        return configuration.label
+    }
+}
+struct TriggerStyleCase: View {
+    var body: some View {
+        Button(role: .destructive, action: { triggerStyleFired += 1 }) { Color.red.frame(width: 20, height: 10) }
+            .buttonStyle(TriggerStyle())
+    }
+}
+let triggerProbe = _Probe(TriggerStyleCase(), width: 120, height: 40)
+_ = frames(triggerProbe)
+check(triggerStyleTrigger != nil, "a primitive style is given a configuration to trigger")
+check(triggerStyleRole == .destructive, "the configuration carries the button's role")
+triggerStyleTrigger?()
+check(triggerStyleFired == 1, "configuration.trigger() performs the button's action")
+triggerStyleTrigger?()
+check(triggerStyleFired == 2, "and performs it again each time")
+
 // a selection in a string: one range, several, or a caret, in Apple's shape
 let selectedText = "hello world"
 let whole = selectedText.startIndex..<selectedText.index(selectedText.startIndex, offsetBy: 5)

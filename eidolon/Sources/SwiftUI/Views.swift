@@ -303,6 +303,9 @@ final class ButtonNode: LayoutNode {
     /// port's `PressedButtonStyle`; the node keeps the body either way, and hands the press to it.
     var primitiveBody: ((PrimitiveButtonStyleConfiguration, Bool) -> any View)?
     var label: (any View)?
+    /// What `configuration.trigger()` of a primitive style performs, and the role it reads.
+    var primitiveAction: () -> Void = {}
+    var primitiveRole: ButtonRole?
     var styled: Node?
     var pressed = false
     var primitive = false
@@ -338,6 +341,8 @@ final class ButtonNode: LayoutNode {
             primitive = true
             styleBody = nil
             target.action = {}
+            primitiveAction = b.buttonAction
+            primitiveRole = (view as? RoleButtonLike)?.buttonRole
             button.setTitle(nil, for: .normal)
             primitiveBody = env.primitiveButtonStyle
             rebuildStyled()
@@ -370,7 +375,7 @@ final class ButtonNode: LayoutNode {
         let body: any View
         if let primitiveBody {
             let configuration = PrimitiveButtonStyleConfiguration(label: PrimitiveButtonStyleConfiguration.Label(content: label),
-                                                                  role: nil, action: {})
+                                                                  role: primitiveRole, action: primitiveAction)
             inner.primitiveButtonStyle = nil
             inner.isPressed = pressed
             body = primitiveBody(configuration, pressed)
