@@ -476,11 +476,6 @@ import CoreImage
     public func dump() -> String {
         var lines: [String] = []
         func walk(_ v: UIView, _ depth: Int) {
-            // A navigation controller makes its own toolbar when it is laid out in a window, hidden below the screen
-            // (the backports' safeAreaInsets asks for it); nothing the view tree built is in it while the controller
-            // calls it hidden, and a toolbar the tree did show is not hidden, so it stays in the dump.
-            if let bar = v as? UIToolbar, bar.isHidden, let nav = bar.superview?.next as? UINavigationController,
-               nav.isToolbarHidden, nav.toolbar === bar { return }
             var f = v.frame
             // The wheel of a picker is a table of a hundred thousand rows, and UIKit scrolls it to the revolution nearest to the
             // clock (the same date puts a row 12 rows further down when it is read at another hour, and a month wheel does the
