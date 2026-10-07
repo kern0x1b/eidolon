@@ -12,10 +12,13 @@ accept=${1:-}
 name=snap-$(date +%H%M%S)
 out=$PWD/runs.noindex/$name
 mkdir -p "$out/shots"
+# exported, not set on one command: xmake reads the port again at every step (configure, build, launch), and a step that does not see the
+# name builds the bundle for every scenario
+export EIDOLON_SNAPSHOT_ONLY=${ONLY:-}
 # -c, as in run-emu.sh: the package versions of the last configure are not kept, so the run is of the pin as it stands
-EIDOLON_SNAPSHOT_ONLY=${ONLY:-} xmake f -c -P eidolon -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
+xmake f -c -P eidolon -p iphoneos -a armv7 -y > "$out/configure.log" 2>&1
 status=0
-xmake emulate -P eidolon -d iPod4,1 -r 6.0 -s "${SECONDS_BUDGET:-240}" -t 3000 \
+xmake emulate -P eidolon -d "${DEVICE:-iPod4,1}" -r "${RELEASE:-6.0}" -s "${SECONDS_BUDGET:-240}" -t 3000 \
     launch space.kern0x1b.eidolon.snapshots until-exit > "$out/launch.log" 2>&1 || status=$?
 cat "$out/launch.log"
 folder=$(sed -n 's/^run folder //p' "$out/launch.log" | tail -1)
@@ -32,7 +35,8 @@ grep -a "snapshot\|snapshots done" "$folder/results/app.stdout" 2>/dev/null || t
 # difference, and a difference is the run's failure.
 ls "$out"/shots/*.txt >/dev/null 2>&1 || { echo "no scenario was rendered; the launch log is $out/launch.log" >&2; exit 1; }
 ls eidolon/Snapshots/reference/*.txt | xargs -n1 basename | sort > "$out/wanted"
-if [ -n "${ONLY:-}" ]; then grep -x "$ONLY.txt" "$out/wanted" > "$out/wanted.one" && mv "$out/wanted.one" "$out/wanted"; fi
+# one scenario owes one file, whether it has a reference yet or not: a new scenario's reference is written by its first run
+if [ -n "${ONLY:-}" ]; then echo "$ONLY.txt" > "$out/wanted"; fi
 ls "$out"/shots/*.txt | xargs -n1 basename | sort > "$out/got"
 if ! missing=$(comm -23 "$out/wanted" "$out/got") || [ -n "$missing" ]; then
   echo "these scenarios were not rendered: $(echo "$missing" | tr '\n' ' ')" >&2
