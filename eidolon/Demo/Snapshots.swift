@@ -469,7 +469,7 @@ func snapshotCases() -> [SnapshotCase] {
         SnapshotCase(name: "pickers", width: 320, height: 300, view: PickersCase(), inWindow: true),
         SnapshotCase(name: "progress", width: 320, height: 200, view: ProgressCase()),
         SnapshotCase(name: "calendar", width: 320, height: 300, view: CalendarCase()),
-        SnapshotCase(name: "date-picker-styles", width: 320, height: 300, view: DatePickerStyleCase()),
+        SnapshotCase(name: "date-picker-styles", width: 320, height: 780, view: DatePickerStyleCase()),
         SnapshotCase(name: "suggestions", width: 320, height: 300, view: SuggestionsCase(model: suggesting), inWindow: true,
                      action: activateSearch,
                      note: { "isSearching \(suggesting.searching)" }),
