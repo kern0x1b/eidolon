@@ -476,6 +476,11 @@ import CoreImage
     public func dump() -> String {
         var lines: [String] = []
         func walk(_ v: UIView, _ depth: Int) {
+            // A navigation controller makes its own toolbar when it is laid out in a window, hidden below the screen
+            // (the backports' safeAreaInsets asks for it); nothing the view tree built is in it while the controller
+            // calls it hidden, and a toolbar the tree did show is not hidden, so it stays in the dump.
+            if let bar = v as? UIToolbar, bar.isHidden, let nav = bar.superview?.next as? UINavigationController,
+               nav.isToolbarHidden, nav.toolbar === bar { return }
             let f = v.frame
             var extra = ""
             if let l = v as? UILabel { extra = " \"\(l.text ?? "")\"" }
