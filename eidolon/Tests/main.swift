@@ -3342,6 +3342,31 @@ check(triggerStyleFired == 1, "configuration.trigger() performs the button's act
 triggerStyleTrigger?()
 check(triggerStyleFired == 2, "and performs it again each time")
 
+// a tap on a button drawn by a style of the port performs the button's action once; the style does not draw a trigger of its
+// own, so the node takes the tap, and since the built-in styles became primitive (dc5e760) it took it to an empty action. A style
+// of an app owns its trigger, so the same tap on a button it styles performs nothing
+var tapStyleFired = 0
+struct TapStyleCase<S: PrimitiveButtonStyle>: View {
+    let style: S
+    var body: some View { Button(action: { tapStyleFired += 1 }) { Color.red.frame(width: 20, height: 10) }.buttonStyle(style) }
+}
+func tapStyleCount<S: PrimitiveButtonStyle>(_ style: S) -> Int {
+    tapStyleFired = 0
+    let probe = _Probe(TapStyleCase(style: style), width: 120, height: 40)
+    _ = frames(probe)
+    if let button = downButton(probe) {
+        deliver(.touchDown, to: button)
+        deliver(.touchUpInside, to: button)
+        probe.flush()
+    }
+    return tapStyleFired
+}
+check(tapStyleCount(PlainButtonStyle()) == 1, "a tap on a .plain button performs its action once")
+check(tapStyleCount(BorderedButtonStyle()) == 1, "and on a .bordered one")
+check(tapStyleCount(BorderedProminentButtonStyle()) == 1, "and on a .borderedProminent one")
+check(tapStyleCount(BorderlessButtonStyle()) == 1, "and on a .borderless one")
+check(tapStyleCount(TriggerStyle()) == 0, "a tap on a button of a style that owns its trigger does not perform the action behind its back")
+
 // a selection in a string: one range, several, or a caret, in Apple's shape
 let selectedText = "hello world"
 let whole = selectedText.startIndex..<selectedText.index(selectedText.startIndex, offsetBy: 5)

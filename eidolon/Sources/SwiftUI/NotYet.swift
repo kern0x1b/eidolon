@@ -238,6 +238,7 @@ extension View {
                 if let aware = style as? any PressedButtonStyle { return aware.pressedBody(configuration: configuration, pressed: pressed) }
                 return style.makeBody(configuration: configuration)
             }
+            environment.primitiveTriggersOnTap = style is any PressedButtonStyle
         }, onUpdate: nil))
     }
 }

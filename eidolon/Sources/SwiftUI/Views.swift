@@ -340,7 +340,9 @@ final class ButtonNode: LayoutNode {
         if let style = env.primitiveButtonStyle {
             primitive = true
             styleBody = nil
-            target.action = {}
+            // a style of the port draws the label and nothing else, so the tap is the node's; a style of an app owns its
+            // trigger (it calls `configuration.trigger()` from a Button or a gesture), and a tap that also fired would fire twice
+            target.action = env.primitiveTriggersOnTap ? b.buttonAction : {}
             primitiveAction = b.buttonAction
             primitiveRole = (view as? RoleButtonLike)?.buttonRole
             button.setTitle(nil, for: .normal)
