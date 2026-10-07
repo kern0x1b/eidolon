@@ -72,23 +72,23 @@ _HostRootView (0,0,320,640)
                           _UIPickerWheelView (12,0,140,216)
                           _UIPickerViewSelectionBar (12,86,140,44)
                           UIPickerTableView (12,0,136,216) table sections=[-:100000]
-                            UIPickerTableViewWrapperCell (0,2199384,136,44)
+                            UIPickerTableViewWrapperCell (0,174,136,44)
                               UITableViewCellContentView (0,0,136,44)
                               UIDatePickerContentView (0,0,136,44)
                                 UILabel (0,7,127,31) "July"
-                            UIPickerTableViewWrapperCell (0,2199340,136,44)
+                            UIPickerTableViewWrapperCell (0,130,136,44)
                               UITableViewCellContentView (0,0,136,44)
                               UIDatePickerContentView (0,0,136,44)
                                 UILabel (0,7,127,31) "June"
-                            UIPickerTableViewWrapperCell (0,2199296,136,44)
+                            UIPickerTableViewWrapperCell (0,86,136,44)
                               UITableViewCellContentView (0,0,136,44)
                               UIDatePickerContentView (0,0,136,44)
                                 UILabel (0,7,127,31) "May"
-                            UIPickerTableViewWrapperCell (0,2199252,136,44)
+                            UIPickerTableViewWrapperCell (0,42,136,44)
                               UITableViewCellContentView (0,0,136,44)
                               UIDatePickerContentView (0,0,136,44)
                                 UILabel (0,7,127,31) "April"
-                            UIPickerTableViewWrapperCell (0,2199208,136,44)
+                            UIPickerTableViewWrapperCell (0,-2,136,44)
                               UITableViewCellContentView (0,0,136,44)
                               UIDatePickerContentView (0,0,136,44)
                                 UILabel (0,7,127,31) "March"
@@ -99,23 +99,23 @@ _HostRootView (0,0,320,640)
                           _UIPickerWheelView (154,0,48,216)
                           _UIPickerViewSelectionBar (154,86,48,44)
                           UIPickerTableView (154,0,44,216) table sections=[-:100000]
-                            UIPickerTableViewWrapperCell (0,2197800,44,44)
+                            UIPickerTableViewWrapperCell (0,174,44,44)
                               UITableViewCellContentView (0,0,44,44)
                               UIDatePickerContentView (0,0,44,44)
                                 UILabel (0,7,35,31) "10"
-                            UIPickerTableViewWrapperCell (0,2197756,44,44)
+                            UIPickerTableViewWrapperCell (0,130,44,44)
                               UITableViewCellContentView (0,0,44,44)
                               UIDatePickerContentView (0,0,44,44)
                                 UILabel (0,7,35,31) "9"
-                            UIPickerTableViewWrapperCell (0,2197712,44,44)
+                            UIPickerTableViewWrapperCell (0,86,44,44)
                               UITableViewCellContentView (0,0,44,44)
                               UIDatePickerContentView (0,0,44,44)
                                 UILabel (0,7,35,31) "8"
-                            UIPickerTableViewWrapperCell (0,2197668,44,44)
+                            UIPickerTableViewWrapperCell (0,42,44,44)
                               UITableViewCellContentView (0,0,44,44)
                               UIDatePickerContentView (0,0,44,44)
                                 UILabel (0,7,35,31) "7"
-                            UIPickerTableViewWrapperCell (0,2197624,44,44)
+                            UIPickerTableViewWrapperCell (0,-2,44,44)
                               UITableViewCellContentView (0,0,44,44)
                               UIDatePickerContentView (0,0,44,44)
                                 UILabel (0,7,35,31) "6"
@@ -126,23 +126,23 @@ _HostRootView (0,0,320,640)
                           _UIPickerWheelView (204,0,65,216)
                           _UIPickerViewSelectionBar (204,86,65,44)
                           UIPickerTableView (204,0,61,216) table sections=[-:100000]
-                            UIPickerTableViewWrapperCell (0,87824,61,44)
+                            UIPickerTableViewWrapperCell (0,174,61,44)
                               UITableViewCellContentView (0,0,61,44)
                               UIDatePickerContentView (0,0,61,44)
                                 UILabel (3,7,56,31) "1997"
-                            UIPickerTableViewWrapperCell (0,87780,61,44)
+                            UIPickerTableViewWrapperCell (0,130,61,44)
                               UITableViewCellContentView (0,0,61,44)
                               UIDatePickerContentView (0,0,61,44)
                                 UILabel (3,7,56,31) "1996"
-                            UIPickerTableViewWrapperCell (0,87736,61,44)
+                            UIPickerTableViewWrapperCell (0,86,61,44)
                               UITableViewCellContentView (0,0,61,44)
                               UIDatePickerContentView (0,0,61,44)
                                 UILabel (3,7,56,31) "1995"
-                            UIPickerTableViewWrapperCell (0,87692,61,44)
+                            UIPickerTableViewWrapperCell (0,42,61,44)
                               UITableViewCellContentView (0,0,61,44)
                               UIDatePickerContentView (0,0,61,44)
                                 UILabel (3,7,56,31) "1994"
-                            UIPickerTableViewWrapperCell (0,87648,61,44)
+                            UIPickerTableViewWrapperCell (0,-2,61,44)
                               UITableViewCellContentView (0,0,61,44)
                               UIDatePickerContentView (0,0,61,44)
                                 UILabel (3,7,56,31) "1993"

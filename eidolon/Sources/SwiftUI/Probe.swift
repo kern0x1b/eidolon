@@ -481,7 +481,14 @@ import CoreImage
             // calls it hidden, and a toolbar the tree did show is not hidden, so it stays in the dump.
             if let bar = v as? UIToolbar, bar.isHidden, let nav = bar.superview?.next as? UINavigationController,
                nav.isToolbarHidden, nav.toolbar === bar { return }
-            let f = v.frame
+            var f = v.frame
+            // The wheel of a picker is a table of a hundred thousand rows, and UIKit scrolls it to the revolution nearest to the
+            // clock (the same date puts a row 12 rows further down when it is read at another hour, and a month wheel does the
+            // same with the month), so a row is printed where it is in the window the wheel shows, not at its offset in the table,
+            // and the rows of a wheel are listed from the bottom of the window up (see below), not in the order they were made in.
+            if let table = v.superview as? UITableView, NSStringFromClass(type(of: v)) == "UIPickerTableViewWrapperCell" {
+                f.origin.y -= table.contentOffset.y
+            }
             var extra = ""
             if let l = v as? UILabel { extra = " \"\(l.text ?? "")\"" }
             if let b = v as? UIButton { extra = " button \"\(b.title(for: .normal) ?? "")\"" }
@@ -496,7 +503,13 @@ import CoreImage
                 extra = " table sections=[\(parts.joined(separator: " "))]"
             }
             lines.append(String(repeating: "  ", count: depth) + "\(type(of: v)) (\(Int(f.origin.x)),\(Int(f.origin.y)),\(Int(f.size.width)),\(Int(f.size.height)))\(extra)")
-            for sub in v.subviews { walk(sub, depth + 1) }
+            var subviews = v.subviews
+            if NSStringFromClass(type(of: v)) == "UIPickerTableView" {
+                // the order the rows were made in is the history of the scrolling: the rows go from the bottom of the window up, the rest as it was
+                let rows = subviews.filter { NSStringFromClass(type(of: $0)) == "UIPickerTableViewWrapperCell" }
+                subviews = rows.sorted { $0.frame.origin.y > $1.frame.origin.y } + subviews.filter { !rows.contains($0) }
+            }
+            for sub in subviews { walk(sub, depth + 1) }
         }
         walk(host.view, 0)
         return lines.joined(separator: "\n")
